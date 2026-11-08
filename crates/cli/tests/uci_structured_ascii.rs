@@ -182,3 +182,141 @@ fn task059_real_uci_message_impact() {
         println!("UCI {version} STRUCTURED ASCII MESSAGE IMPACT: RECORDED");
     }
 }
+
+/// CPP-OMS-006: production C++ `--with-codec` readiness on both pinned
+/// releases, through `service-check-batch` (one schema load per release).
+///
+/// * The six messages whose only C++ codec blocker was a Task 059 structured
+///   ASCII declaration are codec READY, with their exact closures and
+///   declaration counts.
+/// * `FileMetadata` gets past `FileNameType` but stays NOT READY. Its one
+///   remaining codec blocker is the length-constrained named hexBinary
+///   `SHA_2_256_HashType` (the optional `MessageData.SHA_2_Hash`), which is
+///   outside the C++ codec subset, so `service-generate --with-codec` writes
+///   nothing.
+#[test]
+fn cpp_oms_006_real_uci_cpp_codec_readiness() {
+    let cli = env!("CARGO_BIN_EXE_ams-gra-codegen-oms");
+    for (version, var, digest) in ROOTS {
+        let Some(path) = std::env::var_os(var).map(PathBuf::from) else {
+            eprintln!("SKIPPED {var}");
+            continue;
+        };
+        let hash = Command::new("sha256sum").arg(&path).output().unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&hash.stdout)
+                .split_whitespace()
+                .next(),
+            Some(digest)
+        );
+        let strike_command = if version == "2.5" {
+            ("77", "74/74")
+        } else {
+            ("78", "75/75")
+        };
+        let ready: [(&str, &str, &str); 6] = [
+            ("AO_Capability", "71", "69/69"),
+            ("CounterSpaceReport", "55", "54/54"),
+            ("DMPI_DesignationRequest", "56", "54/54"),
+            ("OrdersMetadata", "82", "80/80"),
+            ("StrikeCapability", "84", "82/82"),
+            ("StrikeCommand", strike_command.0, strike_command.1),
+        ];
+        let (file_closure, file_codec) = if version == "2.5" {
+            ("52", "49/50")
+        } else {
+            ("54", "51/52")
+        };
+        let dir = std::env::temp_dir().join(format!(
+            "ams-gra-cpp-oms-006-{version}-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let names: Vec<&str> = ready
+            .iter()
+            .map(|(name, _, _)| *name)
+            .chain(["FileMetadata"])
+            .collect();
+        let mut requests = Vec::new();
+        for name in &names {
+            let file = dir.join(format!("{name}.yaml"));
+            std::fs::write(
+                &file,
+                format!(
+                    "contract_version: \"0.1\"\nservice:\n  name: cpp-oms-006\n  version: \"0.1.0\"\n  kind: service\nstandards:\n  oms_version: \"{version}\"\n  uci_schema_version: \"{version}\"\nfunctions:\n  - id: f\n    name: F\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: e\n        kind: oms_message\n        direction: output\n        mandate: mandatory\n        message: {name}\n        topic: t\n        timing:\n          kind: asynchronous\n"
+                ),
+            )
+            .unwrap();
+            requests.push(serde_json::json!({
+                "id": name, "contract": file.to_str().unwrap(), "language": "cpp",
+                "world": "closed-schema", "with_codec": true,
+            }));
+        }
+        let manifest = dir.join("manifest.json");
+        std::fs::write(
+            &manifest,
+            serde_json::json!({
+                "format": "service-check-batch-v1",
+                "schema_version": format!("002.{}.0", &version[2..]),
+                "requests": requests,
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let output = Command::new(cli)
+            .args(["service-check-batch", "--schema"])
+            .arg(&path)
+            .arg("--manifest")
+            .arg(&manifest)
+            .output()
+            .unwrap();
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["completed"], names.len(), "{report}");
+        let results = report["results"].as_array().unwrap();
+        for ((name, closure, codec), result) in ready.iter().zip(results) {
+            assert_eq!(result["request"]["id"], *name);
+            let stdout = result["stdout"].as_str().unwrap();
+            assert_eq!(result["exit_code"], 0, "{version} {name}: {stdout}");
+            assert!(
+                stdout.contains(&format!("selected type closure: {closure}\n")),
+                "{version} {name}: {stdout}"
+            );
+            assert!(stdout.contains("\nstatus: READY\n"), "{stdout}");
+            assert!(
+                stdout.contains(&format!("codec renderable emitted declarations: {codec}\n")),
+                "{version} {name}: {stdout}"
+            );
+            assert!(stdout.ends_with("codec status: READY\n"), "{stdout}");
+            println!("UCI {version} CPP-OMS-006 C++ codec READY: {name} {codec}");
+        }
+        let file = &results[6];
+        assert_eq!(file["request"]["id"], "FileMetadata");
+        let stdout = file["stdout"].as_str().unwrap();
+        assert_eq!(file["exit_code"], 1, "{stdout}");
+        assert!(
+            stdout.contains(&format!("selected type closure: {file_closure}\n")),
+            "{stdout}"
+        );
+        assert!(stdout.contains("\nstatus: READY\n"), "{stdout}");
+        assert!(
+            stdout.contains(&format!(
+                "codec renderable emitted declarations: {file_codec}\n"
+            )),
+            "{version}: {stdout}"
+        );
+        assert!(stdout.contains("codec status: NOT READY\n"), "{stdout}");
+        assert!(
+            stdout.contains(
+                "service codec boundary: SHA_2_256_HashType: length-constrained named hexBinary \
+                 has no C++ codec mapping"
+            ),
+            "{version}: {stdout}"
+        );
+        assert!(!stdout.contains("FileNameType"), "{stdout}");
+        println!(
+            "UCI {version} CPP-OMS-006 FileMetadata C++ codec NOT READY {file_codec} at SHA_2_256_HashType"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

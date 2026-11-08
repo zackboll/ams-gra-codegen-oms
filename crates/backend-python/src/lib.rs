@@ -4,6 +4,7 @@
 //! these same renderers; the shared three-language coverage inventory is unchanged.
 
 mod names;
+mod network_address;
 mod service_api;
 mod service_codec;
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
@@ -70,8 +71,8 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
-    if uses_choice(schema) {
-        // Only Choice schemas acquire recursive carrier revalidation. The
+    if uses_choice(schema) || network_address::uses(schema) {
+        // Choice and address schemas acquire recursive carrier revalidation. The
         // generated table below uses exact classes and explicit validators;
         // no dataclass introspection or payload-type alternative selection.
         output.push_str("\n\n_check_scalar = _check\n\ndef _check(value, expected, lower=None, upper=None):\n    _check_scalar(value, expected, lower, upper)\n    validator = _choice_carrier_validators.get(expected)\n    if validator is not None:\n        validator(value)\n");
@@ -97,6 +98,20 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if schema
         .types
         .iter()
+        .any(|decl| network_address::profile(decl) == Some("_check_ipv4"))
+    {
+        output.push_str(include_str!("ipv4_runtime.py"));
+    }
+    if schema
+        .types
+        .iter()
+        .any(|decl| network_address::profile(decl) == Some("_check_ipv6"))
+    {
+        output.push_str(include_str!("ipv6_runtime.py"));
+    }
+    if schema
+        .types
+        .iter()
         .any(|decl| whitespace_visible_profile(decl).is_some())
     {
         output.push_str(include_str!("whitespace_visible_runtime.py"));
@@ -111,7 +126,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     for declaration in emitted_declarations(&emissions)? {
         render(&mut output, schema, declaration)?;
     }
-    if uses_choice(schema) {
+    if uses_choice(schema) || network_address::uses(schema) {
         output.push_str("\n\n_choice_carrier_validators = {\n");
         for declaration in emitted_declarations(&emissions)? {
             if !matches!(declaration.kind, TypeKind::Enumeration { .. }) {
@@ -710,6 +725,8 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 visible_ascii_ancestry(schema, declaration)?;
             } else if whitespace_visible_profile(declaration).is_some() {
                 whitespace_visible_ancestry(schema, declaration)?;
+            } else if network_address::profile(declaration).is_some() {
+                network_address::ancestry(schema, declaration)?;
             } else if nato_special_words_profile(declaration) {
                 nato_special_words_ancestry(schema, declaration)?;
             } else if let Some(base) = &declaration.base_type {
@@ -738,6 +755,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                     } else if *kind == PrimitiveKind::DateTime {
                         datetime_profile(&declaration.constraints)?;
                     } else if header_profile(declaration).is_none()
+                        && network_address::profile(declaration).is_none()
                         && visible_ascii_profile(declaration).is_none()
                         && whitespace_visible_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
@@ -747,6 +765,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                     if *kind != PrimitiveKind::DateTime
                         && *kind != PrimitiveKind::Duration
                         && *kind != PrimitiveKind::Binary
+                        && network_address::profile(declaration).is_none()
                         && visible_ascii_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
                     {
@@ -936,6 +955,10 @@ fn render(
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if let Some(validator) = network_address::profile(declaration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        {validator}(self.value)").unwrap();
+                return Ok(());
+            }
             if declaration.kind == TypeKind::Primitive(PrimitiveKind::Duration) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        object.__setattr__(self, 'value', _check_duration(self.value))").unwrap();
                 return Ok(());

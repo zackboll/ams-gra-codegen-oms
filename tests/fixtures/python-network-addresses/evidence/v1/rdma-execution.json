@@ -1,0 +1,738 @@
+[
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_False",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_False",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_False",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_False",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_True",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_True",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_True",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_closed_schema_True",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_False",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_False",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_False",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_False",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_True",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_True",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_True",
+      "standalone",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.5",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_25_open_extensions_True",
+      "package",
+      "25",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma25.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "a649a981aead08e2d19e1008cae6f5937d792743b97f1f754b9af80e638d19b6",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "5b56cfa066339fb51ce2f55db13766a085eba46ff8f379605375e267b9e3ab17"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_False",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_False",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_False",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": false,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_False",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_True",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_True",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_True",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "closed-schema",
+    "codec": true,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_closed_schema_True",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_False",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_False",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_False",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": false,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_False",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n",
+    "artifacts": {
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": false,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_True",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": false,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_True",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": true,
+    "style": "standalone",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_True",
+      "standalone",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  },
+  {
+    "release": "2.6",
+    "world": "open-extensions",
+    "codec": true,
+    "optimized": true,
+    "style": "package",
+    "command": [
+      "/home/zboll/.local/bin/python3.11",
+      "-O",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/python-network-addresses/rdma_probe.py",
+      "/home/zboll/py017-build/rdma-execution/rdma_26_open_extensions_True",
+      "package",
+      "26",
+      "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/task092-real-rdma26.json"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "artifacts": {
+      "service_codec.py": "66dfc41736a8302704687b165611a1a6c6f0214fe1b2d10f67ab1968fe22142d",
+      "service_api.py": "cdb2977b0e7a4f93915e1f813afcf1bdd2a0f51fcc94f154c6a286d607da2bcc",
+      "model.py": "26e161f2253e41e254d829de75364d3258e70e3313c55a027136f48f193d95aa"
+    }
+  }
+]
