@@ -19,12 +19,16 @@ serde_json = "1"
 serde = "=1.0.229"
 # One current-thread runtime on one background worker thread per connection.
 tokio = { version = "1", features = ["rt", "sync", "macros", "net", "time"] }
+# Feature-unify the pinned client's transport; all connection I/O stays in Sleet.
+tokio-tungstenite = { version = "0.29", features = ["rustls-tls-native-roots"] }
+# tokio-tungstenite leaves the rustls provider unselected. Choose exactly one
+# through features, not application TLS code or a custom connector/verifier.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 
 [dev-dependencies]
 # Test-only OWP peer for the worker fairness regression (the same versions
 # sleet-client already pulls in; nothing new enters the lock file).
 futures-util = "0.3"
-tokio-tungstenite = "0.29"
 
 [lints]
 workspace = true
