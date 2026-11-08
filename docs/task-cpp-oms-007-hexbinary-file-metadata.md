@@ -217,9 +217,11 @@ noninteractive sudo installation was unavailable. No dependency was vendored.
 | Python PR smoke | Initial system Python failed version gate; rerun under required Python 3.11 PASS (9 consumer tests) |
 | workspace clippy all targets / fmt / diff whitespace | PASS |
 | complete workspace library tests | **650 passed**, 0 failed/ignored, 15 suite summaries; offline retry completed. Initial pinned-root build interrupted after expensive authentic generation and is not counted as a pass |
-| CPP-OMS-004 PositionReport / 005 AMTI / 006 structured ASCII deep scripts | In progress, not yet claimed complete |
+| CPP-OMS-004 PositionReport deep script | **FAIL**, UCI 2.6 clang TSan: post-close `check::threads_named("ams-lacal") == 0`, 1 of 247 checks failed; other release/configuration executions passed. Gate and runtime unchanged |
+| CPP-OMS-005 AMTI / 006 structured ASCII deep scripts | In progress, not yet claimed complete |
 | 007 full compiler/sanitizer authentic qualification | In progress; hash-present Sleet failures above already make acceptance FAIL |
 | hosted CI at `f0a5a68f2b23ce48aaa191ab393694b5269af77f` | PR smoke **SUCCESS**, run `42535159399`; trusted signal **SUCCESS**. This is not claimed for a later documentation head; final PR receipt records that exact head separately |
+| hosted CI at `4ad061d42f3289b84b3bf42e6983635753b0d1e4` | PR smoke **SUCCESS**, run `42535445329`; trusted signal **SUCCESS**. Later documentation-only head status is recorded separately in the final PR receipt |
 
 An earlier local C++ smoke process had loaded the old 264-check summary before
 the final consumer gained four rejection cases; it failed the exact marker
@@ -229,6 +231,14 @@ Boost.Asio `-Wno-tsan` requirement; ordinary follow-up commits corrected the
 driver. Those aborted runs are not full compiler-configuration passes. The
 exact-head full driver is rerun separately and still cannot satisfy the
 hash-present broker acceptance criterion.
+
+The first CPP-OMS-006 deep process had its script edited while it was running;
+it completed the substantive per-release checks but failed later while reading
+the changed file (`syntax error near unexpected token ||`). It is **not**
+reported as a passing script. The final stable file passes `bash -n` and a
+fresh run (`final-006.log`) is tracked separately. This is a harness execution
+failure, not evidence of a generated-code or schema failure. An interrupted
+redundant CPP-OMS-004 chain is likewise not counted as a pass.
 
 No Ada, Rust or Python production source, workflow YAML, C++ runtime, Sleet or
 LA-CAL production behavior is changed. The shared production change is confined
