@@ -13,8 +13,9 @@
 //! The supported subset is decided ONCE, in codegen-core
 //! (`analyze_service_codec`): Boolean, integral, plain String, enumeration and
 //! concrete Record declarations with required, optional and repeated members,
-//! plus the value profiles added by CPP-OMS-002/004/005 (checked String
-//! profiles including Task 058 bounded ASCII, temporal, hexBinary, Float64).
+//! plus the value profiles added by CPP-OMS-002/004/005/006 (checked String
+//! profiles including Task 058 bounded ASCII and Task 059 structured ASCII,
+//! temporal, hexBinary, Float64).
 //! This renderer calls that analyzer first and refuses anything it rejects, so
 //! readiness (`service-check`) and generation can never disagree.
 //!
@@ -462,8 +463,8 @@ impl Renderer<'_> {
                 kind @ (PrimitiveKind::String | PrimitiveKind::DateTime | PrimitiveKind::Duration),
             ) => {
                 // A checked text carrier: UUID / schema-version / visible-ASCII /
-                // whitespace-visible / NATO / bounded-ASCII profile,
-                // DateTimeZulu or Duration. The generated
+                // whitespace-visible / NATO / bounded-ASCII / structured-ASCII
+                // profile, DateTimeZulu or Duration. The generated
                 // `create(std::string_view)` is the only authority; the codec
                 // restates no character class, length or whitespace rule.
                 //
