@@ -8,6 +8,8 @@ from pathlib import Path
 import socket
 import subprocess
 import time
+import ssl
+import threading
 
 REV = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,6 +20,8 @@ def main():
     parser.add_argument("--checkout", type=Path, required=True)
     parser.add_argument("--consumer", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--tls-cert", type=Path)
+    parser.add_argument("--tls-key", type=Path)
     args = parser.parse_args()
     checkout = args.checkout.resolve()
     evidence = args.evidence.resolve()
@@ -57,9 +61,64 @@ def main():
                 except OSError:
                     assert time.monotonic() < deadline, "Sleet ready timeout"
                     time.sleep(0.02)
-            command = [str(args.consumer.resolve()), f"ws://127.0.0.1:{port}/"]
+            stop = threading.Event()
+            proxy_errors = []
+            proxy = None
+            if args.tls_cert:
+                assert args.tls_key
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(args.tls_cert, args.tls_key)
+                proxy = socket.socket()
+                proxy.bind(("127.0.0.1", 0))
+                proxy.listen()
+                proxy.settimeout(10)
+
+                def terminate_tls():
+                    try:
+                        with proxy.accept()[0] as raw:
+                            raw.settimeout(10)
+                            with context.wrap_socket(raw, server_side=True) as secure, socket.create_connection(("127.0.0.1", port), timeout=10) as plain:
+                                # Single-owner SSL calls; no concurrent SSL_read/
+                                # SSL_write. Select is test-only terminator work.
+                                import select
+                                while not stop.is_set():
+                                    ready, _, _ = select.select([secure, plain], [], [], 0.05)
+                                    if secure.pending() or secure in ready:
+                                        data = secure.recv(65536)
+                                        if not data:
+                                            break
+                                        plain.sendall(data)
+                                    if plain in ready:
+                                        data = plain.recv(65536)
+                                        if not data:
+                                            # Authenticate TLS EOF; closing an
+                                            # SSLSocket alone truncates it.
+                                            try:
+                                                secure.unwrap()
+                                            except (ssl.SSLError, OSError):
+                                                pass
+                                            break
+                                        secure.sendall(data)
+                    except ssl.SSLEOFError:
+                        pass  # OMS explicitly aborts after the WS Close exchange.
+                    except BaseException as error:
+                        proxy_errors.append(repr(error))
+
+                terminator = threading.Thread(target=terminate_tls, daemon=True)
+                terminator.start()
+                command = [str(args.consumer.resolve()), f"wss://localhost:{proxy.getsockname()[1]}/"]
+            else:
+                command = [str(args.consumer.resolve()), f"ws://127.0.0.1:{port}/"]
             (evidence / "consumer.command.json").write_text(json.dumps(command) + "\n")
-            result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+            consumer_env = dict(os.environ)
+            if args.tls_cert:
+                consumer_env['OMS_WSS_TEST_CA'] = str(args.tls_cert.resolve())
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30, env=consumer_env)
+            if proxy:
+                stop.set()
+                terminator.join(12)
+                proxy.close()
+                assert not terminator.is_alive() and not proxy_errors, proxy_errors
             (evidence / "consumer.stdout").write_text(result.stdout)
             (evidence / "consumer.stderr").write_text(result.stderr)
             (evidence / "consumer.exit").write_text(str(result.returncode) + "\n")
@@ -77,7 +136,8 @@ def main():
             (evidence / "server.exit").write_text(str(server.returncode) + "\n")
     assert not subprocess.check_output(["git", "-C", str(checkout), "status", "--porcelain"], text=True)
     (evidence / "result.json").write_text(json.dumps({"completed": True, "revision": REV,
-        "generated_typed_handlers": True, "real_uci": False}, indent=2) + "\n")
+        "generated_typed_handlers": True, "real_uci": False,
+        "tls_terminator": bool(args.tls_cert)}, indent=2) + "\n")
     print("TASK100_REAL_PINNED_SLEET_COMPLETE")
 
 

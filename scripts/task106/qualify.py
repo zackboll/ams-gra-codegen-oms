@@ -16,7 +16,7 @@ import tomllib
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-DEPS = {'aht': ('https://github.com/ovenpasta/aht.git', '664d5ddeb568626b2f9ff66054c7091894b3b8d4'),
+DEPS = {'aht': ('https://github.com/zackboll/aht.git', '827b0c17dd964e935f8e88912ce0611ee92b6f16'),
         'websocket-ada': ('https://github.com/kokhlo/websocket-ada.git', '765d9cd612838eb00645037977c8cc9af7171c3e')}
 GENERATED = {
     'programs.ads': 'a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16',
@@ -205,6 +205,8 @@ def main():
             raise ValueError('dirty transport dependency')
     campaign.env.update(OMS_WS_AHT_SOURCE=str(scratch / 'deps/aht'),
                         OMS_WS_CODEC_SOURCE=str(scratch / 'deps/websocket-ada'), PYTHONDONTWRITEBYTECODE='1')
+    with campaign.environment.open('a') as stream:
+        stream.write(f'export GPR_PROJECT_PATH="{scratch}/deps/aht:$GPR_PROJECT_PATH"\n')
     cells = []
     for policy, optimization in itertools.product(('Normal', 'Check', 'Ignore'), ('0', '2')):
         label = f'uci25-{policy}-O{optimization}'

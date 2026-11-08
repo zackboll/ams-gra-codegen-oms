@@ -1,14 +1,11 @@
+with "aht";
 project OMS_WebSocket_Dependencies is
-   AHT := external ("OMS_WS_AHT_SOURCE");
    WS := external ("OMS_WS_CODEC_SOURCE");
-   for Source_Dirs use (AHT & "/src", AHT & "/src/os/posix", WS & "/src");
-   --  Deliberately exclude both libraries' high-level clients and networking.
+   for Source_Dirs use (WS & "/src");
+   --  AHT owns both framing and TLS units exactly once. Only the selected
+   --  backend is compiled; no high-level AHT client is elaborated here.
    for Source_Files use
-     ("aht.ads", "aht-bytes.ads", "aht-bytes.adb",
-      "aht-websocket.ads", "aht-websocket-frames.ads", "aht-websocket-frames.adb",
-      "aht-websocket-utf8.ads", "aht-websocket-utf8.adb",
-      "aht-random.ads", "aht-random.adb", "aht-random-source.ads", "aht-random-source.adb",
-      "websocket.ads", "websocket-handshake.ads", "websocket-handshake.adb",
+     ("websocket.ads", "websocket-handshake.ads", "websocket-handshake.adb",
       "websocket-base64.ads", "websocket-base64.adb");
    for Object_Dir use "obj-websocket-dependencies";
    package Compiler is

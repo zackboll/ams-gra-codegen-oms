@@ -1,0 +1,1771 @@
+[
+  {
+    "id": 124962899055,
+    "run_id": 41332273331,
+    "head_sha": "bf6228ddee8b9e9fc70704c2fc68a409cdc37729",
+    "name": "ada-hexbinary-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-01T20:05:24Z",
+    "started_at": "2026-11-02T07:08:29Z",
+    "completed_at": "2026-11-02T07:32:49Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41332273331/job/124962899055",
+    "runner_name": "GitHub Actions 1000024529",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 39785.0,
+    "occupied_seconds": 1460.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T07:08:30Z",
+        "completed_at": "2026-11-02T07:08:31Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T07:08:31Z",
+        "completed_at": "2026-11-02T07:08:34Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T07:08:34Z",
+        "completed_at": "2026-11-02T07:08:42Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T07:08:42Z",
+        "completed_at": "2026-11-02T07:08:43Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T07:08:43Z",
+        "completed_at": "2026-11-02T07:09:02Z"
+      },
+      {
+        "name": "Execute generated hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T07:09:02Z",
+        "completed_at": "2026-11-02T07:11:02Z"
+      },
+      {
+        "name": "Execute qualified non-OAM hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T07:11:02Z",
+        "completed_at": "2026-11-02T07:12:40Z"
+      },
+      {
+        "name": "Execute combined Binary Choice temporal consumers, both namespaces and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T07:12:40Z",
+        "completed_at": "2026-11-02T07:15:54Z"
+      },
+      {
+        "name": "Portable helper-demand naming regression",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T07:15:54Z",
+        "completed_at": "2026-11-02T07:31:50Z"
+      },
+      {
+        "name": "Validate mandatory evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T07:31:50Z",
+        "completed_at": "2026-11-02T07:31:50Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-11-02T07:31:50Z",
+        "completed_at": "2026-11-02T07:32:44Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-11-02T07:32:44Z",
+        "completed_at": "2026-11-02T07:32:44Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-11-02T07:32:44Z",
+        "completed_at": "2026-11-02T07:32:44Z"
+      }
+    ]
+  },
+  {
+    "id": 124962899211,
+    "run_id": 41332273331,
+    "head_sha": "bf6228ddee8b9e9fc70704c2fc68a409cdc37729",
+    "name": "ada-repeated-temporal-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-01T20:05:24Z",
+    "started_at": "2026-11-02T07:32:52Z",
+    "completed_at": "2026-11-02T07:47:24Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41332273331/job/124962899211",
+    "runner_name": "GitHub Actions 1000024539",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 41248.0,
+    "occupied_seconds": 872.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T07:32:53Z",
+        "completed_at": "2026-11-02T07:32:54Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T07:32:54Z",
+        "completed_at": "2026-11-02T07:32:56Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T07:32:56Z",
+        "completed_at": "2026-11-02T07:33:04Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T07:33:04Z",
+        "completed_at": "2026-11-02T07:33:05Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T07:33:05Z",
+        "completed_at": "2026-11-02T07:33:24Z"
+      },
+      {
+        "name": "Execute repeated temporal codecs, both profiles and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T07:33:24Z",
+        "completed_at": "2026-11-02T07:38:09Z"
+      },
+      {
+        "name": "Execute inherited nested and Choice temporal composition",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T07:38:09Z",
+        "completed_at": "2026-11-02T07:42:31Z"
+      },
+      {
+        "name": "Execute combined repeated Choice and temporal codecs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T07:42:31Z",
+        "completed_at": "2026-11-02T07:46:52Z"
+      },
+      {
+        "name": "Verify completed execution evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T07:46:52Z",
+        "completed_at": "2026-11-02T07:46:52Z"
+      },
+      {
+        "name": "Preserve repeated temporal qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T07:46:52Z",
+        "completed_at": "2026-11-02T07:47:20Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-11-02T07:47:20Z",
+        "completed_at": "2026-11-02T07:47:20Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-11-02T07:47:20Z",
+        "completed_at": "2026-11-02T07:47:20Z"
+      }
+    ]
+  },
+  {
+    "id": 124962899316,
+    "run_id": 41332273331,
+    "head_sha": "bf6228ddee8b9e9fc70704c2fc68a409cdc37729",
+    "name": "ada-generated-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-01T20:05:24Z",
+    "started_at": "2026-11-02T09:09:05Z",
+    "completed_at": "2026-11-02T09:18:23Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41332273331/job/124962899316",
+    "runner_name": "GitHub Actions 1000024587",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 47021.0,
+    "occupied_seconds": 558.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T09:09:06Z",
+        "completed_at": "2026-11-02T09:09:07Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T09:09:07Z",
+        "completed_at": "2026-11-02T09:09:09Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T09:09:09Z",
+        "completed_at": "2026-11-02T09:09:17Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T09:09:17Z",
+        "completed_at": "2026-11-02T09:09:18Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T09:09:18Z",
+        "completed_at": "2026-11-02T09:09:31Z"
+      },
+      {
+        "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T09:09:31Z",
+        "completed_at": "2026-11-02T09:14:06Z"
+      },
+      {
+        "name": "Execute generated Ada codec, all assertion policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T09:14:06Z",
+        "completed_at": "2026-11-02T09:18:19Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T09:18:19Z",
+        "completed_at": "2026-11-02T09:18:21Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16,
+        "started_at": "2026-11-02T09:18:21Z",
+        "completed_at": "2026-11-02T09:18:21Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-02T09:18:21Z",
+        "completed_at": "2026-11-02T09:18:21Z"
+      }
+    ]
+  },
+  {
+    "id": 124962899442,
+    "run_id": 41332273331,
+    "head_sha": "bf6228ddee8b9e9fc70704c2fc68a409cdc37729",
+    "name": "ada-datetime-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-01T20:05:24Z",
+    "started_at": "2026-11-02T11:57:13Z",
+    "completed_at": "2026-11-02T12:04:39Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41332273331/job/124962899442",
+    "runner_name": "GitHub Actions 1000024679",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 57109.0,
+    "occupied_seconds": 446.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T11:57:14Z",
+        "completed_at": "2026-11-02T11:57:15Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T11:57:15Z",
+        "completed_at": "2026-11-02T11:57:16Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T11:57:16Z",
+        "completed_at": "2026-11-02T11:57:25Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T11:57:25Z",
+        "completed_at": "2026-11-02T11:57:25Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T11:57:25Z",
+        "completed_at": "2026-11-02T11:57:39Z"
+      },
+      {
+        "name": "Execute named and direct DateTime codecs, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T11:57:39Z",
+        "completed_at": "2026-11-02T12:02:22Z"
+      },
+      {
+        "name": "Execute combined DateTime Choice and repeated Record codecs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T12:02:22Z",
+        "completed_at": "2026-11-02T12:04:36Z"
+      },
+      {
+        "name": "Preserve DateTime qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T12:04:36Z",
+        "completed_at": "2026-11-02T12:04:38Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16,
+        "started_at": "2026-11-02T12:04:38Z",
+        "completed_at": "2026-11-02T12:04:38Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-02T12:04:38Z",
+        "completed_at": "2026-11-02T12:04:38Z"
+      }
+    ]
+  },
+  {
+    "id": 125076879085,
+    "run_id": 41382745385,
+    "head_sha": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "name": "ada-json-guard",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T03:22:28Z",
+    "started_at": "2026-11-02T19:07:30Z",
+    "completed_at": "2026-11-02T19:11:00Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41382745385/job/125076879085",
+    "runner_name": "GitHub Actions 1000024887",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 56702.0,
+    "occupied_seconds": 210.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T19:07:31Z",
+        "completed_at": "2026-11-02T19:07:32Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T19:07:32Z",
+        "completed_at": "2026-11-02T19:07:34Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T19:07:34Z",
+        "completed_at": "2026-11-02T19:07:34Z"
+      },
+      {
+        "name": "Guard qualification wrapper negative controls",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T19:07:34Z",
+        "completed_at": "2026-11-02T19:07:35Z"
+      },
+      {
+        "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T19:07:35Z",
+        "completed_at": "2026-11-02T19:10:56Z"
+      },
+      {
+        "name": "Preserve exact qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T19:10:56Z",
+        "completed_at": "2026-11-02T19:10:58Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-11-02T19:10:58Z",
+        "completed_at": "2026-11-02T19:10:58Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-11-02T19:10:58Z",
+        "completed_at": "2026-11-02T19:10:58Z"
+      }
+    ]
+  },
+  {
+    "id": 125090448249,
+    "run_id": 41387166184,
+    "head_sha": "410d7abf6ead1eab5ca45c1d94b0510dc1f41e4c",
+    "name": "ada-json-guard",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T04:12:30Z",
+    "started_at": "2026-11-02T21:03:46Z",
+    "completed_at": "2026-11-02T21:05:57Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41387166184/job/125090448249",
+    "runner_name": "GitHub Actions 1000024947",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 60676.0,
+    "occupied_seconds": 131.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T21:03:47Z",
+        "completed_at": "2026-11-02T21:03:47Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T21:03:47Z",
+        "completed_at": "2026-11-02T21:03:49Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T21:03:49Z",
+        "completed_at": "2026-11-02T21:03:49Z"
+      },
+      {
+        "name": "Guard qualification wrapper negative controls",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T21:03:49Z",
+        "completed_at": "2026-11-02T21:03:49Z"
+      },
+      {
+        "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T21:03:49Z",
+        "completed_at": "2026-11-02T21:05:54Z"
+      },
+      {
+        "name": "Preserve exact qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T21:05:54Z",
+        "completed_at": "2026-11-02T21:05:55Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-11-02T21:05:55Z",
+        "completed_at": "2026-11-02T21:05:55Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-11-02T21:05:55Z",
+        "completed_at": "2026-11-02T21:05:55Z"
+      }
+    ]
+  },
+  {
+    "id": 125114554109,
+    "run_id": 41395083527,
+    "head_sha": "afe0c510866c08fc188fef335e74879840794a70",
+    "name": "ada-json-guard",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T05:37:12Z",
+    "started_at": "2026-11-02T22:44:28Z",
+    "completed_at": "2026-11-02T22:47:31Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41395083527/job/125114554109",
+    "runner_name": "GitHub Actions 1000024986",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 61636.0,
+    "occupied_seconds": 183.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T22:44:29Z",
+        "completed_at": "2026-11-02T22:44:29Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T22:44:29Z",
+        "completed_at": "2026-11-02T22:44:31Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T22:44:31Z",
+        "completed_at": "2026-11-02T22:44:32Z"
+      },
+      {
+        "name": "Guard qualification wrapper negative controls",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T22:44:32Z",
+        "completed_at": "2026-11-02T22:44:32Z"
+      },
+      {
+        "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T22:44:32Z",
+        "completed_at": "2026-11-02T22:46:59Z"
+      },
+      {
+        "name": "Preserve exact qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T22:46:59Z",
+        "completed_at": "2026-11-02T22:47:00Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-11-02T22:47:00Z",
+        "completed_at": "2026-11-02T22:47:01Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-11-02T22:47:01Z",
+        "completed_at": "2026-11-02T22:47:01Z"
+      }
+    ]
+  },
+  {
+    "id": 125490595766,
+    "run_id": 41382745385,
+    "head_sha": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "name": "ada-repeated-temporal-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T19:11:01Z",
+    "started_at": "2026-11-02T19:11:07Z",
+    "completed_at": "2026-11-02T19:20:21Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41382745385/job/125490595766",
+    "runner_name": "GitHub Actions 1000024891",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 6.0,
+    "occupied_seconds": 554.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T19:11:07Z",
+        "completed_at": "2026-11-02T19:11:08Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T19:11:08Z",
+        "completed_at": "2026-11-02T19:11:10Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T19:11:10Z",
+        "completed_at": "2026-11-02T19:11:16Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T19:11:16Z",
+        "completed_at": "2026-11-02T19:11:17Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T19:11:17Z",
+        "completed_at": "2026-11-02T19:11:32Z"
+      },
+      {
+        "name": "Execute repeated temporal codecs, both profiles and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T19:11:32Z",
+        "completed_at": "2026-11-02T19:14:31Z"
+      },
+      {
+        "name": "Execute inherited nested and Choice temporal composition",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T19:14:31Z",
+        "completed_at": "2026-11-02T19:17:10Z"
+      },
+      {
+        "name": "Execute combined repeated Choice and temporal codecs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T19:17:10Z",
+        "completed_at": "2026-11-02T19:19:51Z"
+      },
+      {
+        "name": "Verify completed execution evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T19:19:51Z",
+        "completed_at": "2026-11-02T19:19:51Z"
+      },
+      {
+        "name": "Preserve repeated temporal qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T19:19:51Z",
+        "completed_at": "2026-11-02T19:20:08Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-11-02T19:20:08Z",
+        "completed_at": "2026-11-02T19:20:09Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-11-02T19:20:09Z",
+        "completed_at": "2026-11-02T19:20:09Z"
+      }
+    ]
+  },
+  {
+    "id": 125490596487,
+    "run_id": 41382745385,
+    "head_sha": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "name": "ada-datetime-codec",
+    "status": "pending",
+    "conclusion": null,
+    "created_at": "2026-11-02T19:11:01Z",
+    "started_at": "2026-11-02T19:11:01Z",
+    "completed_at": null,
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41382745385/job/125490596487",
+    "runner_name": null,
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": null,
+    "occupied_seconds": null,
+    "steps": []
+  },
+  {
+    "id": 125490596495,
+    "run_id": 41382745385,
+    "head_sha": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "name": "ada-hexbinary-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T19:11:01Z",
+    "started_at": "2026-11-02T19:42:59Z",
+    "completed_at": "2026-11-02T20:13:15Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41382745385/job/125490596495",
+    "runner_name": "GitHub Actions 1000024910",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 1918.0,
+    "occupied_seconds": 1816.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T19:43:00Z",
+        "completed_at": "2026-11-02T19:43:00Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T19:43:00Z",
+        "completed_at": "2026-11-02T19:43:02Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T19:43:02Z",
+        "completed_at": "2026-11-02T19:43:11Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T19:43:11Z",
+        "completed_at": "2026-11-02T19:43:12Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T19:43:12Z",
+        "completed_at": "2026-11-02T19:43:26Z"
+      },
+      {
+        "name": "Execute generated hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T19:43:26Z",
+        "completed_at": "2026-11-02T19:45:47Z"
+      },
+      {
+        "name": "Execute qualified non-OAM hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T19:45:47Z",
+        "completed_at": "2026-11-02T19:47:51Z"
+      },
+      {
+        "name": "Execute combined Binary Choice temporal consumers, both namespaces and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T19:47:51Z",
+        "completed_at": "2026-11-02T19:52:01Z"
+      },
+      {
+        "name": "Portable helper-demand naming regression",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T19:52:01Z",
+        "completed_at": "2026-11-02T20:12:02Z"
+      },
+      {
+        "name": "Validate mandatory evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T20:12:02Z",
+        "completed_at": "2026-11-02T20:12:02Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-11-02T20:12:02Z",
+        "completed_at": "2026-11-02T20:13:10Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-11-02T20:13:10Z",
+        "completed_at": "2026-11-02T20:13:10Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-11-02T20:13:10Z",
+        "completed_at": "2026-11-02T20:13:10Z"
+      }
+    ]
+  },
+  {
+    "id": 125490597982,
+    "run_id": 41382745385,
+    "head_sha": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "name": "ada-generated-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T19:11:01Z",
+    "started_at": "2026-11-02T20:22:01Z",
+    "completed_at": "2026-11-02T20:31:35Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41382745385/job/125490597982",
+    "runner_name": "GitHub Actions 1000024933",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 4260.0,
+    "occupied_seconds": 574.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T20:22:02Z",
+        "completed_at": "2026-11-02T20:22:03Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T20:22:03Z",
+        "completed_at": "2026-11-02T20:22:05Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T20:22:05Z",
+        "completed_at": "2026-11-02T20:22:14Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T20:22:14Z",
+        "completed_at": "2026-11-02T20:22:15Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T20:22:15Z",
+        "completed_at": "2026-11-02T20:22:28Z"
+      },
+      {
+        "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T20:22:28Z",
+        "completed_at": "2026-11-02T20:27:10Z"
+      },
+      {
+        "name": "Execute generated Ada codec, all assertion policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T20:27:10Z",
+        "completed_at": "2026-11-02T20:31:27Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T20:31:27Z",
+        "completed_at": "2026-11-02T20:31:29Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16,
+        "started_at": "2026-11-02T20:31:29Z",
+        "completed_at": "2026-11-02T20:31:29Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-02T20:31:29Z",
+        "completed_at": "2026-11-02T20:31:29Z"
+      }
+    ]
+  },
+  {
+    "id": 125551029990,
+    "run_id": 41387166184,
+    "head_sha": "410d7abf6ead1eab5ca45c1d94b0510dc1f41e4c",
+    "name": "ada-hexbinary-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T21:05:57Z",
+    "started_at": "2026-11-02T21:06:00Z",
+    "completed_at": "2026-11-02T21:34:54Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41387166184/job/125551029990",
+    "runner_name": "GitHub Actions 1000024950",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 3.0,
+    "occupied_seconds": 1734.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T21:06:01Z",
+        "completed_at": "2026-11-02T21:06:02Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T21:06:02Z",
+        "completed_at": "2026-11-02T21:06:04Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T21:06:04Z",
+        "completed_at": "2026-11-02T21:06:14Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T21:06:14Z",
+        "completed_at": "2026-11-02T21:06:15Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T21:06:15Z",
+        "completed_at": "2026-11-02T21:06:38Z"
+      },
+      {
+        "name": "Execute generated hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T21:06:38Z",
+        "completed_at": "2026-11-02T21:08:58Z"
+      },
+      {
+        "name": "Execute qualified non-OAM hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T21:08:58Z",
+        "completed_at": "2026-11-02T21:10:54Z"
+      },
+      {
+        "name": "Execute combined Binary Choice temporal consumers, both namespaces and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T21:10:54Z",
+        "completed_at": "2026-11-02T21:14:46Z"
+      },
+      {
+        "name": "Portable helper-demand naming regression",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T21:14:46Z",
+        "completed_at": "2026-11-02T21:33:51Z"
+      },
+      {
+        "name": "Validate mandatory evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T21:33:51Z",
+        "completed_at": "2026-11-02T21:33:52Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-11-02T21:33:52Z",
+        "completed_at": "2026-11-02T21:34:50Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-11-02T21:34:50Z",
+        "completed_at": "2026-11-02T21:34:51Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-11-02T21:34:51Z",
+        "completed_at": "2026-11-02T21:34:51Z"
+      }
+    ]
+  },
+  {
+    "id": 125551030123,
+    "run_id": 41387166184,
+    "head_sha": "410d7abf6ead1eab5ca45c1d94b0510dc1f41e4c",
+    "name": "ada-generated-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T21:05:57Z",
+    "started_at": "2026-11-02T21:06:00Z",
+    "completed_at": "2026-11-02T21:11:56Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41387166184/job/125551030123",
+    "runner_name": "GitHub Actions 1000024951",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 3.0,
+    "occupied_seconds": 356.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T21:06:01Z",
+        "completed_at": "2026-11-02T21:06:02Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T21:06:02Z",
+        "completed_at": "2026-11-02T21:06:03Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T21:06:03Z",
+        "completed_at": "2026-11-02T21:06:10Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T21:06:10Z",
+        "completed_at": "2026-11-02T21:06:11Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T21:06:11Z",
+        "completed_at": "2026-11-02T21:06:20Z"
+      },
+      {
+        "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T21:06:20Z",
+        "completed_at": "2026-11-02T21:09:17Z"
+      },
+      {
+        "name": "Execute generated Ada codec, all assertion policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T21:09:17Z",
+        "completed_at": "2026-11-02T21:11:53Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T21:11:53Z",
+        "completed_at": "2026-11-02T21:11:54Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16,
+        "started_at": "2026-11-02T21:11:54Z",
+        "completed_at": "2026-11-02T21:11:54Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-02T21:11:54Z",
+        "completed_at": "2026-11-02T21:11:54Z"
+      }
+    ]
+  },
+  {
+    "id": 125551030357,
+    "run_id": 41387166184,
+    "head_sha": "410d7abf6ead1eab5ca45c1d94b0510dc1f41e4c",
+    "name": "ada-repeated-temporal-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T21:05:57Z",
+    "started_at": "2026-11-02T21:06:00Z",
+    "completed_at": "2026-11-02T21:20:26Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41387166184/job/125551030357",
+    "runner_name": "GitHub Actions 1000024952",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 3.0,
+    "occupied_seconds": 866.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T21:06:00Z",
+        "completed_at": "2026-11-02T21:06:01Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T21:06:01Z",
+        "completed_at": "2026-11-02T21:06:03Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T21:06:03Z",
+        "completed_at": "2026-11-02T21:06:11Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T21:06:11Z",
+        "completed_at": "2026-11-02T21:06:12Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T21:06:12Z",
+        "completed_at": "2026-11-02T21:06:25Z"
+      },
+      {
+        "name": "Execute repeated temporal codecs, both profiles and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T21:06:25Z",
+        "completed_at": "2026-11-02T21:11:09Z"
+      },
+      {
+        "name": "Execute inherited nested and Choice temporal composition",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T21:11:09Z",
+        "completed_at": "2026-11-02T21:15:30Z"
+      },
+      {
+        "name": "Execute combined repeated Choice and temporal codecs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T21:15:30Z",
+        "completed_at": "2026-11-02T21:19:55Z"
+      },
+      {
+        "name": "Verify completed execution evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T21:19:55Z",
+        "completed_at": "2026-11-02T21:19:55Z"
+      },
+      {
+        "name": "Preserve repeated temporal qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T21:19:55Z",
+        "completed_at": "2026-11-02T21:20:23Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-11-02T21:20:23Z",
+        "completed_at": "2026-11-02T21:20:23Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-11-02T21:20:23Z",
+        "completed_at": "2026-11-02T21:20:23Z"
+      }
+    ]
+  },
+  {
+    "id": 125551030945,
+    "run_id": 41387166184,
+    "head_sha": "410d7abf6ead1eab5ca45c1d94b0510dc1f41e4c",
+    "name": "ada-datetime-codec",
+    "status": "pending",
+    "conclusion": null,
+    "created_at": "2026-11-02T21:05:57Z",
+    "started_at": "2026-11-02T21:05:57Z",
+    "completed_at": null,
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41387166184/job/125551030945",
+    "runner_name": null,
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": null,
+    "occupied_seconds": null,
+    "steps": []
+  },
+  {
+    "id": 125602131977,
+    "run_id": 41395083527,
+    "head_sha": "afe0c510866c08fc188fef335e74879840794a70",
+    "name": "ada-hexbinary-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T22:47:32Z",
+    "started_at": "2026-11-02T22:47:42Z",
+    "completed_at": "2026-11-02T23:19:17Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41395083527/job/125602131977",
+    "runner_name": "GitHub Actions 1000024988",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 10.0,
+    "occupied_seconds": 1895.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T22:47:43Z",
+        "completed_at": "2026-11-02T22:47:43Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T22:47:43Z",
+        "completed_at": "2026-11-02T22:47:45Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T22:47:45Z",
+        "completed_at": "2026-11-02T22:47:53Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T22:47:53Z",
+        "completed_at": "2026-11-02T22:47:54Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T22:47:54Z",
+        "completed_at": "2026-11-02T22:48:12Z"
+      },
+      {
+        "name": "Execute generated hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T22:48:12Z",
+        "completed_at": "2026-11-02T22:50:40Z"
+      },
+      {
+        "name": "Execute qualified non-OAM hexBinary consumer, all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T22:50:40Z",
+        "completed_at": "2026-11-02T22:52:49Z"
+      },
+      {
+        "name": "Execute combined Binary Choice temporal consumers, both namespaces and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T22:52:49Z",
+        "completed_at": "2026-11-02T22:57:05Z"
+      },
+      {
+        "name": "Portable helper-demand naming regression",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T22:57:05Z",
+        "completed_at": "2026-11-02T23:18:07Z"
+      },
+      {
+        "name": "Validate mandatory evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T23:18:07Z",
+        "completed_at": "2026-11-02T23:18:07Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-11-02T23:18:07Z",
+        "completed_at": "2026-11-02T23:19:13Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-11-02T23:19:13Z",
+        "completed_at": "2026-11-02T23:19:14Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-11-02T23:19:14Z",
+        "completed_at": "2026-11-02T23:19:14Z"
+      }
+    ]
+  },
+  {
+    "id": 125602132304,
+    "run_id": 41395083527,
+    "head_sha": "afe0c510866c08fc188fef335e74879840794a70",
+    "name": "ada-repeated-temporal-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T22:47:32Z",
+    "started_at": "2026-11-02T22:47:35Z",
+    "completed_at": "2026-11-02T22:58:13Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41395083527/job/125602132304",
+    "runner_name": "GitHub Actions 1000024990",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 3.0,
+    "occupied_seconds": 638.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T22:47:36Z",
+        "completed_at": "2026-11-02T22:47:37Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T22:47:37Z",
+        "completed_at": "2026-11-02T22:47:39Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T22:47:39Z",
+        "completed_at": "2026-11-02T22:47:47Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T22:47:47Z",
+        "completed_at": "2026-11-02T22:47:47Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T22:47:47Z",
+        "completed_at": "2026-11-02T22:47:57Z"
+      },
+      {
+        "name": "Execute repeated temporal codecs, both profiles and all policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T22:47:57Z",
+        "completed_at": "2026-11-02T22:51:26Z"
+      },
+      {
+        "name": "Execute inherited nested and Choice temporal composition",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T22:51:26Z",
+        "completed_at": "2026-11-02T22:54:37Z"
+      },
+      {
+        "name": "Execute combined repeated Choice and temporal codecs",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T22:54:37Z",
+        "completed_at": "2026-11-02T22:57:47Z"
+      },
+      {
+        "name": "Verify completed execution evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-02T22:57:47Z",
+        "completed_at": "2026-11-02T22:57:47Z"
+      },
+      {
+        "name": "Preserve repeated temporal qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-02T22:57:47Z",
+        "completed_at": "2026-11-02T22:58:09Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-11-02T22:58:09Z",
+        "completed_at": "2026-11-02T22:58:10Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-11-02T22:58:10Z",
+        "completed_at": "2026-11-02T22:58:10Z"
+      }
+    ]
+  },
+  {
+    "id": 125602132470,
+    "run_id": 41395083527,
+    "head_sha": "afe0c510866c08fc188fef335e74879840794a70",
+    "name": "ada-generated-codec",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-02T22:47:32Z",
+    "started_at": "2026-11-02T22:47:35Z",
+    "completed_at": "2026-11-02T22:53:38Z",
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41395083527/job/125602132470",
+    "runner_name": "GitHub Actions 1000024989",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": 3.0,
+    "occupied_seconds": 363.0,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-02T22:47:35Z",
+        "completed_at": "2026-11-02T22:47:37Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-02T22:47:37Z",
+        "completed_at": "2026-11-02T22:47:40Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@1.95.0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-02T22:47:40Z",
+        "completed_at": "2026-11-02T22:47:47Z"
+      },
+      {
+        "name": "Install verified Alire 2.1.1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-02T22:47:47Z",
+        "completed_at": "2026-11-02T22:47:48Z"
+      },
+      {
+        "name": "Build production generator",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-02T22:47:48Z",
+        "completed_at": "2026-11-02T22:47:57Z"
+      },
+      {
+        "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-02T22:47:57Z",
+        "completed_at": "2026-11-02T22:50:51Z"
+      },
+      {
+        "name": "Execute generated Ada codec, all assertion policies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-02T22:50:51Z",
+        "completed_at": "2026-11-02T22:53:26Z"
+      },
+      {
+        "name": "Preserve qualification evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-02T22:53:26Z",
+        "completed_at": "2026-11-02T22:53:28Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16,
+        "started_at": "2026-11-02T22:53:28Z",
+        "completed_at": "2026-11-02T22:53:28Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-02T22:53:28Z",
+        "completed_at": "2026-11-02T22:53:28Z"
+      }
+    ]
+  },
+  {
+    "id": 125602133309,
+    "run_id": 41395083527,
+    "head_sha": "afe0c510866c08fc188fef335e74879840794a70",
+    "name": "ada-datetime-codec",
+    "status": "pending",
+    "conclusion": null,
+    "created_at": "2026-11-02T22:47:32Z",
+    "started_at": "2026-11-02T22:47:32Z",
+    "completed_at": null,
+    "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/41395083527/job/125602133309",
+    "runner_name": null,
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "queue_seconds": null,
+    "occupied_seconds": null,
+    "steps": []
+  }
+]

@@ -75,6 +75,7 @@ GATES = [(name, next((job for job, tasks in PRIMARY_SHARDS.items()
           if owner == 'real-uci' else owner, digest) for name, owner, digest in GATES]
 SOURCE_JOBS = QUALIFICATION_JOBS + ('msrv-real-uci', 'real-sleet',
                                   'ada-repeated-choice-real-uci', 'ada-hexbinary-real')
+SLEET_ENV = "    env:\n      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n"
 CHECKOUT = '''uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}'''
@@ -113,6 +114,18 @@ def run_command(step):
                      if line.startswith('          ') and line.strip())
 
 
+def has_key(text, *keys):
+    """Recognize protected block keys, including literal quotes and separation.
+
+    Do not normalize executable bodies or the exact source/evidence allowlists.
+    A step's first key can also follow its sequence marker (or be unindented
+    after the caller has split the steps).
+    """
+    names = '(?:' + '|'.join(re.escape(key) for key in keys) + ')'
+    spelling = '(?:' + names + "|'" + names + "'|\"" + names + '\")'
+    return re.search(r'^[ \t]*(?:- )?' + spelling + r'[ \t]*:', text, re.M) is not None
+
+
 def check(path):
     text = Path(path).read_text()
     text = "\n".join(line for line in text.splitlines()
@@ -124,6 +137,7 @@ def check(path):
         if not ok:
             errors.append("Task077B " + message)
     require(len(entries) == len(jobs), 'duplicate job identifiers')
+    gate_bodies = {}
     for job in SOURCE_JOBS:
         body = jobs.get(job, '')
         steps = [step.strip() for step in re.split(r'^      - ', body, flags=re.M)[1:]]
@@ -136,8 +150,36 @@ def check(path):
                 sum(run_command(step + '\n') == SOURCE_COMMAND for step in steps) == 1,
                 'source identity gate before qualification: ' + job)
         header = body.split('    steps:', 1)[0]
-        require(not re.search(r'^\s+(if:|continue-on-error:|env:|defaults:)', header, re.M),
+        if job == 'real-sleet':
+            environments = re.findall(r'^    env:\n.*?(?=^    \S|\Z)', header, re.M | re.S)
+            require([block.rstrip() + '\n' for block in environments] == [SLEET_ENV],
+                    'mandatory source identity: ' + job)
+            header = header.replace(SLEET_ENV, '', 1)
+        require(not has_key(header, 'if', 'continue-on-error', 'env', 'defaults'),
                 'mandatory source identity: ' + job)
+        require(not has_key(header, 'needs'), 'independent job: ' + job)
+        # Validate the authoritative, owner-local evidence block before either
+        # condition scan excludes it. Names or always() alone confer no exemption.
+        gate_body = body
+        evidence = None
+        if job in PRIMARY_SHARDS:
+            from real_uci_evidence import evidence_steps
+            evidence = evidence_steps(job)
+        elif job == 'real-uci-regressions':
+            evidence = EVIDENCE
+        if evidence is not None:
+            expected = [step.strip() for step in re.split(
+                r'^      - ', evidence, flags=re.M)[1:]]
+            authorized = (body.count(evidence.rstrip()) == 1
+                          and all(steps.count(step) == 1 for step in expected))
+            require(authorized, 'exact evidence exception: ' + job)
+            if authorized:
+                gate_body = gate_body.replace(evidence.rstrip(), '', 1)
+        gate_bodies[job] = gate_body
+        require(not any(has_key(step, 'if', 'continue-on-error')
+                        for step in re.split(r'^      - ', gate_body, flags=re.M)[1:]
+                        if run_command(step + '\n')),
+                'enabled hard gate: ' + job)
         # No later action or shell checkout may replace the verified source.
         require(not any(re.search(r'\bgit\s+(?:-[Cc]\s+\S+\s+)?'
                                   r'(checkout|switch|reset|read-tree|worktree)\b',
@@ -146,7 +188,7 @@ def check(path):
     for job in ('ada-repeated-choice-real-uci', 'ada-hexbinary-real'):
         require(job in jobs, 'missing job: ' + job)
     for job, releases in (tuple((j, ('2.5', '2.6')) for j in QUALIFICATION_JOBS) + (
-                          ("msrv-real-uci", ("2.5",)), ("real-sleet", ("2.5",)))):
+                          ("msrv-real-uci", ("2.5",)), ("real-sleet", ("2.5", "2.6")))):
         body = jobs.get(job, "")
         require(bool(body), "missing job: " + job)
         for release in ("2.5", "2.6"):
@@ -157,15 +199,8 @@ def check(path):
             continue
         limit = re.search(r"^    timeout-minutes: ([0-9]+)$", body, re.M)
         require(limit is not None and int(limit[1]) == 240, "finite timeout: " + job)
-        require(not re.search(r"^    needs:", body, re.M), "independent job: " + job)
-        # PERF-001: only the exact evidence-only upload may run after failure.
-        # Do not exempt arbitrary named steps, commands or conditional gates.
-        gate_body = body.replace(EVIDENCE, '') if job == 'real-uci-regressions' else body
-        if job in PRIMARY_SHARDS:
-            from real_uci_evidence import evidence_steps
-            gate_body = gate_body.replace(evidence_steps(job), '')
         # Main qualification must remain unconditional.
-        require(not re.search(r"^\s+(if:|continue-on-error:)", gate_body, re.M), "enabled hard gate: " + job)
+        require(not has_key(gate_bodies[job], 'if', 'continue-on-error'), "enabled hard gate: " + job)
         for setup in ('uses: actions/checkout@v4', 'uses: dtolnay/rust-toolchain@stable',
                       'sudo apt-get install -y gnat', 'command -v gnatmake', 'gnatmake --version',
                       'AMS_GRA_UCI_2_5_ROOT=$UCI25', 'AMS_GRA_UCI_2_6_ROOT=$UCI26'):
@@ -225,7 +260,7 @@ def check(path):
                 require(actual_digest == digest,
                         "payload changed: " + name)
                 expected_commands.append(command)
-                require(not re.search(r"^\s+(if:|continue-on-error:)", step, re.M),
+                require(not has_key(step, 'if', 'continue-on-error'),
                         "enabled hard gate: " + name)
                 if 'Task 054,' in name:
                     require('AMS_GRA_REQUIRE_GNAT: "1"' in step,
@@ -246,6 +281,20 @@ def check(path):
     except ValueError as error:
         require(False, 'primary shard reconciliation: ' + str(error))
     return errors
+
+
+def mutate_job_environment(body, spelling):
+    """Change only the single job-header env block in a disposable fixture."""
+    steps = list(re.finditer(r'^    steps:\n', body, re.M))
+    assert len(steps) == 1, 'job steps'
+    header = body[:steps[0].start()]
+    environments = list(re.finditer(r'^    env:\n.*?(?=^    \S|\Z)',
+                                    header, re.M | re.S))
+    assert len(environments) == 1, 'job environment'
+    block = environments[0]
+    _, contents = block[0].split('\n', 1)
+    replacement = '    ' + spelling.format('env') + '\n      GITHUB_SHA: main\n' + contents
+    return body[:block.start()] + replacement + body[block.end():]
 
 
 def self_test(path):
@@ -311,6 +360,75 @@ def self_test(path):
             add(job + ' optional job ' + field, job_mutation(job, lambda b: replace_once(
                 b, '    runs-on:', '    ' + field + '\n    runs-on:')),
                 'mandatory source identity: ' + job)
+    # These literal block-key spellings denote the same YAML string key.
+    # Keep mutations owner-local, with no duplicate keys or malformed steps.
+    spellings = ('{} :', '{}   :', "'{}':", '"{}":', "'{}' :", '"{}"   :')
+    for spelling in spellings:
+        for job in SOURCE_JOBS:
+            for key, value in (('if', ' false'), ('continue-on-error', ' true'),
+                               ('env', '\n      GITHUB_SHA: main'),
+                               ('defaults', '\n      run:\n        working-directory: /tmp')):
+                field = spelling.format(key) + value
+                if job == 'real-sleet' and key == 'env':
+                    changed = job_mutation(job, lambda b: mutate_job_environment(b, spelling))
+                else:
+                    changed = job_mutation(job, lambda b: replace_once(
+                        b, '    runs-on:', '    ' + field + '\n    runs-on:'))
+                add(job + ' equivalent job ' + field, changed,
+                    'mandatory source identity: ' + job)
+            for label, target, diagnostic in (
+                    ('checkout', '      - ' + CHECKOUT + '\n', 'event SHA checkout: '),
+                    ('identity', '      - ' + source_step() + '\n',
+                     'source identity gate before qualification: ')):
+                for key, value in (('if', ' false'), ('continue-on-error', ' true'),
+                                   ('env', '\n          GITHUB_SHA: main')):
+                    first, rest = target.split('\n', 1)
+                    replacement = first + '\n        ' + spelling.format(key) + value + '\n' + rest
+                    add(job + ' equivalent ' + label + ' ' + key,
+                        job_mutation(job, lambda b: replace_once(b, target, replacement)),
+                        diagnostic + job)
+        for job in SOURCE_JOBS:
+            add(job + ' equivalent dependency ' + spelling, job_mutation(job, lambda b: replace_once(
+                b, '    runs-on:', '    ' + spelling.format('needs') + ' '
+                + ('msrv-real-uci' if job == 'real-sleet' else 'real-sleet') + '\n    runs-on:')),
+                'independent job: ' + job)
+        for name, owner, _ in GATES:
+            target = '      - name: ' + name + '\n'
+            for key, value in (('if', 'false'), ('continue-on-error', 'true')):
+                add(name + ' equivalent step ' + spelling.format(key), job_mutation(
+                    owner, lambda b: replace_once(b, target,
+                        target + '        ' + spelling.format(key) + ' ' + value + '\n')),
+                    'enabled hard gate: ' + name)
+        target = '      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n'
+        for key, value in (('if', 'false'), ('continue-on-error', 'true')):
+            add('real-sleet equivalent qualification ' + spelling.format(key), job_mutation(
+                'real-sleet', lambda b: replace_once(b, target,
+                    target + '        ' + spelling.format(key) + ' ' + value + '\n')),
+                'enabled hard gate: real-sleet')
+    # Exercise the exact job-local optimization allowlist, not a general env
+    # exemption. Comments are immaterial to the validator's block grammar.
+    sleet_env = ('    env:\n'
+                 '      # build.rs invokes production generation repeatedly on authentic UCI.\n'
+                 "      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n")
+    for label, replacement in (
+            ('missing', ''),
+            ('wrong value', SLEET_ENV.replace("'3'", "'0'")),
+            ('wrong key', SLEET_ENV.replace('CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL', 'PYTHONOPTIMIZE')),
+            ('extra optimization', SLEET_ENV + "      PYTHONOPTIMIZE: '1'\n"),
+            ('source override', SLEET_ENV + "      GITHUB_SHA: main\n"),
+            ('separated source override', SLEET_ENV + "\n      GITHUB_SHA: main\n"),
+            ('duplicate', SLEET_ENV + SLEET_ENV),
+            ('flow mapping', "    env: {CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'}\n"),
+            ('expression', SLEET_ENV.replace("'3'", '${{ vars.OPT_LEVEL }}'))):
+        add('real-sleet environment ' + label, job_mutation('real-sleet',
+            lambda b: replace_once(b, sleet_env, replacement)),
+            'mandatory source identity: real-sleet')
+    for release in ('2.5', '2.6'):
+        line = command_line('real-sleet', f'scripts/fetch-pinned-uci-{release}.sh "$')
+        for label, replacement in (('missing', ''), ('duplicate', line + line)):
+            add(f'real-sleet {label} {release}', job_mutation('real-sleet',
+                lambda b: replace_once(b, line, replacement)),
+                f'fetch ownership: real-sleet {release}')
     for job in SHARDS:
         add('missing shard ' + job, job_mutation(job, lambda b: ''), 'missing job: ' + job)
     for job in QUALIFICATION_JOBS:
@@ -413,6 +531,10 @@ def self_test(path):
         'unique campaign execution')
     positives = [
         ('comments', job_mutation(owner, lambda b: b + '      # Harmless comment\n'), None),
+        ('command whitespace', job_mutation(owner, lambda b: replace_once(
+            b, after, after.rstrip() + '  \n')), None),
+        ('command comment', job_mutation(owner, lambda b: replace_once(
+            b, after, '          # Harmless command comment\n' + after)), None),
         ('step description', job_mutation(owner, lambda b: replace_once(
             b, name, 'Alternating qualification description')), None),
         ('unrelated workflow metadata', original.replace('name: Deep CI\n',
