@@ -34,6 +34,13 @@ class Routing(unittest.TestCase):
                      "tests/fixtures/service-generate/codec-ada-minimal.xsd"):
             self.assert_execution([path], ["ada"])
 
+    def test_task109_ada_only_and_boundaries(self):
+        for path in ("scripts/task109/qualify.py", "scripts/task109/relay.py",
+                     "scripts/task109/test_qualification.py", "scripts/task109/nested/new.py"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task109_other.py", "scripts/task1090/new.py", "scripts/task109-other/new.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_task104_ada_only(self):
         paths = ("scripts/task104/admission.py", "scripts/task104/cases.py",
                  "scripts/task104/inventory.py", "scripts/task104/qualify.py",
