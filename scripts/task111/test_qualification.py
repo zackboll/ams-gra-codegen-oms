@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from task111.qualify import consumer_source
 from task111.trust import NEGATIVE, validate
+from task111.receipt import check_resources
 import pr_smoke
 
 
@@ -87,6 +88,27 @@ class QualificationTests(unittest.TestCase):
         for path in ("scripts/task111/trust.py", "tests/ada-wss-trust/trust_probe.adb"):
             self.assertEqual(pr_smoke.classify([path])[0], {"ada"})
         self.assertEqual(pr_smoke.classify(["scripts/task1110/trust.py"])[0], set(pr_smoke.BACKENDS))
+
+    def test_resource_receipt_distinguishes_warmup_and_leaks(self):
+        case = dict(mode="pem", output="RESOURCES fd= 5 tasks= 1\nDONE pem", seconds=0.05,
+                    peer=dict(accepted=True, clienthello=True, tls="TLSv1.3", application=["INIT {}"], normal_close=True))
+        focused = dict(baseline="RESOURCES fd= 5 tasks= 1\nDONE baseline",
+                       final="RESOURCES fd= 5 tasks= 1\nCOMPLETE", cases=[copy.deepcopy(case) for _ in range(15)])
+        focused["cases"][0]["output"] = focused["cases"][0]["output"].replace("fd= 5", "fd= 4")
+        check_resources(focused)
+        for token in ("fd= 6 tasks= 1", "fd= 5 tasks= 2"):
+            bad = copy.deepcopy(focused)
+            bad["cases"][12]["output"] = "RESOURCES " + token + "\nDONE pem"
+            with self.assertRaises(ValueError):
+                check_resources(bad)
+        bad = copy.deepcopy(focused)
+        bad["cases"][12]["seconds"] = 10
+        with self.assertRaises(ValueError):
+            check_resources(bad)
+        bad = copy.deepcopy(focused)
+        bad["final"] = "RESOURCES fd= 5 tasks= 2\nCOMPLETE"
+        with self.assertRaises(ValueError):
+            check_resources(bad)
 
 
 if __name__ == "__main__":

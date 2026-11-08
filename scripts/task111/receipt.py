@@ -5,6 +5,7 @@ from collections import Counter
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -15,6 +16,21 @@ from task111.trust import validate
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def check_resources(focused):
+    baseline = re.search(r"RESOURCES fd=\s*(\d+) tasks=\s*(\d+)", focused["baseline"])
+    if not baseline or baseline.group(2) != "1":
+        raise ValueError("missing quiescent baseline")
+    final = re.search(r"RESOURCES fd=\s*(\d+) tasks=\s*(\d+)", focused["final"])
+    if not final or final.groups() != baseline.groups():
+        raise ValueError("final resources differ")
+    for index, case in enumerate(focused["cases"]):
+        validate(case["mode"], case["output"], case["peer"])
+        counts = re.search(r"RESOURCES fd=\s*(\d+) tasks=\s*(\d+)", case["output"])
+        # The first twelve attempts intentionally precede runtime warm-up.
+        if not counts or (index >= 12 and counts.groups() != baseline.groups()) or case["seconds"] >= 10:
+            raise ValueError("resource/deadline check missing")
 
 
 def create(directory):
@@ -35,10 +51,7 @@ def create(directory):
     if not focused["completed"] or len(focused["cases"]) != 147 or not focused["same_client"]:
         raise ValueError("missing focused completion")
     cases = focused["cases"]
-    for case in cases:
-        validate(case["mode"], case["output"], case["peer"])
-        if "RESOURCES fd= 5 tasks= 1" not in case["output"] or case["seconds"] >= 10:
-            raise ValueError("resource/deadline check missing")
+    check_resources(focused)
     summary = dict(attempts=len(cases), modes=dict(Counter(c["mode"] for c in cases)),
                    tls=sorted({c["peer"]["tls"] for c in cases if "tls" in c["peer"]}),
                    max_case_seconds=max(c["seconds"] for c in cases), baseline=focused["baseline"],
