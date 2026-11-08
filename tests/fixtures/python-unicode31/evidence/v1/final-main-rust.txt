@@ -1,0 +1,958 @@
+    Finished `release` profile [optimized] target(s) in 0.03s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
+   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-python/crates/backend-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.38s
+     Running unittests src/lib.rs (target/debug/deps/ams_gra_oms_backend_python-2f4b12a97ad01de0)
+
+running 6 tests
+test names::tests::python_symbols_and_literals_are_deterministic ... ok
+test service_codec::tests::unbounded_runtime_rejects_missing_or_duplicate_checks ... ok
+test service_codec::tests::unbounded_runtime_replaces_exactly_one_check ... ok
+test tests::float64_bounds_are_shared_classifications_and_exact_bits ... ok
+test tests::backend_identity_and_empty_schema_fail_closed ... ok
+test tests::unsupported_primitives_and_facets_fail_closed ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/choice.rs (target/debug/deps/choice-d9da8b3c7a7aefc3)
+
+running 1 test
+test effective_choice_ancestry_and_codec_provenance_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/codecs.rs (target/debug/deps/codecs-d51c64e152111bd1)
+
+running 2 tests
+test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/datetime.rs (target/debug/deps/datetime-09d3eab42cb73b34)
+
+running 1 test
+test datetime_ancestry_is_proven_not_flattened ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/duration.rs (target/debug/deps/duration-8c3bb6f3660a0a60)
+
+running 1 test
+test duration_ancestry_and_aliases_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/header_profiles.rs (target/debug/deps/header_profiles-8e7eeba330265b04)
+
+running 1 test
+test normalized_neighbours_and_pattern_alternatives_stay_unsupported ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hexbinary.rs (target/debug/deps/hexbinary-b1369859f9875b90)
+
+running 2 tests
+test unsupported_effective_domains_aliases_and_field_facets_fail_closed ... ok
+test unknown_and_base64_provenance_fail_before_codec_artifacts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/models.rs (target/debug/deps/models-4c807e302ea62cb0)
+
+running 12 tests
+test zero_oms_service_api_is_generated_without_a_model ... ok
+test golden_output_is_byte_identical_and_world_is_explicit ... ok
+test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+test python_specific_name_collisions_fail_closed ... ok
+test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+test shared_four_level_fixture_executes_in_authored_field_order ... ok
+test real_track_compiles_imports_and_validates_at_runtime ... ok
+test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/nato_special_words.rs (target/debug/deps/nato_special_words-7174cbf266d4000e)
+
+running 2 tests
+test helper_is_absent_without_profile ... ok
+test exact_profile_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/network_addresses.rs (target/debug/deps/network_addresses-6a3d5a915b32edf4)
+
+running 3 tests
+test no_address_helpers_are_emitted_for_address_free_schemas ... ok
+test addresses_revalidate_without_choice_and_other_alternating_profiles_stay_unsupported ... ok
+test profile_ancestry_is_proven_at_every_edge_and_aliases_remain_unsupported ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/unicode_strings.rs (target/debug/deps/unicode_strings-3baaa54da9682ce5)
+
+running 2 tests
+test runtime_absent_without_admitted_profiles ... ok
+test exact_facets_ancestry_and_names_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/visible_ascii.rs (target/debug/deps/visible_ascii-88dfbdd63a2ea415)
+
+running 1 test
+test effective_facets_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/whitespace_visible.rs (target/debug/deps/whitespace_visible-abb9a4774ef33665)
+
+running 1 test
+test effective_profile_and_every_named_edge_are_proven ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ams_gra_oms_backend_python
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-python/crates/cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.76s
+     Running unittests src/lib.rs (target/debug/deps/ams_gra_codegen_oms-f406e51bb648c302)
+
+running 37 tests
+test schema_impact::tests::every_control_character_is_escaped ... ok
+test tests::parses_help ... ok
+test tests::accepts_the_same_overlay_path_twice ... ok
+test tests::overwrites_existing_regular_file ... ok
+test tests::generation_failure_does_not_create_output_directory ... ok
+test tests::parses_repeated_overlays_in_command_line_order ... ok
+test tests::invalid_schema_returns_execution_error ... ok
+test tests::missing_overlay_is_an_execution_error_naming_the_path ... ok
+test tests::parses_valid_generate_languages ... ok
+test tests::parses_valid_validate ... ok
+test tests::parses_version ... ok
+test tests::parses_valid_coverage ... ok
+test tests::coverage_report_states_open_world ... ok
+test tests::generate_with_overlay_uses_the_combined_ir_without_mutating_inputs ... ok
+test tests::rejects_duplicate_generated_paths ... ok
+test tests::rejects_directory_as_final_destination ... ok
+test tests::rejects_duplicate_schema ... ok
+test tests::rejects_duplicate_world ... ok
+test tests::rejects_invalid_world_values ... ok
+test tests::rejects_missing_and_unknown_commands ... ok
+test tests::rejects_final_file_symlink_without_modifying_target ... ok
+test tests::rejects_intermediate_directory_symlink_without_writing_outside ... ok
+test tests::rejects_missing_required_options ... ok
+test tests::rejects_unexpected_positional_argument ... ok
+test tests::rejects_non_directory_parent_component ... ok
+test tests::rejects_unknown_language ... ok
+test tests::requires_explicit_world_for_generate_and_coverage ... ok
+test tests::validate_is_world_independent ... ok
+test tests::validates_safe_and_unsafe_generated_paths ... ok
+test tests::each_language_matches_existing_backend_golden ... ok
+test tests::writes_through_existing_ordinary_parent_directory ... ok
+test tests::validation_reports_normalized_message_count ... ok
+test tests::validation_reports_stable_counts ... ok
+test tests::validate_with_overlay_counts_the_combined_schema_set ... ok
+test tests::coverage_report_is_deterministic ... ok
+test tests::coverage_with_overlay_analyzes_the_combined_ir_in_both_worlds ... ok
+test tests::concrete_only_schema_output_is_world_independent ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/ams_gra_codegen_oms-9432ca1b84d611a6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ada_companion_naming.rs (target/debug/deps/ada_companion_naming-2ee9e2ff4f01c027)
+
+running 8 tests
+test task065_pinned_naming_evidence ... ok
+test task065_support::tests::task065_scheduler_budget_controls ... ok
+test task065_support::tests::task065_scheduler_rejects_corrupt_ledgers ... ok
+test task065_synthetic_collision_repaired ... ok
+test task065_support::tests::task065_scheduler_propagates_failures_and_panics ... ok
+test task065_semantic_name_matrix_and_gnat ... ok
+test task065_broad_rename_design_gate_inventory ... ok
+test task065_support::tests::task065_scheduler_order_completeness_and_bound ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/ada_component_hiding.rs (target/debug/deps/ada_component_hiding-51319dad7f1e0d0a)
+
+running 6 tests
+test task065_package_prefix_hiding_control ... ok
+test task065_component_nonhiding_output_stability ... ok
+test task065_component_hiding_planted_failure_controls ... ok
+test task065_discriminant_hiding_controls ... ok
+test task065_preceding_component_hiding_controls ... ok
+test task065_component_hiding_compile_matrix ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.09s
+
+     Running tests/alternating_capability.rs (target/debug/deps/alternating_capability-dbd44877740dd39e)
+
+running 3 tests
+test admitted_union_is_real_backend_capability_and_neighbors_fail_closed ... ok
+test generated_support_string_controls_final_readiness_not_selected_counts ... ok
+test selected_and_generated_support_readiness_share_exact_boundary ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/cli.rs (target/debug/deps/cli-95eb5f2d588ea294)
+
+running 5 tests
+test binary_reports_usage_errors_on_stderr_with_exit_code_two ... ok
+test binary_prints_real_help ... ok
+test ordinary_generate_still_rejects_contract_options ... ok
+test service_plan_still_rejects_readiness_options ... ok
+test existing_commands_remain_unchanged ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/constrained_binary_parity.rs (target/debug/deps/constrained_binary_parity-0ca7c22bef9219d1)
+
+running 2 tests
+test task053_direct_field_local_binary_facets_remain_unsupported_in_every_occurrence ... ok
+test task053_named_binary_renderability_parity ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/cpp_codec.rs (target/debug/deps/cpp_codec-9dc2da5a7d9e7d27)
+
+running 23 tests
+test zero_oms_service_gets_no_codec_file ... ok
+test readiness_report_names_the_codec_status ... ok
+test generated_codec_matches_the_golden_and_is_deterministic ... ok
+test codec_is_a_separate_artifact_and_leaves_the_model_and_api_unchanged ... ok
+test float64_section_is_emitted_only_for_float64_selections ... ok
+test bounded_ascii_codec_is_ready_delegating_and_separate ... ok
+test structured_ascii_codec_is_ready_delegating_and_separate ... ok
+test unsupported_constructs_are_rejected_before_any_output ... ok
+test task059_shared_structured_ascii_fixture_round_trips_in_cpp ... ok
+test task058_shared_bounded_ascii_fixture_round_trips_in_cpp ... ok
+test non_oam_namespaces_use_clark_names_and_flattened_inheritance ... ok
+test structured_ascii_mutation_controls_are_detected ... ok
+test bounded_ascii_mutation_controls_are_detected ... ok
+test consumer_compiles_under_strict_flags_and_passes ... ok
+test synthetic_shapes_for_the_new_value_kinds_pass_under_strict_flags ... ok
+test float64_numerics_are_clean_under_sanitizers ... ok
+test consumer_is_clean_under_address_and_undefined_behavior_sanitizers ... ok
+test bounded_ascii_consumer_passes_under_strict_flags ... ok
+test bounded_ascii_consumer_is_clean_under_sanitizers ... ok
+test synthetic_shapes_for_the_new_value_kinds_are_clean_under_sanitizers ... ok
+test float64_numerics_match_the_independent_oracle ... ok
+test structured_ascii_consumers_pass_under_strict_flags ... ok
+test structured_ascii_consumers_are_clean_under_sanitizers ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.95s
+
+     Running tests/docs.rs (target/debug/deps/docs-a596aaac07591440)
+
+running 2 tests
+test help_and_usage ... ok
+test overlays_and_failure_paths ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/duration.rs (target/debug/deps/duration-1cbc038681e10b9d)
+
+running 3 tests
+test task057_constrained_duration_fails_closed_before_output ... ok
+test task057_selected_time_stays_not_ready_and_writes_nothing ... ok
+test task057_selected_duration_service_is_ready_generates_and_compiles ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/enum_remapping.rs (target/debug/deps/enum_remapping-228f6d61ebc41f8a)
+
+running 4 tests
+test task044_frontend_and_docs_preserve_wire_values ... ok
+test task044_selected_services_are_ready_for_each_authorized_category ... ok
+test task044_ada_reserved_only_selection_compiles_under_gnat ... ok
+test task044_generated_selected_models_compile_and_use_every_variant ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/generated_support_binding.rs (target/debug/deps/generated_support_binding-dd73e5c603dab5ab)
+
+running 2 tests
+test task064_wire_namespace_changes_actual_codec_spelling_and_invalidates_old_plan ... ok
+test task064_compatible_schema_preserves_readiness_generated_source_and_codec ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/generated_support_readiness.rs (target/debug/deps/generated_support_readiness-3e51dafa178aedd6)
+
+running 9 tests
+test task056_abstract_fixture_projection_membership_is_unchanged ... ok
+test task056_support_blocked_model_leaves_codec_unmeasured ... ok
+test task056_e_global_backend_preflight_stays_a_separate_boundary ... ok
+test task056_a_selected_unsupported_type_is_not_ready ... ok
+test task056_f_service_api_wrapper_boundary_stays_separate ... ok
+test task056_d_unrelated_unsupported_declaration_stays_ready ... ok
+test task056_b_support_only_unsupported_type_is_not_ready_and_writes_nothing ... ok
+test task056_c_supported_support_closure_is_ready_and_generates ... ok
+test task056_abstract_support_fixture_stays_ready_and_compiles ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/ipv6_capability.rs (target/debug/deps/ipv6_capability-ed6d7e7354238a1c)
+
+running 3 tests
+test task062_production_source_size_and_private_helper_names ... ok
+test task062_generated_support_only_ipv6_controls_final_readiness ... ok
+test task062_name_free_exact_profile_and_neighbors_share_all_capability_gates ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/member_qname_projection.rs (target/debug/deps/member_qname_projection-ab00e1a4c00f995a)
+
+running 4 tests
+test task051_private_overlay_members_keep_wire_namespaces ... ok
+test task051_abstract_value_projection_preserves_wire_namespaces ... ok
+test task051_effective_members_keep_their_own_provenance ... ok
+test task051_selected_projection_preserves_wire_namespaces ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/member_remapping.rs (target/debug/deps/member_remapping-59ca667ef8555ccb)
+
+running 7 tests
+test task054_schema_ir_keeps_source_and_wire_member_names ... ok
+test task054_collisions_are_decided_by_the_actual_candidate ... ok
+test task054_keyword_service_is_ready_and_generates_in_every_backend ... ok
+test task054_collisions_and_malformed_names_fail_closed_with_parity ... ok
+test task054_rust_escaped_members_compile_and_run ... ok
+test task054_ada_escaped_members_compile_and_run ... ok
+test task054_cpp_escaped_members_compile_strictly_and_run ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+     Running tests/patterned_integral.rs (target/debug/deps/patterned_integral-1ed9431c72dbd7b8)
+
+running 5 tests
+test task063_numeric_rendering_matches_ordinary_bounded_profile ... ok
+test task063_direct_patterned_integer_remains_unsupported ... ok
+test task063_generated_support_only_readiness_control ... ok
+test task063_exact_profile_and_fail_closed_neighbors ... ok
+test task063_generated_numeric_models_compile_and_execute ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+     Running tests/python_choice.rs (target/debug/deps/python_choice-150ff25a45a01a3b)
+
+running 3 tests
+test clark_qualified_choice_and_repetition_paths ... ok
+test unsupported_choices_fail_atomically ... ok
+test choice_models_codecs_worlds_imports_and_optimization ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+     Running tests/python_cli.rs (target/debug/deps/python_cli-576061ccd4223f69)
+
+running 5 tests
+test invalid_language_and_world_are_usage_errors_without_output ... ok
+test help_separates_python_models_from_service_support_and_coverage ... ok
+test unsupported_schemas_fail_before_creating_or_changing_any_files ... ok
+test unsupported_python_selected_models_fail_without_writing ... ok
+test track_generates_deterministically_and_executes_in_both_worlds ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/python_codec.rs (target/debug/deps/python_codec-d1eff57893125821)
+
+running 5 tests
+test name_specific_uuid_mapping_is_not_invented ... ok
+test shared_rendered_readiness_contains_exact_codec_artifacts_or_no_partial_files ... ok
+test unqualified_members_are_codec_only_blockers_without_writes ... ok
+test all_model_boundaries_still_fail_closed_with_codec_requested ... ok
+test qualified_oam_and_extension_codecs_execute_independent_vectors ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+
+     Running tests/python_datetime.rs (target/debug/deps/python_datetime-8a2f019bf99e1b0b)
+
+running 3 tests
+test established_task090_namespace_goldens_decode_and_reencode ... ok
+test unsupported_datetime_selections_fail_without_artifacts ... ok
+test generated_datetime_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s
+
+     Running tests/python_duration.rs (target/debug/deps/python_duration-8286a6079b806b07)
+
+running 3 tests
+test unsupported_duration_selections_fail_without_artifacts ... ok
+test non_oam_duration_errors_retain_clark_member_paths ... ok
+test generated_duration_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.24s
+
+     Running tests/python_float64.rs (target/debug/deps/python_float64-9aaf64b049d7f4ba)
+
+running 2 tests
+test unsupported_float64_selections_fail_without_artifacts ... ok
+test generated_float64_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running tests/python_header_profiles.rs (target/debug/deps/python_header_profiles-377883b19e803370)
+
+running 1 test
+test exact_profiles_execute_and_neighbours_fail_atomically ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests/python_hexbinary.rs (target/debug/deps/python_hexbinary-b64dad9afb375dde)
+
+running 2 tests
+test unsupported_facets_and_shadowing_fail_atomically ... ok
+test checked_binary_models_codecs_and_qualified_paths_execute ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.90s
+
+     Running tests/python_inheritance.rs (target/debug/deps/python_inheritance-2a2e361b9e4891db)
+
+running 2 tests
+test unsupported_inherited_service_selections_fail_atomically ... ok
+test inherited_services_execute_literals_in_both_worlds_and_import_styles ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running tests/python_nato_special_words.rs (target/debug/deps/python_nato_special_words-1fb82bf41dfc804d)
+
+running 3 tests
+test qualified_member_diagnostics_preserve_namespace_and_index ... ok
+test unsupported_nato_special_words_selections_fail_without_artifacts ... ok
+test generated_nato_special_words_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.08s
+
+     Running tests/python_network_addresses.rs (target/debug/deps/python_network_addresses-e631ca36de2bc0bb)
+
+running 2 tests
+test exact_profiles_and_named_edges_reject_neighbors_atomically ... ok
+test independent_corpora_models_codecs_worlds_imports_optimization_and_paths ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.99s
+
+     Running tests/python_service.rs (target/debug/deps/python_service-2c674a3dc2685436)
+
+running 8 tests
+test plan_schema_binding_defects_are_errors_not_ready_results ... ok
+test normalized_function_exchange_and_model_collisions_fail_before_output ... ok
+test abstract_values_remain_blocked_in_both_worlds ... ok
+test unsupported_selected_types_and_oms_codecs_fail_atomically ... ok
+test selected_subset_boundaries_are_truthful ... ok
+test all_exchange_kinds_preserve_metadata_without_fabricated_payloads ... ok
+test zero_oms_needs_neither_model_payload_facade_nor_codec ... ok
+test supported_selection_is_ready_and_runs_typed_facade_normally_and_optimized ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+     Running tests/python_unbounded_repetition.rs (target/debug/deps/python_unbounded_repetition-9cc04ebbe324aff3)
+
+running 3 tests
+test unsupported_repeated_elements_fail_atomically ... ok
+test qualified_inherited_and_nested_member_paths_preserve_indices ... ok
+test generated_unbounded_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+
+     Running tests/python_unicode_strings.rs (target/debug/deps/python_unicode_strings-7e117ed6f79130be)
+
+running 2 tests
+test neighboring_profiles_reject_atomically_and_names_do_not_authorize ... ok
+test independent_lexical_models_codecs_worlds_imports_and_optimization ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.14s
+
+     Running tests/python_visible_ascii.rs (target/debug/deps/python_visible_ascii-3d09264e44549258)
+
+running 2 tests
+test unsupported_visible_ascii_selections_fail_without_artifacts ... ok
+test generated_visible_ascii_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.91s
+
+     Running tests/python_whitespace_visible.rs (target/debug/deps/python_whitespace_visible-16f27dfc7b385d16)
+
+running 2 tests
+test neighboring_profiles_and_bad_ancestry_reject_atomically ... ok
+test models_codecs_worlds_imports_optimization_and_clark_paths ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.67s
+
+     Running tests/schema_diff.rs (target/debug/deps/schema_diff-6148e453099b5dae)
+
+running 4 tests
+test task069_cli_overlay_order_and_malformed_schema ... ok
+test task069_cli_errors_are_not_empty_diffs ... ok
+test task069_cli_synthetic_exact_and_deterministic ... ok
+test task069_cli_usage_controls ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/schema_diff_pinned.rs (target/debug/deps/schema_diff_pinned-f6ce4a7eb8a8c9ab)
+
+running 1 test
+test task069_real_uci_semantic_diff ... ignored, requires externally fetched, digest-verified pinned UCI roots
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/schema_impact.rs (target/debug/deps/schema_impact-068babdd9b7f9c39)
+
+running 12 tests
+test failing_output_writer_is_execution_failure ... ok
+test noise_is_not_semantic_exposure ... ok
+test json_shortest_full_qname_tie_and_invalid_typed_value ... ok
+test json_hostile_utf8_empty_version_and_namespace_identity ... ok
+test json_nested_seed_counts_cycles_ties_and_no_derived_expansion ... ok
+test multiple_properties_one_seed_and_independent_snapshots ... ok
+test namespace_identity_permutations_and_hostile_tsv_cells ... ok
+test json_binary_provenance_and_all_primitive_labels ... ok
+test json_cli_default_rejections_failures_and_writer ... ok
+test task078_cli_overlay_order_and_malformed_schema ... ok
+test exact_text_tsv_and_empty_reports ... ok
+test task078_cli_usage_controls ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/schema_impact_pinned.rs (target/debug/deps/schema_impact_pinned-a018c45cdad004b8)
+
+running 1 test
+test task078_pinned_static_impact ... ignored, requires hash-verified cached UCI 2.5 and 2.6 roots
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/service_api.rs (target/debug/deps/service_api-845f41a5edb14dd7)
+
+running 17 tests
+test task047c_direct_backend_call_fails_closed_on_the_artifact_boundary ... ok
+test task047_ordinary_generate_never_emits_a_service_api ... ok
+test task047_safe_service_check_report_is_unchanged ... ok
+test task047_repeated_message_selection_is_two_endpoints_one_type ... ok
+test task047_all_five_exchange_kinds_are_represented_in_contract_order ... ok
+test task047_model_files_are_exactly_the_ordinary_backend_output ... ok
+test task047_contract_order_changes_only_the_service_api_file ... ok
+test task047_normalization_collisions_fail_closed_and_write_nothing ... ok
+test task047_cpp_wrapper_compiles_under_strict_cpp17_and_is_consumable ... ok
+test task047_zero_oms_wrapper_compiles_standalone ... ok
+test task047_rust_wrapper_compiles_and_is_consumable ... ok
+test task047_ada_wrapper_compiles_under_gnat_and_is_consumable ... ok
+test task047_human_names_are_metadata_only ... ok
+test task047_reserved_looking_ids_generate_safely ... ok
+test task047c_ada_model_package_hidden_by_wrapper_name_is_not_ready ... ok
+test task047_upstream_contract_wrapper_states_the_authored_facts ... ok
+test task047c_wrapper_look_alike_namespaces_are_ready_and_compile ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running tests/service_check.rs (target/debug/deps/service_check-09c19a6c78817f09)
+
+running 21 tests
+test output_and_overlay_options_are_rejected ... ok
+test duplicate_extension_identifier_is_rejected ... ok
+test blocked_messages_follow_contract_order_and_deduplicate ... ok
+test help_documents_options_without_advertising_overlay ... ok
+test malformed_extension_mapping_is_rejected ... ok
+test ready_selection_reports_and_exits_zero ... ok
+test missing_declared_extension_mapping_fails_before_readiness ... ok
+test duplicate_options_are_usage_errors ... ok
+test writes_no_files ... ok
+test ready_selection_coexists_with_failing_full_schema_generation ... ok
+test missing_language_or_world_is_a_usage_error ... ok
+test undeclared_extension_mapping_fails_exactly_as_in_service_plan ... ok
+test invalid_language_or_world_is_a_usage_error ... ok
+test unready_selection_reports_blockers_and_exits_one ... ok
+test private_overlay_message_participates_in_readiness_normally ... ok
+test output_is_deterministic ... ok
+test ready_selection_holds_for_every_backend_and_world ... ok
+test multi_namespace_selected_closure_is_not_ready_and_does_not_generate ... ok
+test single_namespace_selected_closure_stays_ready_and_generates ... ok
+test unready_verdict_agrees_with_failing_backend_generation ... ok
+test ready_verdict_agrees_with_successful_backend_generation ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/service_check_batch.rs (target/debug/deps/service_check_batch-bcd717de456ed0af)
+
+running 5 tests
+test malformed_json_missing_manifest_and_schema_fail ... ok
+test batch_command_help_and_required_options ... ok
+test malformed_duplicate_and_wrong_identity_fail_before_execution ... ok
+test python_batches_fail_atomically_in_both_worlds_with_and_without_codec ... ok
+test exact_production_equivalence_including_failure_and_codec ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/service_codec.rs (target/debug/deps/service_codec-6eb2cbebc8681242)
+
+running 28 tests
+test task050_with_codec_is_a_singular_flag ... ok
+test task051_multi_namespace_backend_boundary_is_unchanged ... ok
+test task051_unqualified_member_is_model_ready_but_codec_not_ready ... ok
+test task051_local_form_overrides_decide_codec_readiness ... ok
+test task052_constrained_hex_binary_remains_a_model_blocker ... ok
+test task052_selected_hex_binary_is_model_and_codec_ready ... ok
+test task087b_ada_codec_ready_deduplicated_and_preserves_model_api ... ok
+test task093_c4_each_binary_operation_path_demands_one_helper_pair ... ok
+test task095_c2_occurrence_decoder_preserves_adversarial_identifiers ... ok
+test task051_qualified_non_oam_payload_is_codec_ready ... ok
+test task090_ada_datetime_selected_closures_and_model_bytes ... ok
+test task091_ada_duration_readiness_and_model_preservation ... ok
+test task089_repeated_ada_codec_ready_and_model_api_unchanged ... ok
+test task052_hex_helpers_are_emitted_only_for_hex_binary_surfaces ... ok
+test task050_oam_codec_service_is_ready_and_generates_the_codec ... ok
+test task089r_combined_choice_repetition_ready_and_rejections_atomic ... ok
+test task089_repeated_unsupported_elements_fail_atomically ... ok
+test task093_c3_runtime_matrix_and_decoder_helpers ... ok
+test task050_zero_oms_service_needs_no_codec ... ok
+test task097_c3_views_are_absent_without_demand_and_binary_admission_is_narrow ... ok
+test task095_target_opt_in_agrees_between_check_generate_and_atomic_rejection ... ok
+test task087b_ada_codec_unsupported_and_collision_preflight_is_atomic ... ok
+test task098_unsupported_time_neighbours_stay_atomic_rejections ... ok
+test task050_ada_and_cpp_have_no_generated_codec ... ok
+test task098_ada_named_time_zulu_codec_ready_and_model_bytes_unchanged ... ok
+test task097_c3_lossless_views_are_additive_and_preflight_is_atomic ... ok
+test task097_lossless_profile_matrix_and_legacy_bytes ... ok
+test task093_c4_helper_demand_uses_operations_not_schema_names ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running tests/service_facade.rs (target/debug/deps/service_facade-1a7b13d035f75037)
+
+running 13 tests
+test task048_zero_oms_wrapper_is_the_task047_file ... ok
+test task048_non_oms_kinds_gain_no_operation ... ok
+test task048_direction_alone_selects_the_operation ... ok
+test task048_preserves_every_task047_metadata_spelling ... ok
+test task048_subscription_group_is_verbatim_or_absent ... ok
+test task048_repeated_message_and_contract_order ... ok
+test task048_readiness_and_ordinary_generate_are_unchanged ... ok
+test task048_rust_facade_round_trips_through_a_fake_adapter ... ok
+test task048_ada_facade_round_trips_through_fake_hooks ... ok
+test task048_upstream_position_report_is_subscribe_only ... ok
+test task048_publish_carries_message_identity_not_payload_or_topic ... ok
+test task048_upstream_service_status_is_publish_subscribe_publish ... ok
+test task048_cpp_facade_round_trips_through_a_fake_adapter ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s
+
+     Running tests/service_generate.rs (target/debug/deps/service_generate-72e3f78a5e7fe49a)
+
+running 68 tests
+x86_64-linux-gnu-gcc-14 -c -gnatwa urn-test.ads
+test dedicated_help_documents_the_surface_and_non_goals ... ok
+test task034_optional_named_whole_schema_generation_still_fails ... ok
+test ready_report_states_selection_and_support_separately ... ok
+test repeated_message_selection_emits_each_type_once ... ok
+test concrete_only_selection_generates_identically_in_both_worlds ... ok
+test not_ready_selection_writes_nothing ... ok
+test full_schema_generate_fails_while_selected_generation_succeeds ... ok
+test every_required_option_is_required ... ok
+test contract_narrowing_removes_declarations_reachable_only_from_the_dropped_message ... ok
+test generated_output_is_byte_deterministic ... ok
+test invalid_and_rejected_options_fail_deterministically ... ok
+test private_extension_selection_generates_and_ignores_option_order ... ok
+test task033_constrained_float_service_is_ready_in_every_backend ... ok
+test task035_optional_primitive_service_is_ready_in_every_backend ... ok
+test non_uci_only_contract_generates_no_type_files ... ok
+test task035_optional_primitive_whole_schema_generation_still_fails ... ok
+test extension_set_must_match_the_contract_exactly ... ok
+test task034_optional_named_service_is_ready_in_every_backend ... ok
+test task036_selected_ada_generation_includes_the_package_body ... ok
+test task037_selected_ada_generation_includes_the_package_body ... ok
+x86_64-linux-gnu-gcc-14 -c -gnatwa urn-test.ads
+test task038_selected_ada_generation_includes_the_package_body ... ok
+test reversed_exchange_order_generates_identical_output ... ok
+x86_64-linux-gnu-gcc-14 -c -gnatwa -gnata probe.adb
+test closed_world_abstract_selection_generates_the_full_closed_sum ... ok
+test task038_uuid_service_is_ready_in_every_backend ... ok
+test task036_temporal_service_is_ready_in_every_backend ... ok
+test task037_string_profile_service_is_ready_in_every_backend ... ok
+test task039_selected_ada_generation_includes_the_package_body ... ok
+test task041_selected_ada_generation_emits_both_whitespace_policies ... ok
+test task039_visible_ascii_service_is_ready_in_every_backend ... ok
+test task041_an_unsupported_selected_neighbour_still_blocks_generation ... ok
+test task041_whitespace_visible_service_is_ready_in_every_backend ... ok
+test task042_nato_special_words_service_is_ready_in_every_backend ... ok
+test selected_rust_output_compiles_and_constructs_a_payload ... ok
+test task033_selected_ada_float_rejects_public_bypasses ... ok
+test task042_an_unsupported_selected_neighbour_still_blocks_generation ... ok
+x86_64-linux-gnu-gcc-14 -c -gnatwa -gnata urn.ads
+test unselected_declarations_contribute_no_helpers ... ok
+test task033_selected_rust_float_bounds_hold ... ok
+x86_64-linux-gnu-gcc-14 -c -gnatwa -gnata urn-test.ads
+x86_64-linux-gnu-gcc-14 -c -gnatwa urn.ads
+test zero_descendant_optional_follows_task_026_world_semantics ... ok
+test task046_selected_temporal_neighbors_remain_not_ready_and_emit_nothing ... ok
+test task036_selected_ada_temporal_rejects_public_bypasses ... ok
+test task034_selected_ada_optional_named_compiles_under_gnat ... ok
+test task036_selected_rust_output_validates_at_runtime ... ok
+x86_64-linux-gnu-gnatbind-14 -x probe.ali
+test task039_selected_rust_output_validates_at_runtime ... ok
+x86_64-linux-gnu-gnatlink-14 probe.ali
+test selected_cpp_output_compiles_under_strict_cpp17 ... ok
+test task037_selected_rust_output_validates_at_runtime ... ok
+test task038_selected_rust_output_validates_at_runtime ... ok
+test task033_selected_cpp_float_bounds_hold ... ok
+test task033_selected_ada_float_predicates_hold_under_gnat ... ok
+ok
+test task042_selected_rust_client_constructs_and_reads_the_new_values ... ok
+ok
+test task037_selected_ada_output_validates_under_gnat ... ok
+ok
+test task041_selected_rust_client_constructs_and_reads_the_new_values ... ok
+test selected_ada_output_compiles_under_gnat ... ok
+ok
+test task040_selected_cpp_output_preserves_the_validated_value ... ok
+ok
+test task036_selected_cpp_output_validates_at_runtime ... ok
+test task036_selected_ada_output_validates_under_gnat ... ok
+ok
+test task037_selected_cpp_output_validates_at_runtime ... ok
+x86_64-linux-gnu-gcc-14 -c -gnatwa urn.ads
+test task035_selected_ada_optional_primitive_compiles_under_gnat ... ok
+ok
+test task039_selected_cpp_output_validates_at_runtime ... ok
+ok
+test task038_selected_cpp_output_validates_at_runtime ... ok
+ok
+test task038_selected_ada_output_validates_under_gnat ... ok
+ok
+test task042_selected_cpp_client_constructs_and_reads_the_new_values ... ok
+test task046_direct_temporal_service_is_ready_without_unselected_neighbors ... ok
+ok
+test task041_selected_cpp_client_constructs_and_reads_the_new_values ... ok
+test task042_selected_ada_client_constructs_and_reads_under_gnat ... ok
+ok
+test task039_selected_ada_output_validates_under_gnat ... ok
+test task040_selected_ada_output_requires_explicit_initialization ... ok
+test task040_selected_ada_repeated_field_is_constructible ... ok
+test task041_selected_ada_client_exercises_the_sequences_under_gnat ... ok
+
+test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
+
+     Running tests/service_impact.rs (target/debug/deps/service_impact-039a5ae188f7bb5e)
+
+running 14 tests
+test direct_payload_change_and_separate_side_paths ... ok
+test abstract_descendants_are_not_static_exposure ... ok
+test json_optional_groups_hostile_metadata_and_empty_values ... ok
+test json_binary_provenance_and_primitive_to_named ... ok
+test json_cycle_shortest_tie_and_abstract_exclusion ... ok
+test unknown_ambiguous_and_invalid_closures_fail ... ok
+test valid_removal_and_full_qname_tracking_without_after_planning ... ok
+test json_independent_counts_nested_unchanged_and_tsv_oracle ... ok
+test json_direct_refs_removal_namespace_and_unselected_addition ... ok
+test hostile_cells_optional_presence_empty_selection_and_writer_failure ... ok
+test json_cli_failures_and_writer_classification ... ok
+test baseline_join_counts_order_and_independent_task078_subset ... ok
+test actual_cli_usage_errors_and_command_help ... ok
+test extension_sets_independent_contract_order_and_failures ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/service_impact_pinned.rs (target/debug/deps/service_impact_pinned-2228ce64dd5567c9)
+
+running 2 tests
+test task079_pinned_service_impact ... ignored, requires hash-verified cached UCI 2.5 and 2.6 closures
+test task079_prepare_pinned_evidence ... ignored, preparation only: inspect evidence, no qualification pass marker
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/service_plan.rs (target/debug/deps/service_plan-7844026b8785bdc7)
+
+running 13 tests
+test duplicate_extension_mapping_fails ... ok
+test rejects_extension_values_that_are_not_id_equals_path_pairs ... ok
+test no_mappings_for_a_contract_that_declares_extensions_fails ... ok
+test declared_extension_missing_fails ... ok
+test duplicate_overlay_declaration_still_fails_through_task_029 ... ok
+test undeclared_extension_supplied_fails ... ok
+test contract_with_no_extensions_and_no_mappings_succeeds ... ok
+test without_the_overlay_the_private_message_does_not_resolve ... ok
+test writes_no_files ... ok
+test task_029_overlay_enables_resolution_of_a_private_message ... ok
+test rejects_world_language_and_output_options ... ok
+test resolves_the_synthetic_contract_and_reports_a_deterministic_summary ... ok
+test cli_option_order_does_not_change_the_result_because_contract_order_wins ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/service_routes.rs (target/debug/deps/service_routes-4811db70a5fcf7d0)
+
+running 4 tests
+test task071_private_overlay_uses_existing_resolution ... ok
+test task071_oam_and_empty_production_cli ... ok
+test task071_cli_determinism_namespace_and_failures ... ok
+test task071_cli_argument_controls ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/task072_runtime_contract.rs (target/debug/deps/task072_runtime_contract-06f5d18a14f58ec4)
+
+running 4 tests
+test pinned_data_record_list_management_request ... ignored, requires hash-verified AMS_GRA_TASK072_UCI_ROOT
+test same_local_name_does_not_collapse_qnames_or_enable_backends ... ok
+test recursive_abstract_values_remain_a_separate_topology_blocker ... ok
+test known_private_and_zero_descendant_worlds_remain_distinct ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/task073_vertical.rs (target/debug/deps/task073_vertical-9f13b65724bd2987)
+
+running 1 test
+test pinned_vertical_keeps_closed_admission_and_open_guard ... ignored, requires hash-verified AMS_GRA_TASK073_UCI_ROOT
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/time_zulu_capability.rs (target/debug/deps/time_zulu_capability-c0ea5247cffe2baa)
+
+running 4 tests
+test task061_generated_support_only_time_blocks_final_readiness ... ok
+test task061_direct_time_is_still_unsupported_in_records_and_choices ... ok
+test task061_private_scanner_helpers_reserve_no_global_names ... ok
+test task061_exact_named_time_and_neighbors_share_the_boundary ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/uci_alternating_admission.rs (target/debug/deps/uci_alternating_admission-0820c219f7fb99c0)
+
+running 2 tests
+test task060_final_admission_boundary_matches_exact_pinned_ir ... ok
+test task060_unique_profiles_and_release_specific_military_grid_are_frozen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_alternating_after.rs (target/debug/deps/uci_alternating_after-06f4a13f3fa4fa9d)
+
+running 3 tests
+test task060_real_projected_message_impact_and_naming ... ok
+test task060_real_service_compiler_and_codec_verticals ... ok
+test task060_real_uci_after_coverage_and_order_of_battle ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_alternating_ascii.rs (target/debug/deps/uci_alternating_ascii-b5ee45a0918049ee)
+
+running 1 test
+test task060_parent_inventory_and_baseline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_bounded_ascii_string.rs (target/debug/deps/uci_bounded_ascii_string-154edb892c60010c)
+
+running 5 tests
+test task058_closed_schema_ada_gap_evidence ... ok
+test task058_real_uci_2_5_bounded_ascii_inventory ... ok
+test task058_real_uci_2_6_bounded_ascii_inventory ... ok
+test task058_real_uci_newly_ready_service_generates_and_compiles ... ok
+test task058_real_uci_bounded_ascii_message_impact ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_constrained_binary.rs (target/debug/deps/uci_constrained_binary-2c13f06be32cb435)
+
+running 3 tests
+test task053_real_uci_2_5_constrained_binary_inventory ... ok
+test task053_real_uci_2_6_constrained_binary_inventory ... ok
+test task053_real_uci_constrained_binary_message_impact ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_duration.rs (target/debug/deps/uci_duration-42c9c0cb1ec103db)
+
+running 4 tests
+test task057_real_uci_2_5_duration_inventory ... ok
+test task057_real_uci_2_6_duration_inventory ... ok
+test task057_real_uci_duration_message_impact ... ok
+test task057_real_uci_category_a_log_generates_and_compiles ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_generated_support.rs (target/debug/deps/uci_generated_support-b325bc110c78222e)
+
+running 3 tests
+test task056_real_uci_category_a_readiness_matches_generation ... ok
+test task056_real_uci_order_of_battle_support_parity ... ok
+test task064_real_uci_generated_support_binding ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_ipv6_address.rs (target/debug/deps/uci_ipv6_address-e6c67a8cb2a2f9cb)
+
+running 1 test
+test task062_pinned_ipv6_inventory_coverage_and_impact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_member_names.rs (target/debug/deps/uci_member_names-1818ad843c408a45)
+
+running 4 tests
+test task054_real_uci_2_5_member_identifier_inventory ... ok
+test task054_real_uci_category_a_selection_generates_and_compiles ... ok
+test task054_real_uci_2_6_member_identifier_inventory ... ok
+test task054_real_uci_whole_schema_first_blockers ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_patterned_integral.rs (target/debug/deps/uci_patterned_integral-6f666a9727e7450c)
+
+running 2 tests
+test task063_pinned_inventory_coverage_and_service_impact ... ok
+test task063_smallest_real_service_compiler_codec_vertical ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_structured_ascii.rs (target/debug/deps/uci_structured_ascii-23ef5a2a1db8ccf5)
+
+running 3 tests
+test cpp_oms_006_real_uci_cpp_codec_readiness ... ok
+test task059_real_uci_inventory_and_coverage ... ok
+test task059_real_uci_message_impact ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/uci_time_zulu.rs (target/debug/deps/uci_time_zulu-e46f5a48da3d572c)
+
+running 4 tests
+test task061_pinned_ada_full_schema_naming_attribution ... ok
+test task061_pinned_time_inventory_and_impact ... ok
+test task061_pinned_time_inventory_and_coverage ... ok
+test task061_smallest_real_service_compilers_and_time_codec ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/unicode_string_authority.rs (target/debug/deps/unicode_string_authority-e6663871e1d21cab)
+
+running 1 test
+test task066_pinned_unicode_authority_inventory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/unicode_string_compilers.rs (target/debug/deps/unicode_string_compilers-b153006df84bc03b)
+
+running 3 tests
+test task066_generated_support_neighbor_fails_closed_everywhere ... ok
+test task066_unicode_and_ada_semantic_names_compose ... ok
+test task066_production_compiler_corpus_lifecycle_and_planted_failure ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.41s
+
+   Doc-tests ams_gra_codegen_oms
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
