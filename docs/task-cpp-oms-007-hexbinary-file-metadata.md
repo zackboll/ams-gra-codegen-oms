@@ -218,7 +218,8 @@ noninteractive sudo installation was unavailable. No dependency was vendored.
 | workspace clippy all targets / fmt / diff whitespace | PASS |
 | complete workspace library tests | **650 passed**, 0 failed/ignored, 15 suite summaries; offline retry completed. Initial pinned-root build interrupted after expensive authentic generation and is not counted as a pass |
 | CPP-OMS-004 PositionReport deep script | **FAIL**, UCI 2.6 clang TSan: post-close `check::threads_named("ams-lacal") == 0`, 1 of 247 checks failed; other release/configuration executions passed. Gate and runtime unchanged |
-| CPP-OMS-005 AMTI / 006 structured ASCII deep scripts | In progress, not yet claimed complete |
+| CPP-OMS-005 authentic AMTI_SettingsCommand deep script | PASS both releases in all six compiler/sanitizer configurations; 12 Sleet executions, each 2 tests/206 checks; synthetic 289/148, mutations 13/13, authentic consumer 68/47 (2.5), 70/46 (2.6) |
+| CPP-OMS-006 structured ASCII deep script | Stable-file rerun PASS: all six configurations, consumer 323/166, 27-row consumer 828/259, mutations 21/21; both-release model probe 20 checks and six newly READY message compile smokes per release |
 | 007 full compiler/sanitizer authentic qualification | In progress; hash-present Sleet failures above already make acceptance FAIL |
 | hosted CI at `f0a5a68f2b23ce48aaa191ab393694b5269af77f` | PR smoke **SUCCESS**, run `42535159399`; trusted signal **SUCCESS**. This is not claimed for a later documentation head; final PR receipt records that exact head separately |
 | hosted CI at `4ad061d42f3289b84b3bf42e6983635753b0d1e4` | PR smoke **SUCCESS**, run `42535445329`; trusted signal **SUCCESS**. Later documentation-only head status is recorded separately in the final PR receipt |
