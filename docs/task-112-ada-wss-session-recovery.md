@@ -141,7 +141,55 @@ git diff --check
 
 ## Qualification results
 
-Clean-source four-cell acceptance and the UCI 2.5 regression receipt are
-recorded separately after execution. Diagnostic runs are never promoted to
-acceptance evidence. No Task108/111 safety/trust campaign is repeated because
-this task changes neither production transport nor trust handling.
+All acceptance campaigns ran clean source commit
+`3c1aacd409ffc5eeb8e5da27643959478534c392`, tree
+`5c713c424f7cbac0f9e8a978f43499589a704de6`. Later delivery commits add only
+documentation and evidence; the verifier checks all qualified input hashes
+against the final checkout. Diagnostic runs are not acceptance evidence.
+
+| Compiler | OpenSSL | mbedTLS |
+| --- | --- | --- |
+| GNAT 14.2.0 | PASS | PASS |
+| GNAT 16.1.0 | PASS (executed first) | PASS |
+
+Each UCI 2.6 cell: eight actual verified WSS sessions, eight INIT/INFO exchanges,
+24 accepted subscriptions, 48 authentic Sleet MSG deliveries decoded by Ada,
+48 correct callbacks, 25 generated publications (24 acknowledged plus one
+interrupted), 24 independent publications, eight cleanup receipts. Broker
+connection IDs `2..9` independently establish epoch separation; ID 1 belongs
+to the persistent witness. SIDs are `1,2,3` on every Ada session.
+
+Authenticated EOF in epoch 2 produces `Connection_Closed` without exception
+and without either peer sending a WebSocket Close. Reset in epoch 4 and
+pending-PUB reset in epoch 6 produce:
+
+```text
+OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR : TCP read failed: [104] Connection reset by peer
+```
+
+All four cells observe this same reset behavior. State is then terminal,
+pending command cleared, all subscriptions inactive, exactly one close event,
+and no retired callback. Recovered epochs 3, 5 and 7 independently initialize,
+subscribe and exchange all three families. No stale ACK, replay, duplicate
+publication, or lost event is observed. Every post-warm-up epoch returns to
+**8 file descriptors and 3 tasks**, including normal and explicit teardown.
+All Ada exits and graceful broker shutdown exits are zero; no harness timeout
+or forced broker kill occurs.
+
+The original UCI 2.5 model/schema and Task102/103/104 fixtures pass the same
+eight-epoch GNAT16/OpenSSL sequence, independently of 2.6 documents. Its
+receipt is the `25` release entry of `/docs/evidence/task112/16-openssl.json`.
+
+Lightweight validation passes: 12 Task112 tests, 37 PR smoke selector tests,
+5 unchanged Task109 harness tests, 12 unchanged Task110 harness tests, four
+full-artifact verification passes, and `git diff --check`.
+
+No production defect was exposed. No Task108/111 safety/trust campaign was
+repeated because this task changes neither production transport nor trust
+handling. Remaining limits: this is application policy, not an automatic
+reconnect feature; the interrupted command control covers PUB, not every
+possible SUB/UNSUB timing; resource qualification measures Linux descriptors
+and tasks rather than arbitrary heap allocation; normal Close reflects pinned
+Sleet's lack of reciprocal WS Close rather than fabricating one. The local TLS
+relay is the authenticated peer; Sleet remains its unchanged plaintext
+upstream, as in Task109/110.
