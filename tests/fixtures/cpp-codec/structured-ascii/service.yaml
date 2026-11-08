@@ -1,0 +1,39 @@
+# SYNTHETIC CPP-OMS-006 fixture. Authored for this repository only.
+#
+# Selects StructuredRowsNotice from structured-ascii.xsd as one input and one
+# output exchange on the same topic. Every selected constrained String is one
+# of the 27 pinned Task 059 structured-ASCII rows: model READY and C++
+# --with-codec codec READY.
+contract_version: "0.1"
+
+service:
+  name: cpp-oms-006-structured-ascii-rows
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: tail
+    name: Tail
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-tail
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: StructuredRowsNotice
+        topic: structured-rows-topic
+        timing:
+          kind: asynchronous
+      - id: output-tail
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: StructuredRowsNotice
+        topic: structured-rows-topic
+        timing:
+          kind: asynchronous

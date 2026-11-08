@@ -143,7 +143,12 @@ flags_for() { # flavour compiler -> sets $flags
   case "$1" in
     strict) flags=("${strict[@]}" -O1) ;;
     asan) flags=("${asan[@]}" -O1) ;;
-    tsan) flags=("${tsan[@]}" -O1); [[ "$2" == g++ ]] && flags+=(-Wno-tsan) ;;
+    tsan)
+      flags=("${tsan[@]}" -O1)
+      # An `if`, not `[[ ]] && ...`: as the function's last command a false
+      # test would return 1 and stop the script under `set -e` for clang++.
+      if [[ "$2" == g++ ]]; then flags+=(-Wno-tsan); fi
+      ;;
   esac
 }
 

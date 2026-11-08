@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SYNTHETIC CPP-OMS-006 fixture. Authored for this repository only; not UCI.
+
+  One declaration per pinned Task 059 structured-ASCII expression/facet row
+  (all 27 rows of codegen-core::structured_ascii_profiles), under non-UCI
+  carrier names. The shared classifier recognizes them by expression and
+  facets alone, never by name. Each row is an optional member of
+  StructuredRowsPayload, so a document can exercise one row at a time;
+  a required, a bounded, an unbounded and a Choice position complete the
+  occurrence shapes.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <xs:simpleType name="PrfCodeType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="3"/><xs:maxLength value="4"/>
+      <xs:pattern value="1?[1-7][1-8]{2}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="CycleNumberType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/><xs:maxLength value="8"/>
+      <xs:pattern value="[A-Z0-9]{2}-[0-9]{4}[TE]?"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SenoType">
+    <xs:restriction base="xs:string">
+      <xs:length value="5"/>
+      <xs:pattern value="[A-Z][IRS][0-9]{3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FileNameType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/><xs:maxLength value="255"/>
+      <xs:pattern value="[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\.\-]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ImoNumberType">
+    <xs:restriction base="xs:string">
+      <xs:length value="10"/>
+      <xs:pattern value="IMO[0-9]{7}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="TrackOneType">
+    <xs:restriction base="xs:string">
+      <xs:length value="5"/>
+      <xs:pattern value="[AEGHJKLM]{2}[0-7]{3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ModelCodeType">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="4"/>
+      <xs:pattern value="[A-Za-z0-9]{1,4}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="TrackSixteenType">
+    <xs:restriction base="xs:string">
+      <xs:length value="5"/>
+      <xs:pattern value="[A-HJ-NP-Z0-7]{2}[0-7]{3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="MeterLetterType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[m]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DesignatorType">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="16"/>
+      <xs:pattern value="[a-zA-Z0-9 \-_]{1,16}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="RatingType">
+    <xs:restriction base="xs:string">
+      <xs:length value="3"/>
+      <xs:pattern value="[0-9]\.[0-9]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SceneSourceType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[0-9 ]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FlightNumberType">
+    <xs:restriction base="xs:string">
+      <xs:length value="2"/>
+      <xs:pattern value="[A-Z0-9][0-9]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="AuthorityMethodType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[ODM ]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ReasonCodeType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[A-H ]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DowngradeCodeType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[SCR ]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SequenceDigitType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[1-6 ]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FileClassType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[TSCRU]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SortieType">
+    <xs:restriction base="xs:string">
+      <xs:length value="2"/>
+      <xs:pattern value="([A-Z0-9]{2})"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DigitType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[0-9]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DefenseAreaType">
+    <xs:restriction base="xs:string">
+      <xs:length value="5"/>
+      <xs:pattern value="[A-Z]{2}[0][0-9]{2}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SurrogateKeyType">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="14"/>
+      <xs:pattern value="[a-zA-Z0-9]{5}[0-9]{9}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SuffixCodeType">
+    <xs:restriction base="xs:string">
+      <xs:length value="5"/>
+      <xs:pattern value="[A-Z]{2}[0-9]{3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="OctalCodeType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/><xs:maxLength value="16"/>
+      <xs:pattern value="[0-7]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="IdentityCodeType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/><xs:maxLength value="10"/>
+      <xs:pattern value="[a-zA-Z0-9]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="PacketClassType">
+    <xs:restriction base="xs:string">
+      <xs:length value="1"/>
+      <xs:pattern value="[1-5]"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="UnitCodeType">
+    <xs:restriction base="xs:string">
+      <xs:length value="10"/>
+      <xs:pattern value="[A-Z]{2}[ABCDEGJMNSX][A-Z]{2}[0-9]{5}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="RowPick">
+    <xs:choice>
+      <xs:element name="Unit" type="uci:UnitCodeType"/>
+      <xs:element name="Rating" type="uci:RatingType"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="StructuredRowsPayload">
+    <xs:sequence>
+      <xs:element name="Prf" type="uci:PrfCodeType" minOccurs="0"/>
+      <xs:element name="Cycle" type="uci:CycleNumberType" minOccurs="0"/>
+      <xs:element name="Seno" type="uci:SenoType" minOccurs="0"/>
+      <xs:element name="File" type="uci:FileNameType"/>
+      <xs:element name="Imo" type="uci:ImoNumberType" minOccurs="0"/>
+      <xs:element name="TrackOne" type="uci:TrackOneType" minOccurs="0"/>
+      <xs:element name="Model" type="uci:ModelCodeType" minOccurs="0"/>
+      <xs:element name="TrackSixteen" type="uci:TrackSixteenType" minOccurs="0"/>
+      <xs:element name="Meter" type="uci:MeterLetterType" minOccurs="0"/>
+      <xs:element name="Designator" type="uci:DesignatorType" minOccurs="0"/>
+      <xs:element name="Rating" type="uci:RatingType" minOccurs="0"/>
+      <xs:element name="Scene" type="uci:SceneSourceType" minOccurs="0"/>
+      <xs:element name="Flight" type="uci:FlightNumberType" minOccurs="0"/>
+      <xs:element name="Authority" type="uci:AuthorityMethodType" minOccurs="0"/>
+      <xs:element name="Reason" type="uci:ReasonCodeType" minOccurs="0"/>
+      <xs:element name="Downgrade" type="uci:DowngradeCodeType" minOccurs="0"/>
+      <xs:element name="Sequence" type="uci:SequenceDigitType" minOccurs="0"/>
+      <xs:element name="FileClass" type="uci:FileClassType" minOccurs="0"/>
+      <xs:element name="Sortie" type="uci:SortieType" minOccurs="0"/>
+      <xs:element name="Digit" type="uci:DigitType" minOccurs="0"/>
+      <xs:element name="DefenseArea" type="uci:DefenseAreaType" minOccurs="0"/>
+      <xs:element name="Surrogate" type="uci:SurrogateKeyType" minOccurs="0"/>
+      <xs:element name="Suffix" type="uci:SuffixCodeType" minOccurs="0"/>
+      <xs:element name="Octal" type="uci:OctalCodeType" minOccurs="0"/>
+      <xs:element name="Identity" type="uci:IdentityCodeType" minOccurs="0"/>
+      <xs:element name="PacketClass" type="uci:PacketClassType" minOccurs="0"/>
+      <xs:element name="Unit" type="uci:UnitCodeType" minOccurs="0"/>
+      <xs:element name="Files" type="uci:FileNameType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Sorties" type="uci:SortieType" minOccurs="1" maxOccurs="2"/>
+      <xs:element name="Pick" type="uci:RowPick" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="StructuredRowsNotice" type="uci:StructuredRowsPayload" uci:version="001.000.000.000"/>
+</xs:schema>

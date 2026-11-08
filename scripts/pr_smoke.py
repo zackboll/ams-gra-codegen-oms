@@ -80,6 +80,27 @@ CPP_FLOAT64_MARKERS = {
 }
 
 
+# CPP-OMS-005: offline bounded-ASCII regression. The synthetic fixture (every
+# constrained String a pinned Task 058 row, incl. the zero-length EmptyType
+# shape) is generated through the production CLI with its codec;
+# tests/cpp-codec/bounded_ascii_consumer.cpp is compiled with CPP_STRICT and
+# must report exactly its summary. No UCI, no Sleet; clang++, sanitizers and the
+# negative controls stay in cpp_codec.rs and scripts/check-cpp-oms-005-*.sh.
+CPP_BOUNDED_ASCII_FIXTURE = "cpp-codec/bounded-ascii/bounded-ascii"
+CPP_BOUNDED_ASCII_MARKER = "CPP_OMS_005_BOUNDED_ASCII checks=289 rejections=148"
+
+
+# CPP-OMS-006: offline structured-ASCII regression. The shared Task 059 fixture
+# (IMO number, overlapping-prefix PRF code, file name, octal and model code in
+# required, optional, bounded, unbounded and Choice positions) is generated
+# through the production CLI with its codec; tests/cpp-codec/structured_ascii_consumer.cpp
+# is compiled with CPP_STRICT and must report exactly its summary. No UCI, no
+# Sleet; clang++, sanitizers, the 27-row consumer and the negative controls stay
+# in cpp_codec.rs and scripts/check-cpp-oms-006-*.
+CPP_STRUCTURED_ASCII_FIXTURE = "service-generate/codec-structured-ascii"
+CPP_STRUCTURED_ASCII_MARKER = "CPP_OMS_006_STRUCTURED_ASCII checks=323 rejections=166"
+
+
 def cpp_shape_marker(shape, checks, rejections):
     return f"CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks={checks} rejections={rejections}"
 
@@ -135,7 +156,10 @@ def classify(paths):
                           "scripts/check-cpp-oms-002-real-log.sh",
                           "scripts/check-cpp-oms-003-runtime.sh",
                           "scripts/check-cpp-oms-003-real-log-sleet.sh",
-                          "scripts/check-cpp-oms-004-position-report.sh")):
+                          "scripts/check-cpp-oms-004-position-report.sh",
+                          "scripts/check-cpp-oms-005-amti-settings.sh",
+                          "scripts/check-cpp-oms-006-file-metadata.sh",
+                          "scripts/check-cpp-oms-006-codec-sweep.py")):
             selected.add("cpp")
         else:
             selected.update(BACKENDS)
@@ -182,7 +206,8 @@ def checked(command, *, cwd=ROOT, marker=None, tests=False, env=None):
 def generate(language, scratch, fixture):
     contract = {"python-codec/oam": "python-codec/service",
                 "cpp-codec/oam": "cpp-codec/service",
-                CPP_FLOAT64_FIXTURE: "cpp-codec/float64/service"}.get(fixture, fixture)
+                CPP_FLOAT64_FIXTURE: "cpp-codec/float64/service",
+                CPP_BOUNDED_ASCII_FIXTURE: "cpp-codec/bounded-ascii/service"}.get(fixture, fixture)
     checked([ROOT / "target/debug/ams-gra-codegen-oms", "service-generate",
              "--schema", ROOT / f"tests/fixtures/{fixture}.xsd",
              "--contract", ROOT / f"tests/fixtures/{contract}.yaml",
@@ -227,6 +252,8 @@ def cpp_smoke(scratch):
     print("CPP OMS-002 SHAPES PASSED", flush=True)
     cpp_runtime_smoke(scratch.parent / "cpp-lacal")
     cpp_float64_smoke(scratch.parent / "cpp-float64")
+    cpp_bounded_ascii_smoke(scratch.parent / "cpp-bounded-ascii")
+    cpp_structured_ascii_smoke(scratch.parent / "cpp-structured-ascii")
     print("CPP SMOKE PASSED", flush=True)
 
 
@@ -278,6 +305,38 @@ def cpp_float64_smoke(out):
     exactly(checked([binary, "encode", corpus / "focused-encoding.tsv", tokens]), "encode")
     exactly(checked([*oracle, "check-encoding", tokens]), "check-encoding")
     print("CPP OMS-004 FLOAT64 PASSED", flush=True)
+
+
+def cpp_bounded_ascii_smoke(out):
+    """CPP-OMS-005: generated bounded-ASCII codec against hand-written JSON."""
+    out.mkdir(parents=True, exist_ok=True)
+    generated = out / "bounded-ascii"
+    generate("cpp", generated, CPP_BOUNDED_ASCII_FIXTURE)
+    for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+        if not (generated / name).is_file():
+            raise RuntimeError(f"C++ smoke: production CLI did not generate {name} for the bounded-ASCII fixture")
+    binary = out / "bounded-ascii-consumer"
+    checked(["g++", *CPP_STRICT, "-I", generated, ROOT / "tests/cpp-codec/bounded_ascii_consumer.cpp",
+             "-o", binary])
+    if CPP_BOUNDED_ASCII_MARKER not in checked([binary]).splitlines():
+        raise RuntimeError(f"C++ smoke: bounded-ASCII consumer did not report exactly: {CPP_BOUNDED_ASCII_MARKER}")
+    print("CPP OMS-005 BOUNDED ASCII PASSED", flush=True)
+
+
+def cpp_structured_ascii_smoke(out):
+    """CPP-OMS-006: generated structured-ASCII codec against hand-written JSON."""
+    out.mkdir(parents=True, exist_ok=True)
+    generated = out / "structured-ascii"
+    generate("cpp", generated, CPP_STRUCTURED_ASCII_FIXTURE)
+    for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+        if not (generated / name).is_file():
+            raise RuntimeError(f"C++ smoke: production CLI did not generate {name} for the structured-ASCII fixture")
+    binary = out / "structured-ascii-consumer"
+    checked(["g++", *CPP_STRICT, "-I", generated, ROOT / "tests/cpp-codec/structured_ascii_consumer.cpp",
+             "-o", binary])
+    if CPP_STRUCTURED_ASCII_MARKER not in checked([binary]).splitlines():
+        raise RuntimeError(f"C++ smoke: structured-ASCII consumer did not report exactly: {CPP_STRUCTURED_ASCII_MARKER}")
+    print("CPP OMS-006 STRUCTURED ASCII PASSED", flush=True)
 
 
 def smoke(backend):

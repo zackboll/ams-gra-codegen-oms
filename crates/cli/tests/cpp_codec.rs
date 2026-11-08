@@ -522,8 +522,9 @@ int main() {{
 /// before the output directory exists.
 ///
 /// CPP-OMS-002 moved DateTime, Duration, hexBinary, Choice and the Log String
-/// profiles into the subset (see `newly_supported_fixtures_*`), and CPP-OMS-004
-/// moved Float64; what remains here is still NOT READY.
+/// profiles into the subset (see `newly_supported_fixtures_*`), CPP-OMS-004
+/// moved Float64, CPP-OMS-005 moved bounded ASCII and CPP-OMS-006 moved
+/// structured ASCII; what remains here is still NOT READY.
 #[test]
 fn unsupported_constructs_are_rejected_before_any_output() {
     let cases: &[(&str, &str)] = &[
@@ -544,9 +545,14 @@ fn unsupported_constructs_are_rejected_before_any_output() {
             "codec-ada-hexbinary-combined",
             "length-constrained named hexBinary",
         ),
-        ("codec-bounded-ascii", "bounded ASCII"),
+        // CPP-OMS-005 moved bounded ASCII and CPP-OMS-006 structured ASCII
+        // into the subset (`codec-bounded-ascii` and `codec-structured-ascii`
+        // are READY, see `bounded_ascii_*` and `structured_ascii_*`); every
+        // other String profile with a model carrier stays NOT READY, whatever
+        // its name.
         ("codec-alternating-ascii", "alternating ASCII"),
         ("codec-ipv6", "IPv6 address"),
+        ("codec-unicode31", "Unicode 3.1"),
         ("codec-shape", "abstract structural value"),
         ("codec-form-unqualified", "unqualified local element"),
         ("codec-unqualified", "unqualified local element"),
@@ -822,4 +828,489 @@ fn float64_numerics_are_clean_under_sanitizers() {
         ),
         "CPP_OMS_004_DECODE rows=27167 finite=27162 overflow=5 mismatches=0\n"
     );
+}
+
+// ---- CPP-OMS-005: bounded ASCII ---------------------------------------------
+
+fn bounded_ascii_case() -> Case {
+    Case {
+        schema: fixtures().join("cpp-codec/bounded-ascii/bounded-ascii.xsd"),
+        contract: fixtures().join("cpp-codec/bounded-ascii/service.yaml"),
+    }
+}
+
+/// The exact summary of `tests/cpp-codec/bounded_ascii_consumer.cpp`.
+const BOUNDED_ASCII_SUMMARY: &str = "CPP_OMS_005_BOUNDED_ASCII checks=289 rejections=148\n";
+
+/// Readiness and generation agree; the codec is a separate artifact; it
+/// delegates every bounded-ASCII value to the model's checked `create` and
+/// restates no character class, length or pattern.
+#[test]
+fn bounded_ascii_codec_is_ready_delegating_and_separate() {
+    let case = bounded_ascii_case();
+    let check = run("service-check", &case, true, None);
+    let report = String::from_utf8(check.stdout).unwrap();
+    assert_eq!(check.status.code(), Some(0), "{report}");
+    assert!(
+        report.contains("codec renderable emitted declarations: 15/15\n"),
+        "{report}"
+    );
+    assert!(report.ends_with("codec status: READY\n"), "{report}");
+    let with = generate(&case, true, "ba-with");
+    let again = generate(&case, true, "ba-again");
+    let without = generate(&case, false, "ba-without");
+    for file in ["oam.hpp", "service_api.hpp"] {
+        assert_eq!(
+            std::fs::read(with.join(file)).unwrap(),
+            std::fs::read(without.join(file)).unwrap(),
+            "{file} must not depend on --with-codec"
+        );
+    }
+    let codec = std::fs::read_to_string(with.join("service_codec.hpp")).unwrap();
+    assert_eq!(
+        codec,
+        std::fs::read_to_string(again.join("service_codec.hpp")).unwrap()
+    );
+    for carrier in [
+        "EmptyMarkerType",
+        "TailType",
+        "CodeType",
+        "NameType",
+        "LabelType",
+        "MissionType",
+        "UnitNameType",
+        "SerialType",
+        "PinType",
+        "OctalType",
+        "VisibleType",
+        "LaunchType",
+    ] {
+        assert!(
+            codec.contains(&format!(
+                "return get_checked_text<M::{carrier}>(value, error, path, \"{carrier}\");"
+            )),
+            "{carrier} must decode through the model's create"
+        );
+    }
+    // The model owns the profile: nothing of it is restated by the codec, and
+    // no regex machinery or extra dependency appears.
+    for restated in [
+        "kLength",
+        "kMinLength",
+        "kMaxLength",
+        "is_member",
+        "ordinal",
+        "0x41",
+        "<regex>",
+        "std::regex",
+        "Float64",
+    ] {
+        assert!(!codec.contains(restated), "codec restates {restated}");
+    }
+    for line in codec.lines().filter(|line| line.starts_with("#include")) {
+        assert!(
+            line.contains('<') || line == "#include \"oam.hpp\"",
+            "unexpected include: {line}"
+        );
+    }
+}
+
+/// Positive, negative and encode cases against hand-written JSON, with every
+/// available compiler under the strict flags.
+#[test]
+fn bounded_ascii_consumer_passes_under_strict_flags() {
+    let dir = generate(&bounded_ascii_case(), true, "ba-consumer");
+    let consumer = root().join("tests/cpp-codec/bounded_ascii_consumer.cpp");
+    let mut compilers = vec!["g++"];
+    if compiler_available("clang++") {
+        compilers.push("clang++");
+    }
+    for compiler in compilers {
+        let mut flags = STRICT.to_vec();
+        flags.push("-O1");
+        let out = compile_and_run(
+            compiler,
+            &flags,
+            &dir,
+            std::slice::from_ref(&consumer),
+            &format!("ba-{compiler}"),
+        );
+        assert_eq!(out, BOUNDED_ASCII_SUMMARY, "{compiler}");
+    }
+}
+
+#[test]
+fn bounded_ascii_consumer_is_clean_under_sanitizers() {
+    if !sanitizer_flags_usable("g++", "ba") {
+        sanitizers_unavailable("g++");
+        return;
+    }
+    let dir = generate(&bounded_ascii_case(), true, "ba-san");
+    let consumer = root().join("tests/cpp-codec/bounded_ascii_consumer.cpp");
+    let out = compile_and_run(
+        "g++",
+        SANITIZE,
+        &dir,
+        std::slice::from_ref(&consumer),
+        "ba-san",
+    );
+    assert_eq!(out, BOUNDED_ASCII_SUMMARY);
+}
+
+/// Negative controls: deliberately weakened copies of the generated model and
+/// codec (length, class, case, non-ASCII, control characters, trimming,
+/// present-empty as absent, JSON kind, error path, escaping) must each make
+/// the consumer fail.
+#[test]
+fn bounded_ascii_mutation_controls_are_detected() {
+    let dir = generate(&bounded_ascii_case(), true, "ba-mutants-src");
+    let work = scratch("ba-mutants");
+    let out = Command::new("python3")
+        .arg("-I")
+        .arg(root().join("tests/cpp-codec/bounded_ascii_mutations.py"))
+        .arg(&dir)
+        .arg(root().join("tests/cpp-codec/bounded_ascii_consumer.cpp"))
+        .arg(&work)
+        .output()
+        .expect("python3 runs");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        stdout.ends_with("CPP_OMS_005_MUTATIONS detected=13/13\n"),
+        "{stdout}"
+    );
+}
+
+/// The shared Task 058 fixture (also used by the Rust codec) is C++ codec
+/// READY too, and round-trips the same documents the Rust mock-OWP test uses.
+#[test]
+fn task058_shared_bounded_ascii_fixture_round_trips_in_cpp() {
+    let case = shared_case("codec-bounded-ascii");
+    let check = run("service-check", &case, true, None);
+    let report = String::from_utf8(check.stdout).unwrap();
+    assert_eq!(check.status.code(), Some(0), "{report}");
+    assert!(report.ends_with("codec status: READY\n"), "{report}");
+    let dir = generate(&case, true, "ba-shared");
+    let source = scratch("ba-shared-source");
+    std::fs::create_dir_all(&source).unwrap();
+    let main = source.join("main.cpp");
+    std::fs::write(
+        &main,
+        r#"#include "oam.hpp"
+#include "service_codec.hpp"
+#include <iostream>
+#include <string>
+int main() {
+    namespace sc = ::service_codec;
+    const std::string wire = R"({"Marker":"","Tail":"N123AB  ","Markers":[""],"Pick":{"Empty":""}})";
+    const auto decoded = sc::decode_BoundedPayload(wire);
+    if (!decoded.ok() || decoded.value().tail.value() != "N123AB  " || !decoded.value().marker.value().empty()) {
+        return 1;
+    }
+    if (sc::encode_BoundedPayload(decoded.value()).value() != wire) {
+        return 2;
+    }
+    const std::string spaced = R"({"Marker":"","Tail":" 7 7 7 7","Label":"a b","Pick":{"Launch":"Z"}})";
+    const auto label = sc::decode_BoundedPayload(spaced);
+    if (!label.ok() || label.value().tail.value() != " 7 7 7 7" || !label.value().label ||
+        label.value().label->value() != "a b" || sc::encode_BoundedPayload(label.value()).value() != spaced) {
+        return 3;
+    }
+    const auto wrong = sc::decode_BoundedPayload(R"({"Marker":"","Tail":"n123ab  ","Pick":{"Launch":"Z"}})");
+    if (wrong.ok() || wrong.error().path != "BoundedPayload.Tail" ||
+        wrong.error().message != "value rejected by the generated model's TailType check") {
+        return 4;
+    }
+    std::cout << "shared bounded ascii ok\n";
+    return 0;
+}
+"#,
+    )
+    .unwrap();
+    let out = compile_and_run("g++", STRICT, &dir, &[main], "ba-shared");
+    assert_eq!(out, "shared bounded ascii ok\n");
+}
+
+// ---- CPP-OMS-006: structured ASCII ------------------------------------------
+
+/// The shared Task 059 fixture (also used by the Rust codec and its mock-OWP
+/// test).
+fn structured_ascii_case() -> Case {
+    shared_case("codec-structured-ascii")
+}
+
+/// The synthetic fixture with one declaration per pinned Task 059 row.
+fn structured_rows_case() -> Case {
+    Case {
+        schema: fixtures().join("cpp-codec/structured-ascii/structured-ascii.xsd"),
+        contract: fixtures().join("cpp-codec/structured-ascii/service.yaml"),
+    }
+}
+
+/// The exact summaries of the two CPP-OMS-006 consumers.
+const STRUCTURED_ASCII_SUMMARY: &str = "CPP_OMS_006_STRUCTURED_ASCII checks=323 rejections=166\n";
+const STRUCTURED_ROWS_SUMMARY: &str =
+    "CPP_OMS_006_STRUCTURED_ROWS rows=27 checks=828 rejections=259\n";
+
+/// Readiness and generation agree; the codec is a separate artifact; it
+/// delegates every structured-ASCII value to the model's checked `create` and
+/// restates no segment, class, literal, length or pattern.
+#[test]
+fn structured_ascii_codec_is_ready_delegating_and_separate() {
+    for (case, label, declarations, carriers) in [
+        (
+            structured_ascii_case(),
+            "sa",
+            "7/7",
+            &[
+                "ImoType",
+                "PrfType",
+                "FileNameType",
+                "OctalType",
+                "ModelType",
+            ][..],
+        ),
+        (
+            structured_rows_case(),
+            "sr",
+            "29/29",
+            &[
+                "PrfCodeType",
+                "CycleNumberType",
+                "SenoType",
+                "FileNameType",
+                "ImoNumberType",
+                "TrackOneType",
+                "ModelCodeType",
+                "TrackSixteenType",
+                "MeterLetterType",
+                "DesignatorType",
+                "RatingType",
+                "SceneSourceType",
+                "FlightNumberType",
+                "AuthorityMethodType",
+                "ReasonCodeType",
+                "DowngradeCodeType",
+                "SequenceDigitType",
+                "FileClassType",
+                "SortieType",
+                "DigitType",
+                "DefenseAreaType",
+                "SurrogateKeyType",
+                "SuffixCodeType",
+                "OctalCodeType",
+                "IdentityCodeType",
+                "PacketClassType",
+                "UnitCodeType",
+            ][..],
+        ),
+    ] {
+        let check = run("service-check", &case, true, None);
+        let report = String::from_utf8(check.stdout).unwrap();
+        assert_eq!(check.status.code(), Some(0), "{report}");
+        assert!(
+            report.contains(&format!(
+                "codec renderable emitted declarations: {declarations}\n"
+            )),
+            "{report}"
+        );
+        assert!(report.ends_with("codec status: READY\n"), "{report}");
+        let with = generate(&case, true, &format!("{label}-with"));
+        let again = generate(&case, true, &format!("{label}-again"));
+        let without = generate(&case, false, &format!("{label}-without"));
+        for file in ["oam.hpp", "service_api.hpp"] {
+            assert_eq!(
+                std::fs::read(with.join(file)).unwrap(),
+                std::fs::read(without.join(file)).unwrap(),
+                "{file} must not depend on --with-codec"
+            );
+        }
+        assert!(!without.join("service_codec.hpp").exists());
+        let codec = std::fs::read_to_string(with.join("service_codec.hpp")).unwrap();
+        assert_eq!(
+            codec,
+            std::fs::read_to_string(again.join("service_codec.hpp")).unwrap()
+        );
+        for carrier in carriers {
+            assert!(
+                codec.contains(&format!(
+                    "return get_checked_text<M::{carrier}>(value, error, path, \"{carrier}\");"
+                )),
+                "{carrier} must decode through the model's create"
+            );
+        }
+        // The model owns the profile: nothing of it is restated by the codec,
+        // and no regex machinery or extra dependency appears.
+        for restated in [
+            "is_valid",
+            "pos += ",
+            "count <",
+            "static_cast<unsigned char>(text[pos",
+            "0x2E",
+            "0x49",
+            "text.size() == 10",
+            "<regex>",
+            "std::regex",
+            "Float64",
+        ] {
+            assert!(!codec.contains(restated), "codec restates {restated}");
+        }
+        for line in codec.lines().filter(|line| line.starts_with("#include")) {
+            assert!(
+                line.contains('<') || line == "#include \"oam.hpp\"",
+                "unexpected include: {line}"
+            );
+        }
+    }
+}
+
+/// Positive, negative and encode cases against hand-written JSON, for both
+/// fixtures, with every available compiler under the strict flags.
+#[test]
+fn structured_ascii_consumers_pass_under_strict_flags() {
+    let sa = generate(&structured_ascii_case(), true, "sa-consumer");
+    let sr = generate(&structured_rows_case(), true, "sr-consumer");
+    let mut compilers = vec!["g++"];
+    if compiler_available("clang++") {
+        compilers.push("clang++");
+    }
+    for compiler in compilers {
+        let mut flags = STRICT.to_vec();
+        flags.push("-O1");
+        for (dir, source, summary) in [
+            (
+                &sa,
+                "tests/cpp-codec/structured_ascii_consumer.cpp",
+                STRUCTURED_ASCII_SUMMARY,
+            ),
+            (
+                &sr,
+                "tests/cpp-codec/structured_ascii_rows_consumer.cpp",
+                STRUCTURED_ROWS_SUMMARY,
+            ),
+        ] {
+            let consumer = root().join(source);
+            let out = compile_and_run(
+                compiler,
+                &flags,
+                dir,
+                std::slice::from_ref(&consumer),
+                &format!(
+                    "sa-{compiler}-{}",
+                    consumer.file_stem().unwrap().to_string_lossy()
+                ),
+            );
+            assert_eq!(out, summary, "{compiler} {source}");
+        }
+    }
+}
+
+#[test]
+fn structured_ascii_consumers_are_clean_under_sanitizers() {
+    if !sanitizer_flags_usable("g++", "sa") {
+        sanitizers_unavailable("g++");
+        return;
+    }
+    for (case, source, summary, label) in [
+        (
+            structured_ascii_case(),
+            "tests/cpp-codec/structured_ascii_consumer.cpp",
+            STRUCTURED_ASCII_SUMMARY,
+            "sa-san",
+        ),
+        (
+            structured_rows_case(),
+            "tests/cpp-codec/structured_ascii_rows_consumer.cpp",
+            STRUCTURED_ROWS_SUMMARY,
+            "sr-san",
+        ),
+    ] {
+        let dir = generate(&case, true, label);
+        let consumer = root().join(source);
+        let out = compile_and_run(
+            "g++",
+            SANITIZE,
+            &dir,
+            std::slice::from_ref(&consumer),
+            label,
+        );
+        assert_eq!(out, summary, "{source}");
+    }
+}
+
+/// Negative controls: deliberately weakened copies of the generated model and
+/// codec (segment classes, the dot literal, the IMO prefix, the length-guided
+/// PRF prefix, length facets, non-ASCII, TAB, trimming, case folding, JSON
+/// kind, a dropped invalid optional, error path, encoding) must each make the
+/// consumer fail.
+#[test]
+fn structured_ascii_mutation_controls_are_detected() {
+    let dir = generate(&structured_ascii_case(), true, "sa-mutants-src");
+    let work = scratch("sa-mutants");
+    let out = Command::new("python3")
+        .arg("-I")
+        .arg(root().join("tests/cpp-codec/structured_ascii_mutations.py"))
+        .arg(&dir)
+        .arg(root().join("tests/cpp-codec/structured_ascii_consumer.cpp"))
+        .arg(&work)
+        .output()
+        .expect("python3 runs");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        stdout.ends_with("CPP_OMS_006_MUTATIONS detected=21/21\n"),
+        "{stdout}"
+    );
+}
+
+/// The shared Task 059 fixture round-trips in C++ the same filename shapes the
+/// Rust mock-OWP test (`codec_structured_ascii`) uses, including multiple
+/// dot extensions, and rejects the same invalid text.
+#[test]
+fn task059_shared_structured_ascii_fixture_round_trips_in_cpp() {
+    let dir = generate(&structured_ascii_case(), true, "sa-shared");
+    let source = scratch("sa-shared-source");
+    std::fs::create_dir_all(&source).unwrap();
+    let main = source.join("main.cpp");
+    std::fs::write(
+        &main,
+        r#"#include "oam.hpp"
+#include "service_codec.hpp"
+#include <iostream>
+#include <string>
+int main() {
+    namespace sc = ::service_codec;
+    const std::string wire = R"({"Imo":"IMO1234567","Prf":"178","FileName":"report.tar.bz2","Imos":["IMO7654321"],"Octals":["17"],"Pick":{"Model":"aZ09"}})";
+    const auto decoded = sc::decode_StructuredPayload(wire);
+    if (!decoded.ok() || !decoded.value().filename || decoded.value().filename->value() != "report.tar.bz2") {
+        return 1;
+    }
+    if (sc::encode_StructuredPayload(decoded.value()).value() != wire) {
+        return 2;
+    }
+    const auto bad = sc::decode_StructuredPayload(R"({"Imo":"IMO1234567","Prf":"178","FileName":"report.","Pick":{"Model":"a"}})");
+    if (bad.ok() || bad.error().path != "StructuredPayload.FileName" ||
+        bad.error().message != "value rejected by the generated model's FileNameType check") {
+        return 3;
+    }
+    const auto prf = sc::decode_StructuredPayload(R"({"Imo":"IMO1234567","Prf":"2778","Pick":{"Model":"a"}})");
+    if (prf.ok() || prf.error().path != "StructuredPayload.Prf") {
+        return 4;
+    }
+    std::cout << "shared structured ascii ok\n";
+    return 0;
+}
+"#,
+    )
+    .unwrap();
+    let out = compile_and_run("g++", STRICT, &dir, &[main], "sa-shared");
+    assert_eq!(out, "shared structured ascii ok\n");
 }
