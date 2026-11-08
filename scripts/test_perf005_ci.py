@@ -78,7 +78,7 @@ class CI(unittest.TestCase):
             ("manifest", "sha256sum --check --quiet /tmp/task095-evidence/perf005-ci/evidence.sha256", "echo removed"),
             ("case-preserving upload", "            /tmp/task095-evidence/perf005-ci/**\n", ""),
             ("upload failure", "if-no-files-found: error", "if-no-files-found: warn"),
-            ("portable GNAT14", "python3 scripts/check-task093-helper-demand.py --family portable --compiler 14", "echo removed"),
+            ("portable GNAT14", "python3 scripts/perf009-ci.py --family portable --compiler 14", "echo removed"),
             ("numeric corpus", "--numeric-corpus", ""),
             ("environment", "--environment", ""),
             ("mixed", "python3 scripts/check-task093-mixed.py", "echo removed"),

@@ -117,7 +117,17 @@ for target, block in inherited:
         markers.append(f"test {test} ... {marker}")
     counts = re.findall(r"test result: ok\\\. (\d+) passed", block)
     assert counts, target
-    summaries = [f"test result: ok. {count} passed; 0 failed" for count in counts]
+    summaries = [f"test result: ok. {count} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s" for count in counts]
+    if target == "uci_structured_ascii":
+        # Independent current suite inventory: deriving the expected count
+        # solely from the workflow would bless the obsolete two-test gate.
+        source = (repo / "crates/cli/tests/uci_structured_ascii.rs").read_text()
+        assert re.findall(r"#\[test\]\s+fn (\w+)", source) == [
+            "task059_real_uci_inventory_and_coverage",
+            "task059_real_uci_message_impact",
+            "cpp_oms_006_real_uci_cpp_codec_readiness",
+        ]
+        assert counts == ["3"], "structured ASCII must execute all three tests"
     output = "\n".join(markers + summaries)
     registration = "task064_real_uci_generated_support_binding: test"
     task064 = "name=task064_real_uci_generated_support_binding" in block
@@ -127,6 +137,13 @@ for target, block in inherited:
     check(f"{target}: failure with every success marker", block, 43, "DEEP_DIAGNOSTIC", output, 43)
     check(f"{target}: missing markers", block, 1, "missing evidence", "missing evidence")
     check(f"{target}: complete success", block, 0, "DEEP_DIAGNOSTIC", output)
+    if target == "uci_structured_ascii":
+        for before, after in [("3 passed", "2 passed"), ("3 passed", "0 passed"),
+                              ("3 passed", "4 passed"), ("0 failed", "1 failed"),
+                              ("0 ignored", "1 ignored"), ("0 filtered out", "1 filtered out")]:
+            check(f"Task059 rejects {after}", block, 1, "DEEP_DIAGNOSTIC", output.replace(before, after))
+        for marker in markers:
+            check(f"Task059 missing {marker}", block, 1, "DEEP_DIAGNOSTIC", output.replace(marker, ""))
     if task064:
         for phase in ["listing", "execution"]:
             check(f"Task064 {phase} failure with every success marker", block, 47,
