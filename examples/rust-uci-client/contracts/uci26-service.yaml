@@ -1,4 +1,4 @@
-# Authentic UCI 2.6 four-message service; all exchanges share one LA-CAL session.
+# Authentic UCI 2.6 service; FileMetadata is application-opt-in on one session.
 contract_version: "0.1"
 service:
   name: rust-uci-client
@@ -90,5 +90,26 @@ functions:
         mandate: mandatory
         message: DLZ
         topic: task098-dlz
+        timing:
+          kind: asynchronous
+  - id: file_metadata
+    name: FileMetadata
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: FileMetadata
+        topic: file.metadata
+        timing:
+          kind: asynchronous
+      - id: publish
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: FileMetadata
+        topic: file.metadata
         timing:
           kind: asynchronous

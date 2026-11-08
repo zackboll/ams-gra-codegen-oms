@@ -14,6 +14,8 @@ Options:
   --publish-rdma FILE       OMS JSON RDMA_InitializeSetup payload BODY
   --publish-survivability FILE  OMS JSON SurvivabilityRiskLevel payload BODY
   --publish-dlz FILE        OMS JSON DLZ payload BODY
+  --enable-file-metadata    Opt in to the fifth typed subscription
+  --publish-file-metadata FILE  OMS JSON FileMetadata BODY (requires opt-in)
   --help                    Print this usage without connecting
 
 Build with AMS_GRA_UCI_ROOT and AMS_GRA_UCI_RELEASE=2.5 or 2.6.
@@ -32,6 +34,8 @@ pub struct Options {
     pub rdma: Option<PathBuf>,
     pub survivability: Option<PathBuf>,
     pub dlz: Option<PathBuf>,
+    pub enable_file_metadata: bool,
+    pub file_metadata: Option<PathBuf>,
 }
 
 impl Options {
@@ -50,6 +54,8 @@ impl Options {
             rdma: None,
             survivability: None,
             dlz: None,
+            enable_file_metadata: false,
+            file_metadata: None,
         };
         let mut seen = BTreeSet::new();
         let mut args = args.into_iter();
@@ -65,11 +71,17 @@ impl Options {
                     | "--publish-rdma"
                     | "--publish-survivability"
                     | "--publish-dlz"
+                    | "--enable-file-metadata"
+                    | "--publish-file-metadata"
             ) {
                 return Err(format!("unknown argument {flag:?}; use --help"));
             }
             if !seen.insert(flag.clone()) {
                 return Err(format!("duplicate argument {flag}"));
+            }
+            if flag == "--enable-file-metadata" {
+                options.enable_file_metadata = true;
+                continue;
             }
             let value = args
                 .next()
@@ -82,6 +94,7 @@ impl Options {
                 "--publish-rdma" => options.rdma = Some(value.into()),
                 "--publish-survivability" => options.survivability = Some(value.into()),
                 "--publish-dlz" => options.dlz = Some(value.into()),
+                "--publish-file-metadata" => options.file_metadata = Some(value.into()),
                 "--reconnect-attempts" => {
                     options.reconnect_attempts = value
                         .parse::<u8>()
@@ -107,6 +120,9 @@ impl Options {
                 }
                 _ => unreachable!("known flag"),
             }
+        }
+        if options.file_metadata.is_some() && !options.enable_file_metadata {
+            return Err("--publish-file-metadata requires --enable-file-metadata".into());
         }
         let authority = options
             .url
@@ -277,6 +293,42 @@ mod tests {
                 assert!(parse(&[flag, value]).is_err());
             }
             assert!(parse(&[flag, "1", flag, "1"]).is_err());
+        }
+    }
+
+    #[test]
+    fn file_metadata_is_explicit_and_value_less() {
+        assert!(!parse(&[]).unwrap().unwrap().enable_file_metadata);
+        assert!(
+            parse(&["--enable-file-metadata"])
+                .unwrap()
+                .unwrap()
+                .enable_file_metadata
+        );
+        let options = parse(&[
+            "--publish-file-metadata",
+            "body.json",
+            "--enable-file-metadata",
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(options.file_metadata, Some(PathBuf::from("body.json")));
+        for args in [
+            vec!["--publish-file-metadata", "body.json"],
+            vec!["--enable-file-metadata", "true"],
+            vec!["--enable-file-metadata", "--enable-file-metadata"],
+            vec!["--enable-file-metadata", "--publish-file-metadata"],
+            vec!["--enable-file-metadata", "--publish-file-metadata", ""],
+            vec![
+                "--enable-file-metadata",
+                "--publish-file-metadata",
+                "a",
+                "--publish-file-metadata",
+                "b",
+            ],
+            vec!["--enable-file-metadata=yes"],
+        ] {
+            assert!(parse(&args).is_err(), "{args:?}");
         }
     }
 
