@@ -88,7 +88,9 @@ def environment(directory, real_alr, seed=None):
                OMP_NUM_THREADS="1", MAKEFLAGS="-j1", TMPDIR=str(directory / "tmp"))
     Path(env["TMPDIR"]).mkdir()
     for key, value in (("cache.dir", str(cache)), ("toolchain.dir", str(cache / "toolchains")),
-                       ("index.auto_update", "0"), ("dependencies.shared", "false")):
+                       ("index.auto_update", "0"), ("dependencies.shared", "false"),
+                       ("origins.archive.download_cmd",
+                        f'python3 {ROOT / "scripts/pinned_download.py"} ${{URL}} ${{DEST}}')):
         subprocess.run([real_alr, "--settings=" + str(settings), "-n", "settings", "--global",
                         "--set", key, value], env=env, cwd=directory, check=True)
     bindir = directory / "bin"

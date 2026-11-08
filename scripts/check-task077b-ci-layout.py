@@ -14,6 +14,8 @@ from collections import Counter
 from pathlib import Path
 
 # Normalized run bodies at cf132afc4d4cd45d0511912f5f1d3c18066357ce.
+# CI-MAIN-002 changes only Task059 to the complete three-test, zero-failure/
+# ignored/filtered result. Independent inventory/mutation tests remain mandatory.
 GATES = [('Named TimeZulu pinned inventory and impact (Task 061)',
   'real-uci',
   '3833ff7d67852e9da3e4061a2d91b271f00cd7ec4cef87d2f3c2f75ae673570d'),
@@ -61,7 +63,7 @@ GATES = [('Named TimeZulu pinned inventory and impact (Task 061)',
   'b39b1a9bb129a3e0cb32999b673e6159c79df5d4695d5bd0131dba28e716e966'),
  ('Real UCI structured ASCII evidence (Task 059, must execute)',
   'real-uci-regressions-ascii',
-  'ded6e2dbd4cfee35b9a2ca0d651dd0c4580cce3d441470c3a86fec092e4e5231'),
+  'd6ca5f8d93a5ad396c515ee00f4883c8a2649573f31cf5da2ecde2aace9d9625'),
  ('Real UCI alternating ASCII evidence (Task 060, must execute)',
   'real-uci-regressions-alternating',
   '808d7473c6591a958a71f74206b18082ee104ff025a0f260d6f494786be0751d')]

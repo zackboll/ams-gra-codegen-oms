@@ -71,7 +71,9 @@ class DeepPack(unittest.TestCase):
                     self.assertEqual(change['current_sha256'], digest)
                     self.assertTrue(change['review'])
                 else:
-                    self.assertEqual(digest, previous['qualification_sha256'][path])
+                    retained = report['retained_pack_changes'].get(path)
+                    self.assertEqual(digest, retained['current_sha256'] if retained
+                                     else previous['qualification_sha256'][path])
                 if hashlib.sha256(current_main).hexdigest() != digest:
                     self.assertEqual(report['retained_pack_changes'][path]['current_sha256'], digest)
         for key in ('origin_commit', 'origin_tree', 'packs', 'suites'):
@@ -89,7 +91,24 @@ class DeepPack(unittest.TestCase):
         for name, body in original.items():
             if name not in suites:
                 with self.subTest(job=name):
+                    # CI-MAIN-002: permit only these exact reviewed corrections;
+                    # all other bytes in every original job remain frozen.
+                    if name in ('ada-repeated-choice-real-uci', 'ada-hexbinary-real'):
+                        old = ('curl --fail --location --retry 3 --output alire.zip \\\n'
+                               '            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip')
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, 'python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" alire alire.zip')
+                    if name == 'real-uci-regressions-ascii':
+                        old = "grep -qE '^test result: ok\\. 2 passed' <<<\"$output\""
+                        new = "grep -qE '^test result: ok\\. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in [0-9.]+s$' <<<\"$output\""
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, new)
                     self.assertEqual(current[name], body)
+
+    def test_transport_helper_is_source_bound(self):
+        self.assertEqual(set(run.INVENTORY['infrastructure_sha256']), {'scripts/pinned_download.py'})
+        for path, digest in run.INVENTORY['infrastructure_sha256'].items():
+            self.assertEqual(run.sha(run.ROOT / path), digest)
 
     def test_task108_dependencies_and_packed_compilation_are_preserved(self):
         from workflow_text import blocks

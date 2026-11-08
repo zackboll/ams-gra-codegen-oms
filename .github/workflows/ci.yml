@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" alire /tmp/alire.zip
           echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
           unzip -q /tmp/alire.zip -d /opt/alire
           test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
@@ -168,16 +168,18 @@ jobs:
           python3 scripts/test-task060-ci-wrappers.py
           python3 scripts/test-task061-ci-wrappers.py
           python3 scripts/test-task093-compiler-placement.py
+          python3 -m unittest discover -s scripts -p 'test_pinned_download.py'
           git diff --check
       - name: Actionlint (pinned)
         env:
           ACTIONLINT_VERSION: 1.7.12
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --output "$RUNNER_TEMP/actionlint.tar.gz" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" actionlint "$RUNNER_TEMP/actionlint.tar.gz"
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict
           mkdir -p "$RUNNER_TEMP/workflow-tools"
           tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/workflow-tools" actionlint
+          python3 scripts/pinned_download.py --verify-version actionlint actionlint "$RUNNER_TEMP/workflow-tools/actionlint"
           ACTIONLINT="$RUNNER_TEMP/workflow-tools/actionlint" bash scripts/check-ci-actionlint.sh
 
   deep-qualification:
@@ -233,7 +235,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" alire /tmp/alire.zip
           echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
           unzip -q /tmp/alire.zip -d /opt/alire
           test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
@@ -354,7 +356,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" alire /tmp/alire.zip
           echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
           unzip -q /tmp/alire.zip -d /opt/alire
           test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
@@ -461,7 +463,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" alire /tmp/alire.zip
           echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
           unzip -q /tmp/alire.zip -d /opt/alire
           test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
@@ -621,7 +623,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          python3 "$GITHUB_WORKSPACE/scripts/pinned_download.py" alire /tmp/alire.zip
           echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
           unzip -q /tmp/alire.zip -d /opt/alire
           test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
