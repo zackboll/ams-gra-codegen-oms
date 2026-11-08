@@ -33,6 +33,57 @@ class DeepPack(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(run.sha(run.ROOT / path), digest)
 
+    def test_reconciled_inputs_preserve_historical_source_identity(self):
+        import hashlib
+        report = json.loads((run.ROOT / run.INVENTORY['source_reconciliation']).read_text())
+        historical = report['historical_source']
+        path = historical['inventory']
+        raw = (run.ROOT / path).read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), historical['inventory_sha256'])
+        self.assertEqual(raw, subprocess.check_output([
+            'git', 'show', historical['sha'] + ':scripts/ada_deep_pack/inventory.json'], cwd=run.ROOT))
+        previous = json.loads(raw)
+        self.assertEqual(report['qualification_sha256'], run.INVENTORY['qualification_sha256'])
+        self.assertEqual(len(previous['qualification_sha256']), 330)
+        self.assertEqual(report['reviewed_inputs'], 330)
+        self.assertEqual(report['unchanged_inputs'], 310)
+        self.assertEqual(len(report['main_changes']), 20)
+        main = report['incorporated_main']['sha']
+        for path, digest in run.INVENTORY['qualification_sha256'].items():
+            with self.subTest(path=path):
+                original = subprocess.check_output([
+                    'git', 'show', previous['origin_commit'] + ':' + path], cwd=run.ROOT)
+                current_main = subprocess.check_output(['git', 'show', main + ':' + path], cwd=run.ROOT)
+                self.assertEqual(path in report['main_changes'], original != current_main)
+                if path in report['main_changes']:
+                    change = report['main_changes'][path]
+                    self.assertEqual(change['previous_sha256'], previous['qualification_sha256'][path])
+                    self.assertEqual(change['main_sha256'], hashlib.sha256(current_main).hexdigest())
+                    self.assertEqual(change['current_sha256'], digest)
+                    self.assertTrue(change['review'])
+                else:
+                    self.assertEqual(digest, previous['qualification_sha256'][path])
+                if hashlib.sha256(current_main).hexdigest() != digest:
+                    self.assertEqual(report['retained_pack_changes'][path]['current_sha256'], digest)
+        for key in ('origin_commit', 'origin_tree', 'packs', 'suites'):
+            self.assertEqual(run.INVENTORY[key], previous[key])
+
+    def test_task108_dependencies_and_packed_compilation_are_preserved(self):
+        from workflow_text import blocks
+        jobs = blocks((run.ROOT / '.github/workflows/deep-ci.yml').read_text())[1]
+        for pack in ('a', 'b'):
+            self.assertIn('gnat gnat-14 libssl-dev', jobs['ada-deep-pack-' + pack])
+        for task in range(100, 107):
+            text = (run.ROOT / f'scripts/task{task}/qualify.py').read_text()
+            self.assertIn('827b0c17dd964e935f8e88912ce0611ee92b6f16', text)
+            self.assertIn('https://github.com/zackboll/aht.git', text)
+            self.assertIn('GPR_PROJECT_PATH', text)
+            self.assertNotIn('664d5ddeb568626b2f9ff66054c7091894b3b8d4', text)
+        from ada_deep_pack.alr import arguments
+        with patch.dict(os.environ, ADA_DEEP_REAL_ALR='/verified/alr'):
+            self.assertEqual(arguments(['-n', 'build', '--', '-p']),
+                             ['/verified/alr', '-n', 'build', '--', '-j1', '-p'])
+
     def test_original_command_and_environment_inventory(self):
         from workflow_text import blocks
         original = blocks(subprocess.check_output([
