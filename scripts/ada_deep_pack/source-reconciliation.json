@@ -8,8 +8,8 @@
     "policy": "Historical run receipts retain their original source/tree; they are not evidence for the merged source."
   },
   "incorporated_main": {
-    "sha": "1c48bcbff22535ef92b870d7a12ef6be7fdbf90b",
-    "tree": "7059845473ad84876760a38995c838341a04bd92",
+    "sha": "9528fd852be74beddcebe00b9d52af8123a2e9a0",
+    "tree": "15290fb3ba314612d7ed4420231448c47d4f6ba5",
     "pull_requests": [
       183,
       186,
@@ -17,7 +17,9 @@
       176,
       178,
       182,
-      188
+      188,
+      189,
+      190
     ]
   },
   "reviewed_inputs": 330,
@@ -658,6 +660,72 @@
       ],
       "qualification_inputs_changed": 0,
       "review": "Preserve merged PR176 Python network-address implementation and successor qualification, PR178/182 C++ bounded/structured-ASCII codec and smoke integration, and PR188 authentic Ada WSS qualification unchanged. Shared codegen additions are C++ string-profile admission and tests; production Ada and all 330 qualification-input bytes are unchanged. The shared CLI is nevertheless rebuilt and all original packed compiler campaigns rerun for this merged identity."
+    },
+    {
+      "previous_main": {
+        "sha": "1c48bcbff22535ef92b870d7a12ef6be7fdbf90b",
+        "tree": "7059845473ad84876760a38995c838341a04bd92",
+        "pull_requests": [
+          183,
+          186,
+          187,
+          176,
+          178,
+          182,
+          188
+        ]
+      },
+      "main": {
+        "sha": "9528fd852be74beddcebe00b9d52af8123a2e9a0",
+        "tree": "15290fb3ba314612d7ed4420231448c47d4f6ba5",
+        "pull_requests": [
+          183,
+          186,
+          187,
+          176,
+          178,
+          182,
+          188,
+          189,
+          190
+        ]
+      },
+      "changed_files": [
+        "Cargo.lock",
+        "crates/runtime-rust/Cargo.toml",
+        "crates/runtime-rust/src/lib.rs",
+        "docs/evidence/task110/accept14-mbedtls.json",
+        "docs/evidence/task110/accept14-openssl.json",
+        "docs/evidence/task110/accept16-mbedtls.json",
+        "docs/evidence/task110/accept16-openssl.json",
+        "docs/evidence/task110/manifest.json",
+        "docs/evidence/task110/regression25.json",
+        "docs/evidence/task110/safety16-mbedtls-r2.json",
+        "docs/evidence/task110/safety16-openssl.json",
+        "docs/task-110-ada-uci26-wss.md",
+        "examples/rust-uci-client/Cargo.lock",
+        "examples/rust-uci-client/Cargo.toml",
+        "examples/rust-uci-client/README.md",
+        "examples/rust-uci-client/src/cli.rs",
+        "examples/rust-uci-client/src/session/deadline_tests.rs",
+        "examples/rust-uci-client/tests/real_sleet.rs",
+        "examples/rust-uci-client/tests/support/tls_endpoint.py",
+        "examples/rust-uci-client/tests/support/wss.rs",
+        "scripts/pr_smoke.py",
+        "scripts/run-real-sleet-test.sh",
+        "scripts/task109/relay.py",
+        "scripts/task110/admission.py",
+        "scripts/task110/cases.py",
+        "scripts/task110/qualify.py",
+        "scripts/task110/sleet.py",
+        "scripts/task110/test_qualification.py",
+        "scripts/task110/verify.py",
+        "scripts/test_pr_smoke.py",
+        "tests/ada-real-uci-multimessage26/multimessage_consumer.adb",
+        "tests/fixtures/task110/uci26-service.yaml"
+      ],
+      "qualification_inputs_changed": 0,
+      "review": "Preserve PR189 authentic UCI2.6 multi-message WSS qualification, release-parameterized Task109 relay with identical 2.5 defaults, and Ada smoke routing/tests. Preserve PR190 Rust verified-WSS runtime, examples and locked TLS dependencies unchanged. None of the 330 original Ada campaign inputs changes. Rebuild the generator with the merged lockfile, rerun the complete original pack campaign, and require exact-new-head smoke including current main routing."
     }
   ]
 }
