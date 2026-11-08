@@ -1,0 +1,1134 @@
+{
+  "info": {
+    "generated-on": "2026-11-03 01:41:02",
+    "version": "26.0.0 (2026-04-15-gpr2) (x86_64-pc-linux-gnu)"
+  },
+  "messages": {
+    "configuration": [
+    ],
+    "tree": [
+    ]
+  },
+  "projects": [
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "."
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Library_Kind",
+          "value": "static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Standalone",
+          "value": "no"
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "gnatcoll_core_constants"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "."
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/config/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/gnatcoll_core.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/config/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/config/gnatcoll_core_constants.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/config/gnatcoll_core_constants.gpr",
+        "kind": "abstract",
+        "name": "GNATCOLL_Core_Constants",
+        "qualifier": "abstract",
+        "simple-name": "gnatcoll_core_constants.gpr"
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "."
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Library_Kind",
+          "value": "static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Standalone",
+          "value": "no"
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "gnatcoll_minimal_constants"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "."
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/config/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/gnatcoll_minimal.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/config/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/config/gnatcoll_minimal_constants.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/config/gnatcoll_minimal_constants.gpr",
+        "kind": "abstract",
+        "name": "GNATCOLL_Minimal_Constants",
+        "qualifier": "abstract",
+        "simple-name": "gnatcoll_minimal_constants.gpr"
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj/gnatcoll_minimal/static"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada",
+            "C"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Library_Ali_Dir",
+          "value": "lib/gnatcoll_core/static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Dir",
+          "value": "lib/gnatcoll_core/static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Kind",
+          "value": "static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Name",
+          "value": "gnatcoll_minimal"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Standalone",
+          "value": "no"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Version",
+          "value": "libgnatcoll_minimal.so.26.0.0"
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "gnatcoll_minimal"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj/gnatcoll_minimal/static"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "src"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/gnatcoll_core.gpr"
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/config/gnatcoll_minimal_constants.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/gnatcoll_minimal.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/gnatcoll_minimal.gpr",
+        "kind": "library",
+        "library-ali-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/lib/gnatcoll_core/static/",
+        "library-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/lib/gnatcoll_core/static/",
+        "library-file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/lib/gnatcoll_core/static/libgnatcoll_minimal.a",
+        "library-name": "gnatcoll_minimal",
+        "name": "GNATCOLL_Minimal",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/obj/gnatcoll_minimal/static/",
+        "qualifier": "library",
+        "simple-name": "gnatcoll_minimal.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/src"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj/gnatcoll_core/static"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada",
+            "C"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Library_Ali_Dir",
+          "value": "lib/gnatcoll_core/static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Dir",
+          "value": "lib/gnatcoll_core/static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Kind",
+          "value": "static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Name",
+          "value": "gnatcoll_core"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Standalone",
+          "value": "no"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Version",
+          "value": "libgnatcoll_core.so.26.0.0"
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "gnatcoll_core"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj/gnatcoll_core/static"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "src",
+            "src/os",
+            "src/paragraph_filling",
+            "src/hash",
+            "src/hash/blake3",
+            "src/hash/xxhash",
+            "src/os/unix"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/ams_gra_oms_json.gpr"
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/config/gnatcoll_core_constants.gpr",
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/gnatcoll_minimal.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/gnatcoll_core.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/gnatcoll_core.gpr",
+        "kind": "library",
+        "library-ali-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/lib/gnatcoll_core/static/",
+        "library-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/lib/gnatcoll_core/static/",
+        "library-file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/lib/gnatcoll_core/static/libgnatcoll_core.a",
+        "library-name": "gnatcoll_core",
+        "name": "GNATCOLL_Core",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/obj/gnatcoll_core/static/",
+        "qualifier": "library",
+        "simple-name": "gnatcoll_core.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/hash",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/hash/blake3",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/hash/xxhash",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/os",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/os/unix",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/paragraph_filling"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "ams_gra_oms_json"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "src"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_runtime.gpr"
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/gnatcoll_core.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/ams_gra_oms_json.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/ams_gra_oms_json.gpr",
+        "kind": "standard",
+        "name": "AMS_GRA_OMS_JSON",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/obj/",
+        "qualifier": "standard",
+        "simple-name": "ams_gra_oms_json.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/src"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "oms_lacal_runtime"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "src"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_websocket.gpr"
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/ams_gra_oms_json.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_runtime.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_runtime.gpr",
+        "kind": "standard",
+        "name": "OMS_LACAL_Runtime",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/obj/",
+        "qualifier": "standard",
+        "simple-name": "oms_lacal_runtime.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/src"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj/debug-openssl"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada",
+            "C"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Library_Ali_Dir",
+          "value": "lib/debug-openssl"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Dir",
+          "value": "lib/debug-openssl"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Kind",
+          "value": "static"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Name",
+          "value": "aht"
+        },
+        {
+          "kind": "single",
+          "name": "Library_Standalone",
+          "value": "no"
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "aht"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj/debug-openssl"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "src",
+            "csrc/dns",
+            "src/tls/openssl",
+            "csrc/openssl",
+            "src/os/posix"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_websocket_dependencies.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/aht.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/aht/aht.gpr",
+        "kind": "library",
+        "library-ali-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/lib/debug-openssl/",
+        "library-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/lib/debug-openssl/",
+        "library-file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/lib/debug-openssl/libaht.a",
+        "library-name": "aht",
+        "name": "Aht",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/obj/debug-openssl/",
+        "qualifier": "library",
+        "simple-name": "aht.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/csrc/dns",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/csrc/openssl",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/src",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/src/os/posix",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/src/tls/openssl"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj-websocket-dependencies"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "oms_websocket_dependencies"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj-websocket-dependencies"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "/home/zboll/task108r1-scratch/acceptance-16-openssl/codec/src"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Source_Files",
+          "values": [
+            "websocket.ads",
+            "websocket-handshake.ads",
+            "websocket-handshake.adb",
+            "websocket-base64.ads",
+            "websocket-base64.adb"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_websocket.gpr"
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/aht/aht.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_websocket_dependencies.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_websocket_dependencies.gpr",
+        "kind": "standard",
+        "name": "OMS_WebSocket_Dependencies",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/obj-websocket-dependencies/",
+        "qualifier": "standard",
+        "simple-name": "oms_websocket_dependencies.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/codec/src"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "obj-websocket"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "oms_lacal_websocket"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj-websocket"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "websocket"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imported-by": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/consumer.gpr"
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_runtime.gpr",
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_websocket_dependencies.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_websocket.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_websocket.gpr",
+        "kind": "standard",
+        "name": "OMS_LACAL_WebSocket",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/obj-websocket/",
+        "qualifier": "standard",
+        "simple-name": "oms_lacal_websocket.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/websocket"
+        ]
+      }
+    },
+    {
+      "attributes": [
+        {
+          "kind": "single",
+          "name": "Archive_Prefix",
+          "value": "lib"
+        },
+        {
+          "kind": "single",
+          "name": "Exec_Dir",
+          "value": "bin"
+        },
+        {
+          "kind": "single",
+          "name": "Externally_Built",
+          "value": "false"
+        },
+        {
+          "index": "Asm_Cpp",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "Asm"
+          ]
+        },
+        {
+          "index": "C++",
+          "kind": "list",
+          "name": "Inherit_Source_Path",
+          "values": [
+            "C"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Languages",
+          "values": [
+            "Ada"
+          ]
+        },
+        {
+          "kind": "list",
+          "name": "Main",
+          "values": [
+            "aht_probe.adb",
+            "wss_probe.adb",
+            "transport_probe.adb",
+            "generated_consumer.adb"
+          ]
+        },
+        {
+          "kind": "single",
+          "name": "Name",
+          "value": "consumer"
+        },
+        {
+          "kind": "single",
+          "name": "Object_Dir",
+          "value": "obj"
+        },
+        {
+          "kind": "single",
+          "name": "Project_Dir",
+          "value": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/"
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Runtime_Dir",
+          "value": "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/"
+        },
+        {
+          "kind": "list",
+          "name": "Source_Dirs",
+          "values": [
+            "generated",
+            "test"
+          ]
+        },
+        {
+          "index": "Ada",
+          "kind": "single",
+          "name": "Toolchain_Version",
+          "value": "GNAT 16.1"
+        }
+      ],
+      "imports": [
+        "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/oms_lacal_websocket.gpr"
+      ],
+      "project": {
+        "directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/",
+        "file-name": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/consumer.gpr",
+        "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/consumer.gpr",
+        "kind": "standard",
+        "name": "Consumer",
+        "object-directory": "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/obj/",
+        "qualifier": "standard",
+        "simple-name": "consumer.gpr",
+        "source-directories": [
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/generated",
+          "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/test"
+        ]
+      }
+    }
+  ],
+  "tree": {
+    "object-search-paths": [
+      "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/adalib/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/obj/debug-openssl/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/obj/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/obj-websocket-dependencies/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/obj-websocket/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/obj/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/obj/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/obj/gnatcoll_core/static/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/obj/gnatcoll_minimal/static/"
+    ],
+    "project-search-paths": [
+      "/home/zboll/git/ams-gra-codegen-oms/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/",
+      "/home/zboll/task106-scratch/setup16/consumer/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/",
+      "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/x86_64-linux/share/gpr/",
+      "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/x86_64-linux/lib/gnat/",
+      "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/share/gpr/",
+      "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gnat/"
+    ],
+    "root-project": {
+      "id": "</home/zboll/task108r1-scratch/acceptance-16-openssl/build/consumer.gpr",
+      "name": "Consumer"
+    },
+    "source-search-paths": [
+      "/home/zboll/task106-scratch/setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/lib/gcc/x86_64-pc-linux-gnu/16.1.0/adainclude/",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/csrc/dns",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/csrc/openssl",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/src",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/src/os/posix",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/aht/src/tls/openssl",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-json-support/src",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/src",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/ada/oms-lacal-runtime/websocket",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/generated",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/build/test",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/codec/src",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/hash",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/hash/blake3",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/hash/xxhash",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/os",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/os/unix",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_26.0.0_cc5dd0a1/core/src/paragraph_filling",
+      "/home/zboll/task108r1-scratch/acceptance-16-openssl/provider/gnatcoll_minimal_26.0.0_cc5dd0a1/minimal/src"
+    ],
+    "stats": {
+      "project-count": 10
+    }
+  }
+}
