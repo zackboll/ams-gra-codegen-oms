@@ -1,0 +1,138 @@
+{
+  "evidence_root": "/home/zboll/task110-evidence",
+  "starting_head": "1c48bcbff22535ef92b870d7a12ef6be7fdbf90b",
+  "starting_tree": "7059845473ad84876760a38995c838341a04bd92",
+  "tested_head": "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+  "tested_tree": "1ded5a7e02472ee96e0eabd4741ce0297607334a",
+  "campaigns": {
+    "accept16-openssl": {
+      "source": [
+        "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+        "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+      ],
+      "completed": true,
+      "receipt_sha256": "2211a7cd878bd0c20a460bf9fae8d8475de76fc3756638ee5d086470894b70aa"
+    },
+    "accept16-mbedtls": {
+      "source": [
+        "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+        "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+      ],
+      "completed": true,
+      "receipt_sha256": "599510aa97daba32c59018df749dfd4bc92afc090b97c6e2a844512cce321a44"
+    },
+    "accept14-openssl": {
+      "source": [
+        "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+        "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+      ],
+      "completed": true,
+      "receipt_sha256": "95186092738b9438d67081079a033dd8fe4b47b25cfc1c2f8c9e0be373736aae"
+    },
+    "accept14-mbedtls": {
+      "source": [
+        "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+        "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+      ],
+      "completed": true,
+      "receipt_sha256": "ceac939a89c35d702f1a9bcb291b1584839f7b74f1ea8fb5a84d39ce721838f1"
+    },
+    "regression25": {
+      "source": [
+        "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+        "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+      ],
+      "completed": true,
+      "receipt_sha256": "d777e31277137a0c8a53c168ef507d243a23d26312df03a3075d3e2c42e17a61"
+    },
+    "safety16-openssl": {
+      "source": [
+        "1c48bcbff22535ef92b870d7a12ef6be7fdbf90b",
+        "7059845473ad84876760a38995c838341a04bd92"
+      ],
+      "completed": true,
+      "receipt_sha256": "4369ee65f786327f3bf9a12953307765afe1ebec5c4c39d05fbd7fbf909288ea"
+    },
+    "safety16-mbedtls-r2": {
+      "source": [
+        "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+        "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+      ],
+      "completed": true,
+      "receipt_sha256": "4ccf4e43aa92cc43cc173831711b83ff44a970163074ad5d4033993648fb5fab"
+    }
+  },
+  "validation": {
+    "unit-final.log": {
+      "sha256": "1c479012743a670576a65f1b69cd110b136d56b8cd99db889f031c5bda4980de",
+      "tail": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 12 tests in 0.220s",
+        "",
+        "OK"
+      ]
+    },
+    "selector-final.log": {
+      "sha256": "8ea27af2a7c078d2b3c537522304daa9cde3a4bc7b4f7517706eb56dbd6ea2d4",
+      "tail": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 36 tests in 0.431s",
+        "",
+        "OK"
+      ]
+    },
+    "task109-unit-final.log": {
+      "sha256": "4e6abf9bbb163796587a702c2b18e75c8be331a1bbce49be0906fa193d71beda",
+      "tail": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 5 tests in 0.001s",
+        "",
+        "OK"
+      ]
+    },
+    "inherited-unit-venv.log": {
+      "sha256": "c4ce7622f5f593889136647f9a17822b305ec3b1213d317933553a912353e38a",
+      "tail": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 52 tests in 23.051s",
+        "",
+        "OK (skipped=5)"
+      ]
+    },
+    "generator-build.log": {
+      "sha256": "ae4fe45de447c490fff623a25f68d35dd3d485bae41fca344762fbc6a21be650",
+      "tail": [
+        "   Compiling ams-gra-oms-schema-docs v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-task110/crates/schema-docs)",
+        "   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-task110/crates/backend-python)",
+        "   Compiling ams-gra-oms-backend-ada v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-task110/crates/backend-ada)",
+        "   Compiling ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-task110/crates/cli)",
+        "    Finished `release` profile [optimized] target(s) in 7.23s"
+      ]
+    },
+    "sleet-build.log": {
+      "sha256": "33ca8c6f5ba731feb6d7672534ad02750e9bfb8d6f24fcfcdecd058655c6ac3d",
+      "tail": [
+        "   Compiling tokio-util v0.7.18",
+        "   Compiling hyper-util v0.1.20",
+        "   Compiling sleet-client v0.1.0 (/home/zboll/task110-evidence/deps/sleet/sleet-client)",
+        "   Compiling sleet v0.1.0 (/home/zboll/task110-evidence/deps/sleet/sleet)",
+        "    Finished `release` profile [optimized] target(s) in 27.87s"
+      ]
+    },
+    "route.json": {
+      "sha256": "1303888d609fb4cc1e298ea2fa43472d5ce92acac3b2bc758e95afb1b6338856",
+      "tail": [
+        "{\"ada\": true, \"cpp\": true, \"python\": true, \"rust\": true, \"workflows\": false}"
+      ]
+    }
+  },
+  "development_attempts": {
+    "dev16-openssl": "live PASS, deliberately development=true/completed=false; not acceptance",
+    "safety16-mbedtls": "fixture provisioning failure before compiler execution: copied third_party contents one directory too high; fresh safety16-mbedtls-r2 passed after correcting scratch fixture path",
+    "initial_generation": "foreground inspection timed out while generating last single-family baseline; regenerated it in background; no production failure"
+  }
+}

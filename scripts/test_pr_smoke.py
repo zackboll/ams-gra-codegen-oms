@@ -139,6 +139,18 @@ class Routing(unittest.TestCase):
                                "scripts/test_pr_smoke.py", ".github/workflows/deep-ci.yml"],
                               list(smoke.BACKENDS), workflows=True)
 
+    def test_task110_ada_only_and_boundaries(self):
+        for path in ("scripts/task110/admission.py", "scripts/task110/cases.py",
+                     "scripts/task110/qualify.py", "scripts/task110/sleet.py",
+                     "scripts/task110/verify.py", "scripts/task110/test_qualification.py",
+                     "tests/fixtures/task110/uci26-service.yaml",
+                     "tests/ada-real-uci-multimessage26/multimessage_consumer.adb"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task110_other.py", "scripts/task1100/probe.py",
+                     "scripts/task110-other/probe.py", "tests/fixtures/task1100/probe.yaml"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+        self.assert_execution(["scripts/task110/qualify.py", "scripts/pr_smoke.py"], list(smoke.BACKENDS))
+
     def test_shared_and_dependencies(self):
         for path in ("crates/ir/src/lib.rs", "crates/xsd-frontend/src/lib.rs",
                      "crates/codegen-core/src/lib.rs", "crates/cli/src/main.rs", "Cargo.lock",
