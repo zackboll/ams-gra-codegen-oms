@@ -3,6 +3,7 @@
 //! Model and service API preflight live with the renderers. Readiness exercises
 //! these same renderers; the shared three-language coverage inventory is unchanged.
 
+mod abstract_value;
 mod names;
 mod network_address;
 mod service_api;
@@ -72,7 +73,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
-    if uses_choice(schema) || network_address::uses(schema) || unicode_string::uses(schema) {
+    if uses_checked_carriers(schema) {
         // Choice and checked lexical schemas acquire recursive revalidation. The
         // generated table below uses exact classes and explicit validators;
         // no dataclass introspection or payload-type alternative selection.
@@ -125,10 +126,18 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     {
         output.push_str(include_str!("header_runtime.py"));
     }
-    for declaration in emitted_declarations(&emissions)? {
-        render(&mut output, schema, declaration)?;
+    for emission in &emissions {
+        match emission {
+            TypeEmission::AbstractValue(projection) => {
+                abstract_value::render(&mut output, projection)
+            }
+            TypeEmission::Declaration(declaration) if !declaration.is_abstract => {
+                render(&mut output, schema, declaration)?;
+            }
+            _ => {}
+        }
     }
-    if uses_choice(schema) || network_address::uses(schema) || unicode_string::uses(schema) {
+    if uses_checked_carriers(schema) {
         output.push_str("\n\n_choice_carrier_validators = {\n");
         for declaration in emitted_declarations(&emissions)? {
             if !matches!(declaration.kind, TypeKind::Enumeration { .. }) {
@@ -696,23 +705,50 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     if schema.namespaces.len() != 1 {
         return Err(error("exactly one schema namespace is required"));
     }
-    // The shared classifier includes fields, alternatives, aliases, lists and
-    // message payloads, but never base_type edges. Inspect the original schema:
-    // the planner may elide Task 026 absent-only targets, which Python still
-    // does not support. No known descendant is an implicit concrete default.
-    if let Some(target) = abstract_value_targets(schema).first() {
-        return Err(error(format!(
-            "abstract value representations are unsupported: {}",
-            target.name.local_name
-        )));
+    // Python does not implement absent-only elision. Require a checked shared
+    // projection even for targets the planner can elide; never synthesize an
+    // unknown/default payload for an uninhabited target.
+    for target in abstract_value_targets(schema) {
+        ams_gra_oms_codegen_core::abstract_value_projection_for_ref(
+            schema,
+            &TypeRef::named(target.name.clone()),
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .map_err(error)?;
     }
     let declarations = emitted_declarations(emissions)?;
     names::validate(schema, &declarations)?;
-    let datetime_demand = uses_datetime(schema) || uses_duration(schema) || uses_choice(schema);
+    abstract_value::validate(emissions)?;
+    let datetime_demand =
+        uses_datetime(schema) || uses_duration(schema) || uses_checked_carriers(schema);
     let mut scalar_names = BTreeSet::new();
     let mut available = BTreeSet::new();
     for declaration in declarations {
         let qualified = (|| -> Result<(), CodegenError> {
+            if declaration.is_abstract {
+                let projection = emissions
+                    .iter()
+                    .find_map(|emission| match emission {
+                        TypeEmission::AbstractValue(projection)
+                            if projection.declaration.name == declaration.name =>
+                        {
+                            Some(projection)
+                        }
+                        _ => None,
+                    })
+                    .ok_or_else(|| error("unresolved abstract representation"))?;
+                if projection
+                    .concrete_descendants
+                    .iter()
+                    .any(|descendant| !available.contains(&descendant.name))
+                {
+                    return Err(error(
+                        "abstract payload requires a preceding concrete emitted type",
+                    ));
+                }
+                available.insert(declaration.name.clone());
+                return Ok(());
+            }
             // Primitive base provenance is not structural inheritance. Named
             // restriction ancestry is deferred rather than silently flattened.
             if declaration.kind == TypeKind::Primitive(PrimitiveKind::Duration) {
@@ -892,6 +928,7 @@ fn emitted_declarations<'a>(
             TypeEmission::Declaration(declaration) if !declaration.is_abstract => {
                 declarations.push(*declaration);
             }
+            TypeEmission::AbstractValue(projection) => declarations.push(projection.declaration),
             _ => return Err(error("abstract value representations are unsupported")),
         }
     }
@@ -910,6 +947,13 @@ fn uses_choice(schema: &SchemaIr) -> bool {
         .types
         .iter()
         .any(|declaration| matches!(declaration.kind, TypeKind::Choice { .. }))
+}
+
+fn uses_checked_carriers(schema: &SchemaIr) -> bool {
+    uses_choice(schema)
+        || network_address::uses(schema)
+        || unicode_string::uses(schema)
+        || !abstract_value_targets(schema).is_empty()
 }
 
 fn choice_alternatives<'a>(

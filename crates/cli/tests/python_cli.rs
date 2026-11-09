@@ -144,11 +144,11 @@ fn unsupported_schemas_fail_before_creating_or_changing_any_files() {
                 "unsupported constraints",
             ),
             (
-                "../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd",
+                "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-optional.xsd",
                 if world == "closed-schema" {
-                    "abstract"
+                    "no concrete structural descendants"
                 } else {
-                    "open"
+                    "open-extensions"
                 },
             ),
         ] {
@@ -184,6 +184,84 @@ fn unsupported_schemas_fail_before_creating_or_changing_any_files() {
             fs::remove_dir_all(dest).unwrap();
         }
     }
+}
+
+#[test]
+fn inhabited_abstract_fixture_executes_closed_and_preserves_open_output() {
+    let temp = Temp::new();
+    let schema = fixture("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd");
+    let valid = cli()
+        .arg("validate")
+        .arg("--schema")
+        .arg(&schema)
+        .output()
+        .unwrap();
+    assert!(valid.status.success(), "{valid:?}");
+    let closed = temp.0.join("closed");
+    let generated = generate(
+        &schema,
+        OsStr::new("python"),
+        OsStr::new("closed-schema"),
+        &closed,
+    );
+    assert!(generated.status.success(), "{generated:?}");
+    assert_eq!(fs::read_dir(&closed).unwrap().count(), 1);
+    let source = fs::read_to_string(closed.join("model.py")).unwrap();
+    assert_eq!(source.matches("class Base:").count(), 1);
+    assert_eq!(source.matches("def from_Derived(").count(), 1);
+    assert!(!source.contains("def from_Base("));
+    for optimized in [false, true] {
+        let mut python =
+            Command::new(std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()));
+        python.arg("-I");
+        if optimized {
+            python.arg("-O");
+        }
+        let script = format!(
+            "import sys,py_compile\nsys.path.insert(0,'.')\npy_compile.compile('model.py',doraise=True)\nHOLDER_CHOICE=False\n{}",
+            include_str!("../../backend-python/tests/abstract_reference_runtime.py")
+        );
+        let output = python
+            .args(["-c", &script])
+            .current_dir(&closed)
+            .output()
+            .unwrap();
+        println!(
+            "PY019 original fixture optimized={optimized}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.status.success(), "{output:?}");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 5 tests"));
+    }
+    let open = temp.0.join("open");
+    let diagnostic = "abstract value Base is not closed under open-extensions generation";
+    failed(
+        &generate(
+            &schema,
+            OsStr::new("python"),
+            OsStr::new("open-extensions"),
+            &open,
+        ),
+        1,
+        diagnostic,
+    );
+    assert!(!open.exists());
+    fs::create_dir(&open).unwrap();
+    fs::write(open.join("sentinel"), b"do not change").unwrap();
+    fs::write(open.join("model.py"), b"existing model").unwrap();
+    failed(
+        &generate(
+            &schema,
+            OsStr::new("python"),
+            OsStr::new("open-extensions"),
+            &open,
+        ),
+        1,
+        diagnostic,
+    );
+    assert_eq!(fs::read_dir(&open).unwrap().count(), 2);
+    assert_eq!(fs::read(open.join("sentinel")).unwrap(), b"do not change");
+    assert_eq!(fs::read(open.join("model.py")).unwrap(), b"existing model");
 }
 
 #[test]

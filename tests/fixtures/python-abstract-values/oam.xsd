@@ -1,0 +1,34 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- Synthetic closed-value fixture, not a real UCI service. Declaration
+       order deliberately differs from lexical order. -->
+  <xs:complexType name="Base" abstract="true"><xs:sequence>
+    <xs:element name="Inherited" type="xs:unsignedInt"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Zeta"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+    <xs:element name="Text" type="xs:string"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Middle" abstract="true"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+    <xs:element name="Enabled" type="xs:boolean"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Deep-Leaf"><xs:complexContent><xs:extension base="t:Middle"><xs:sequence>
+    <xs:element name="Count" type="xs:int"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Alpha"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+    <xs:element name="Real" type="xs:double"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Selection"><xs:choice>
+    <xs:element name="Abstract" type="t:Base"/>
+    <xs:element name="Text" type="xs:string"/>
+  </xs:choice></xs:complexType>
+  <xs:complexType name="Payload"><xs:sequence>
+    <xs:element name="Required" type="t:Base"/>
+    <xs:element name="Optional" type="t:Base" minOccurs="0"/>
+    <xs:element name="Repeated" type="t:Base" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Bounded" type="t:Base" minOccurs="1" maxOccurs="3"/>
+    <xs:element name="Nested" type="t:Selection"/>
+    <xs:element name="Concrete" type="t:Zeta"/>
+  </xs:sequence></xs:complexType>
+  <xs:element name="AbstractNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

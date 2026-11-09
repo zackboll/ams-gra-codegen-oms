@@ -1,0 +1,113 @@
+{
+  "disposition": "LOCAL_MANDATORY_VALIDATION_PASSED_PUBLICATION_PENDING",
+  "transport": {
+    "candidate_schema_valid": true,
+    "candidate_is_documented_unsupported_representation": true,
+    "decoder_error": "$.Concrete: unknown or unsupported member '$type'",
+    "broker_ack": "+OK",
+    "decoder_delta": 1,
+    "runtime_event": "CodecFailure",
+    "sid": "sub-1",
+    "typed_deliveries_per_cell": 6,
+    "broker_negatives_per_cell": 6,
+    "runtime_negatives_per_cell": 1,
+    "decoder_negatives_per_cell": 1,
+    "recoveries_per_cell": 8,
+    "unsubscribe_and_cleanup_passed": true
+  },
+  "matrix": {
+    "fast": {
+      "311-normal": {
+        "executed": 43,
+        "passed": 43,
+        "skipped": 0
+      },
+      "311-optimized": {
+        "executed": 43,
+        "passed": 43,
+        "skipped": 0
+      },
+      "313-normal": {
+        "executed": 43,
+        "passed": 43,
+        "skipped": 0
+      },
+      "313-optimized": {
+        "executed": 43,
+        "passed": 43,
+        "skipped": 0
+      }
+    },
+    "uci": {
+      "311-normal": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      },
+      "311-optimized": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      },
+      "313-normal": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      },
+      "313-optimized": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      }
+    },
+    "sleet": {
+      "311-normal": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      },
+      "311-optimized": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      },
+      "313-normal": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      },
+      "313-optimized": {
+        "executed": 12,
+        "passed": 12,
+        "skipped": 0
+      }
+    }
+  },
+  "historical": {
+    "before_ready": 40,
+    "after_ready": 40,
+    "artifacts": 100,
+    "byte_identical": true
+  },
+  "services": {
+    "before_ready": 0,
+    "after_ready": 4,
+    "cells": 16,
+    "primary_closed_ready": true,
+    "secondary_closed_blocker": "AO_PIM_CodeType: unsupported constraints",
+    "open_projection_unchanged": true,
+    "closure_identities_unchanged": true
+  },
+  "regression_counts": {
+    "full_cli_passed": 421,
+    "preexisting_opt_in_cli_ignored": 6,
+    "python_rust_core_passed": 643,
+    "additional_open_world_controls": 2,
+    "evidence_adversaries": 2,
+    "owned_evidence_adversaries": 8,
+    "discovery_adversaries": 4,
+    "pr_smoke_router": 39,
+    "runtime_mock_per_interpreter": 19
+  },
+  "production_unchanged_since_r1": true
+}
