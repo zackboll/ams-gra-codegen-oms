@@ -146,29 +146,99 @@ fn negative_schema_fixtures_return_errors_and_no_artifacts() {
     for path in [
         "tests/fixtures/unsupported-nillable.xsd",
         "tests/fixtures/unsupported-pattern.xsd",
-        "../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd",
         "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-optional.xsd",
     ] {
         rejected(&fixture(path));
     }
-    let schema = fixture("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd");
-    let error = generate(&schema, OPEN).unwrap_err();
-    assert!(error.message.contains("open"), "{error}");
+}
 
-    // A real normalized Choice alternative demanding an abstract value, not
-    // an invalid nested compositor that the frontend rejects first.
-    let mut choice = schema;
-    let TypeKind::Record { fields } = &choice.types[2].kind else {
-        panic!()
-    };
-    choice.types[2].kind = TypeKind::Choice {
-        alternatives: fields.clone(),
-    };
-    for world in [CLOSED, OPEN] {
-        let diagnostic = generate(&choice, world).unwrap_err().message;
-        assert!(diagnostic.contains("abstract"), "{diagnostic}");
+fn open_abstract_rejected_without_artifacts(schema: &SchemaIr) {
+    let temp = Temp::new();
+    for existing in [false, true] {
+        if existing {
+            std::fs::write(temp.0.join("sentinel"), b"unchanged").unwrap();
+            std::fs::write(temp.0.join(MODEL_FILE), b"existing model").unwrap();
+        }
+        let failure = PythonBackend
+            .generate(schema, OPEN)
+            .map(|files| {
+                for file in files {
+                    std::fs::write(temp.0.join(file.relative_path), file.contents).unwrap();
+                }
+            })
+            .unwrap_err();
+        assert!(
+            failure
+                .message
+                .contains("abstract value Base is not closed under open-extensions generation"),
+            "{failure}"
+        );
+        assert_eq!(
+            std::fs::read_dir(&temp.0).unwrap().count(),
+            if existing { 2 } else { 0 }
+        );
+        if existing {
+            assert_eq!(
+                std::fs::read(temp.0.join("sentinel")).unwrap(),
+                b"unchanged"
+            );
+            assert_eq!(
+                std::fs::read(temp.0.join(MODEL_FILE)).unwrap(),
+                b"existing model"
+            );
+        }
     }
-    rejected(&choice);
+}
+
+#[test]
+fn inhabited_abstract_record_and_choice_execute_closed_and_reject_open() {
+    let schema = fixture("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd");
+    for choice in [false, true] {
+        let mut schema = schema.clone();
+        // A normalized Choice: the original required, singular, non-nillable
+        // field is a valid PY-015 alternative, not a nested compositor.
+        if choice {
+            let TypeKind::Record { fields } = &schema.types[2].kind else {
+                panic!()
+            };
+            assert_eq!(fields.len(), 1);
+            assert_eq!(fields[0].cardinality, Cardinality::REQUIRED_ONE);
+            assert!(!fields[0].nillable);
+            schema.types[2].kind = TypeKind::Choice {
+                alternatives: fields.clone(),
+            };
+        }
+        let emissions = ams_gra_oms_codegen_core::plan_type_emissions(&schema, CLOSED).unwrap();
+        let wrappers: Vec<_> = emissions
+            .iter()
+            .filter_map(|emission| match emission {
+                ams_gra_oms_codegen_core::TypeEmission::AbstractValue(projection) => {
+                    Some(projection)
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(wrappers.len(), 1);
+        assert_eq!(wrappers[0].declaration.name.local_name, "Base");
+        assert_eq!(wrappers[0].concrete_descendants.len(), 1);
+        assert_eq!(
+            wrappers[0].concrete_descendants[0].name.local_name,
+            "Derived"
+        );
+        let source = generate(&schema, CLOSED).unwrap();
+        assert_eq!(source.matches("class Base:").count(), 1);
+        assert_eq!(source.matches("def from_Derived(").count(), 1);
+        assert!(!source.contains("def from_Base("));
+        execute(
+            &schema,
+            &format!(
+                "HOLDER_CHOICE = {}\n{}",
+                if choice { "True" } else { "False" },
+                include_str!("abstract_reference_runtime.py")
+            ),
+        );
+        open_abstract_rejected_without_artifacts(&schema);
+    }
 }
 
 #[test]

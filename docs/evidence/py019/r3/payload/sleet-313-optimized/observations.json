@@ -1,0 +1,98 @@
+[
+  {
+    "outcome": "typed delivery",
+    "subtype": "Zeta",
+    "optional": false,
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Repeated\":[{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Abstract\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"}},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}}"
+  },
+  {
+    "outcome": "typed delivery",
+    "subtype": "Zeta",
+    "optional": true,
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Optional\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},\"Repeated\":[{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Abstract\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"}},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}}"
+  },
+  {
+    "outcome": "typed delivery",
+    "subtype": "Deep-Leaf",
+    "optional": false,
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},\"Repeated\":[{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Abstract\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"}},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}}"
+  },
+  {
+    "outcome": "typed delivery",
+    "subtype": "Deep-Leaf",
+    "optional": true,
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},\"Optional\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},\"Repeated\":[{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Abstract\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"}},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}}"
+  },
+  {
+    "outcome": "typed delivery",
+    "subtype": "Alpha",
+    "optional": false,
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"},\"Repeated\":[{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Abstract\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"}},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}}"
+  },
+  {
+    "outcome": "typed delivery",
+    "subtype": "Alpha",
+    "optional": true,
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"},\"Optional\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},\"Repeated\":[{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"},{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Abstract\":{\"Inherited\":2,\"Enabled\":true,\"Count\":-3,\"$type\":\"Deep-Leaf\"}},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}}"
+  },
+  {
+    "input": "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}",
+    "outcome": "generated decoder rejection",
+    "classification": "schema-valid unsupported concrete-position discriminator",
+    "broker_ack": "+OK",
+    "raw_frame": "MSG independent {\"AbstractNotice\":{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}}",
+    "subscription_id": "sub-1",
+    "decoder_delta": 1,
+    "decoder_input": "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}",
+    "category": "CodecError",
+    "path": "$.Concrete",
+    "runtime_event": "CodecFailure"
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "decoder_delta": 0
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": null}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "decoder_delta": 0
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Private\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "decoder_delta": 0
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Middle\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "decoder_delta": 0
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Alpha\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "decoder_delta": 0
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": -1, \"Text\": \"z\", \"$type\": \"Zeta\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "decoder_delta": 0
+  },
+  {
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\":\"Zeta\",\"$type\":\"Zeta\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "runtime envelope rejection",
+    "decoder_delta": 0,
+    "runtime_event": "ProtocolError"
+  },
+  {
+    "outcome": "unsubscribe and callback silence",
+    "decoder_delta": 0,
+    "subscriptions": 0
+  }
+]

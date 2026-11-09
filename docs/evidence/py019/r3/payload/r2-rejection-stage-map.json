@@ -1,0 +1,64 @@
+[
+  {
+    "probe": 1,
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "rejection_reason": "Abstract Base requires explicit concrete selection",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  },
+  {
+    "probe": 2,
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": null}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "rejection_reason": "Non-string $type",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  },
+  {
+    "probe": 3,
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Private\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "rejection_reason": "Unknown concrete type Private",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  },
+  {
+    "probe": 4,
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Middle\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "rejection_reason": "Middle is abstract",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  },
+  {
+    "probe": 5,
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Alpha\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "rejection_reason": "Alpha payload has Zeta Text and lacks Real",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  },
+  {
+    "probe": 6,
+    "input": "{\"Required\": {\"Inherited\": -1, \"Text\": \"z\", \"$type\": \"Zeta\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message",
+    "rejection_reason": "Inherited unsignedInt is negative",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  },
+  {
+    "probe": 7,
+    "input": "{\"Required\": {\"Inherited\": 1, \"Text\": \"z\", \"$type\":\"Zeta\",\"$type\":\"Zeta\"}, \"Repeated\": [{\"Inherited\": 1, \"Text\": \"z\", \"$type\": \"Zeta\"}, {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}, {\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Bounded\": [{\"Inherited\": 3, \"Real\": 1.5, \"$type\": \"Alpha\"}], \"Nested\": {\"Abstract\": {\"Inherited\": 2, \"Enabled\": true, \"Count\": -3, \"$type\": \"Deep-Leaf\"}}, \"Concrete\": {\"Inherited\": 4, \"Text\": \"c\"}}",
+    "outcome": "runtime envelope rejection",
+    "rejection_reason": "Duplicate decoded key: runtime rejects before binding.decode",
+    "generated_decoder_invocations": 0,
+    "evidence": "r2/sleet-311-normal/observations.json"
+  }
+]

@@ -1,0 +1,68 @@
+{
+  "baseline": [
+    "2c560d00f406e378cc15f151e3d18a1e79f5c906",
+    "41ce490665f10272a40cafdc7ac2b8be930f9962"
+  ],
+  "original_task115_head": "6b8bdf080cb5ab678c54902d17e0bce0bb25a989",
+  "original_elapsed": [
+    2.020469750990742,
+    2.0207447269931436
+  ],
+  "original_exit": [
+    1,
+    1
+  ],
+  "integration_base": [
+    "0b5e5f28273c25d9ed72ddd2c151011ad64151c3",
+    "99732ab871ea461fcc11f63b0fd549df64d117a8"
+  ],
+  "integration_change": "Disposable detached worktree combines PR203 application with TASK116 production transport; adds Set_Absolute_Deadline before Open; not pushed to PR203",
+  "corrected_elapsed": [
+    0.35185387000092305,
+    0.3524324479949428
+  ],
+  "corrected_exit": [
+    1,
+    1
+  ],
+  "reproduction_sha256": "9e7d919ba51aeb34c66f97be61c26b7027843cae5f97b969de2b5480b5f751e0",
+  "integration_sha256": "d4033747982812e3e7821839c8eeb20e5852795fb179b92ee1e3b6190365788e",
+  "integration_build_sha256": "991768b7872d5fa8ee4397a5349f38e7ab9a853a8909442fe9c7d183a7537c63",
+  "mutations": [
+    {
+      "mutation": "two-second-overrun",
+      "rejected": true,
+      "reason": "caller deadline exceeded tolerance"
+    },
+    {
+      "mutation": "unexpected-harness-timeout",
+      "rejected": true,
+      "reason": "Ada probe failed"
+    },
+    {
+      "mutation": "missing-stall",
+      "rejected": true,
+      "reason": "operation was not exercised through caller deadline"
+    },
+    {
+      "mutation": "leaked-peer",
+      "rejected": true,
+      "reason": "peer/cleanup failure"
+    },
+    {
+      "mutation": "legacy-shortened",
+      "rejected": true,
+      "reason": "historical two-second setup cap changed"
+    }
+  ],
+  "hosted_implementation": {
+    "conclusion": "success",
+    "headSha": "865bb824db0f84033fffaa5c9fdf40808baa5144",
+    "status": "completed",
+    "url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42554158044"
+  },
+  "discarded_campaigns": [
+    "final16-openssl: short 50ms allocation expired before ClientHello; correctly not PASS",
+    "Initial TASK112 campaign rejected source changes; TASK113/111 rejected dirty source; rerun clean acceptance used instead"
+  ]
+}

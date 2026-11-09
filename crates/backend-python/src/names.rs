@@ -78,7 +78,7 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     .into_iter()
     .map(str::to_owned)
     .collect();
-    if crate::uses_choice(schema) {
+    if crate::uses_checked_carriers(schema) {
         top.insert("staticmethod".to_owned());
         top.insert("value".to_owned());
     }
@@ -97,6 +97,11 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     }
     for declaration in declarations {
         insert(&mut top, &declaration.name.local_name, false)?;
+        // Abstract wrappers contain no inherited Record members. Their factory
+        // names are separately collision-checked against authoritative payloads.
+        if declaration.is_abstract {
+            continue;
+        }
         match &declaration.kind {
             TypeKind::Choice { .. } => {
                 // Factory annotations execute in the class body; reserve both

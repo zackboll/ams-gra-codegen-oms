@@ -1,0 +1,933 @@
+    Blocking waiting for file lock on build directory
+   Compiling ams-gra-oms-codegen-core v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py019/crates/codegen-core)
+   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py019/crates/backend-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.63s
+     Running unittests src/lib.rs (/home/zboll/py019-evidence/target/debug/deps/ams_gra_oms_backend_python-6fad4dc134bc8237)
+
+running 6 tests
+test service_codec::tests::unbounded_runtime_replaces_exactly_one_check ... ok
+test names::tests::python_symbols_and_literals_are_deterministic ... ok
+test service_codec::tests::unbounded_runtime_rejects_missing_or_duplicate_checks ... ok
+test tests::unsupported_primitives_and_facets_fail_closed ... ok
+test tests::float64_bounds_are_shared_classifications_and_exact_bits ... ok
+test tests::backend_identity_and_empty_schema_fail_closed ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/choice.rs (/home/zboll/py019-evidence/target/debug/deps/choice-160edf9ad414fba8)
+
+running 1 test
+test effective_choice_ancestry_and_codec_provenance_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/codecs.rs (/home/zboll/py019-evidence/target/debug/deps/codecs-d23e1d1c52d960a6)
+
+running 2 tests
+test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+     Running tests/datetime.rs (/home/zboll/py019-evidence/target/debug/deps/datetime-02ae71a111ebace0)
+
+running 1 test
+test datetime_ancestry_is_proven_not_flattened ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/duration.rs (/home/zboll/py019-evidence/target/debug/deps/duration-10c0f00dcbbf0196)
+
+running 1 test
+test duration_ancestry_and_aliases_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/header_profiles.rs (/home/zboll/py019-evidence/target/debug/deps/header_profiles-61076505caf59953)
+
+running 1 test
+test normalized_neighbours_and_pattern_alternatives_stay_unsupported ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/hexbinary.rs (/home/zboll/py019-evidence/target/debug/deps/hexbinary-45bf2687bab2eae6)
+
+running 2 tests
+test unsupported_effective_domains_aliases_and_field_facets_fail_closed ... ok
+test unknown_and_base64_provenance_fail_before_codec_artifacts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/models.rs (/home/zboll/py019-evidence/target/debug/deps/models-7d2beea86e4ce052)
+
+running 13 tests
+test golden_output_is_byte_identical_and_world_is_explicit ... ok
+test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+test zero_oms_service_api_is_generated_without_a_model ... ok
+test python_specific_name_collisions_fail_closed ... ok
+test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+test real_track_compiles_imports_and_validates_at_runtime ... ok
+test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+test shared_four_level_fixture_executes_in_authored_field_order ... ok
+test inhabited_abstract_record_and_choice_execute_closed_and_reject_open ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+     Running tests/nato_special_words.rs (/home/zboll/py019-evidence/target/debug/deps/nato_special_words-32c57d6a1c7fc284)
+
+running 2 tests
+test helper_is_absent_without_profile ... ok
+test exact_profile_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/network_addresses.rs (/home/zboll/py019-evidence/target/debug/deps/network_addresses-13d9f88758b5aa83)
+
+running 3 tests
+test no_address_helpers_are_emitted_for_address_free_schemas ... ok
+test profile_ancestry_is_proven_at_every_edge_and_aliases_remain_unsupported ... ok
+test addresses_revalidate_without_choice_and_other_alternating_profiles_stay_unsupported ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/unicode_strings.rs (/home/zboll/py019-evidence/target/debug/deps/unicode_strings-58f1578072dcddcd)
+
+running 2 tests
+test runtime_absent_without_admitted_profiles ... ok
+test exact_facets_ancestry_and_names_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/visible_ascii.rs (/home/zboll/py019-evidence/target/debug/deps/visible_ascii-776d5d3fcd265643)
+
+running 1 test
+test effective_facets_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/whitespace_visible.rs (/home/zboll/py019-evidence/target/debug/deps/whitespace_visible-a2c13d64515a60d5)
+
+running 1 test
+test effective_profile_and_every_named_edge_are_proven ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (/home/zboll/py019-evidence/target/debug/deps/ams_gra_oms_backend_rust-cdbfb519ed85ea96)
+
+running 50 tests
+test tests::converging_inherited_field_names_are_rejected ... ok
+test tests::binary_declaration_with_constraints_remains_unsupported ... ok
+test service_api::tests::string_literals_escape_everything_non_printable ... ok
+test tests::converging_declaration_names_are_rejected ... ok
+test tests::binary_field_with_constraints_remains_unsupported ... ok
+test tests::abstract_types_fail_explicitly ... ok
+test tests::choice_validation_firewalls_and_finite_repetition_are_exercised_by_generation ... ok
+test tests::binary_composes_with_abstract_closed_sum ... ok
+test tests::an_ancestry_only_abstract_does_not_mask_an_unrelated_semantic_failure ... ok
+test tests::inherited_uninhabited_field_is_elided_on_the_concrete_descendant ... ok
+test task060_probes::factored_task060_source_sizes ... ok
+test tests::direct_float_field_constraints_remain_unsupported ... ok
+test tests::future_descendant_reclassifies_uninhabited_target_as_a_closed_sum ... ok
+test tests::length_facets_on_floats_remain_unsupported ... ok
+test tests::lexical_constraints_fail_before_rendering ... ok
+test tests::lowers_abstract_value_references_and_retains_choice_boundary ... ok
+test tests::lowers_unconstrained_binary_direct_field_and_named_declaration ... ok
+test tests::unsupported_construct_fails_explicitly ... ok
+test tests::lowers_unbounded_records_choices_and_constrained_elements ... ok
+test tests::task028_base_only_ancestry_is_world_independent ... ok
+test tests::task026_elided_target_does_not_reserve_its_own_name ... ok
+test tests::task028_zero_descendant_optional_depends_on_world ... ok
+test tests::task028_concrete_only_output_is_byte_identical_across_worlds ... ok
+test tests::lowers_unconstrained_floating_and_rejects_constraints ... ok
+test tests::task028_abstract_value_depends_on_world ... ok
+test tests::task029_two_overlays_order_variants_by_caller_order ... ok
+test tests::lowers_effective_record_fields_and_omits_abstract_ancestor ... ok
+test tests::task029_private_overlay_closes_the_sum_but_not_the_world ... ok
+test tests::uninhabited_optional_field_composes_with_task_024_closed_sum ... ok
+test tests::preserves_order_naming_and_cardinality_semantics ... ok
+test tests::open_world_abstract_value_failure_is_not_masked_by_a_name_collision ... ok
+test tests::unconstrained_float_output_is_unchanged ... ok
+test tests::lowers_choice_as_named_enum_and_accepts_empty_record_ancestry ... ok
+test tests::task028_public_only_repeated_extension_is_unsupported_in_both_worlds ... ok
+test tests::lowers_integral_scalars_and_preserves_direct_ranges ... ok
+test tests::uninhabited_abstract_optional_field_is_elided_without_fake_payload ... ok
+test tests::schema_set_matches_dependency_order_golden ... ok
+test tests::track_matches_golden_and_is_deterministic ... ok
+test tests::temporal_and_constrained_scalars_fail_explicitly ... ok
+test tests::wrong_width_float_bounds_remain_unsupported ... ok
+test tests::reserved_word_field_is_escaped ... ok
+test tests::task028_private_extension_overlay ... ok
+test tests::uninhabited_abstract_required_field_remains_unsupported ... ok
+test task060_probes::recursive_equality_analysis_terminates_and_declines_both_traits ... ok
+test tests::ancestry_only_abstract_support_name_renders_and_compiles ... ok
+test tests::preflight_control_renders_and_compiles ... ok
+test tests::constrained_floats_enforce_bounds_at_runtime ... ok
+test ipv6_address::tests::standalone_ipv6_compiler_corpus_and_lifecycle ... ok
+test task060_probes::standalone_task060_compiler_probe ... ok
+test task060_probes::generated_group_and_carrier_composes_with_production_service_codec ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 56.46s
+
+     Running tests/bounded_ascii.rs (/home/zboll/py019-evidence/target/debug/deps/bounded_ascii-1718a1da5fe10ca3)
+
+running 3 tests
+test bounded_ascii_carriers_are_opaque_validated_values ... ok
+test bounded_ascii_storage_is_private ... ok
+test generated_bounded_ascii_validators_match_the_shared_corpus ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+     Running tests/corpus_loader.rs (/home/zboll/py019-evidence/target/debug/deps/corpus_loader-a38a8139ff59c442)
+
+running 6 tests
+test an_empty_value_is_neither_a_rejection_nor_a_nul ... ok
+test the_empty_field_token_expresses_every_empty_value_situation ... ok
+test the_empty_field_token_is_only_recognized_as_a_whole_field ... ok
+test every_shipped_corpus_still_loads ... ok
+test the_existing_escape_vocabulary_is_unchanged ... ok
+test malformed_corpus_lines_still_panic ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/direct_datetime.rs (/home/zboll/py019-evidence/target/debug/deps/direct_datetime-7fee880de32e2ba7)
+
+running 1 test
+test direct_date_time_and_named_zulu_share_the_compiled_parser ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+     Running tests/duration.rs (/home/zboll/py019-evidence/target/debug/deps/duration-b406137aeb066b17)
+
+running 2 tests
+test duration_carriers_cannot_be_built_outside_the_checked_constructor ... ok
+test named_and_direct_duration_share_one_parser_and_the_corpus ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.55s
+
+     Running tests/equality_closed_sum.rs (/home/zboll/py019-evidence/target/debug/deps/equality_closed_sum-a28a8677013380d4)
+
+running 2 tests
+test absent_only_storage_preserves_equality_in_closed_world ... ok
+test closed_sum_container_traits_follow_concrete_payload_traits ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+
+     Running tests/nato_special_words.rs (/home/zboll/py019-evidence/target/debug/deps/nato_special_words-e1c0fe0947451ae6)
+
+running 3 tests
+test generated_nato_special_words_api_is_an_opaque_validated_carrier ... ok
+test the_private_nato_special_words_storage_cannot_be_reached_from_outside_the_module ... ok
+test generated_nato_special_words_validator_matches_the_shared_corpus ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.85s
+
+     Running tests/service_codec.rs (/home/zboll/py019-evidence/target/debug/deps/service_codec-c86fb5bccd19c2fa)
+
+running 5 tests
+test direct_codec_generation_renders_hex_binary_provenance ... ok
+test direct_codec_generation_fails_closed_on_unqualified_members ... ok
+test direct_codec_generation_fails_closed_on_unknown_binary_provenance ... ok
+test direct_codec_generation_uses_clark_keys_outside_oam ... ok
+test codec_references_the_model_renderer_spellings ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/string_profile.rs (/home/zboll/py019-evidence/target/debug/deps/string_profile-c5f2ed0e860c0d6c)
+
+running 3 tests
+test generated_schema_version_api_is_an_opaque_validated_carrier ... ok
+ok
+test generated_schema_version_validator_matches_the_shared_corpus ... ok
+test the_private_storage_cannot_be_reached_from_outside_the_module ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+     Running tests/structured_ascii.rs (/home/zboll/py019-evidence/target/debug/deps/structured_ascii-0fa6f7fe6f384082)
+
+running 1 test
+test generated_structured_ascii_rust_corpus ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+     Running tests/temporal.rs (/home/zboll/py019-evidence/target/debug/deps/temporal-0f0f9259424078b2)
+
+running 3 tests
+test generated_date_time_api_is_an_opaque_validated_carrier ... ok
+test the_private_storage_cannot_be_reached_from_outside_the_module ... ok
+ok
+test generated_date_time_validator_matches_the_shared_corpus ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s
+
+     Running tests/time_zulu.rs (/home/zboll/py019-evidence/target/debug/deps/time_zulu-805172f6fe038f85)
+
+running 1 test
+test task061_time_corpus_lifecycle_and_storage_compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.07s
+
+     Running tests/uuid.rs (/home/zboll/py019-evidence/target/debug/deps/uuid-fef2c67bd36008e9)
+
+running 3 tests
+test generated_uuid_api_is_an_opaque_validated_carrier ... ok
+test the_private_uuid_storage_cannot_be_reached_from_outside_the_module ... ok
+ok
+test generated_uuid_validator_matches_the_shared_corpus ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/visible_ascii.rs (/home/zboll/py019-evidence/target/debug/deps/visible_ascii-5d17a13069862bb3)
+
+running 3 tests
+test generated_visible_ascii_api_is_an_opaque_validated_carrier ... ok
+test the_private_visible_ascii_storage_cannot_be_reached_from_outside_the_module ... ok
+ok
+test generated_visible_ascii_validator_matches_the_shared_corpus ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+     Running tests/whitespace_visible.rs (/home/zboll/py019-evidence/target/debug/deps/whitespace_visible-2e91806c2addfbde)
+
+running 3 tests
+test generated_whitespace_visible_api_is_an_opaque_validated_carrier ... ok
+test the_private_whitespace_visible_storage_cannot_be_reached_from_outside_the_module ... ok
+ok
+test generated_whitespace_visible_validators_match_the_shared_corpora ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+
+     Running unittests src/lib.rs (/home/zboll/py019-evidence/target/debug/deps/ams_gra_oms_codegen_core-e42109990f034eb2)
+
+running 372 tests
+test abstract_value::tests::all_descendants_unrepresentable_is_not_no_concrete_descendants ... ok
+test abstract_value::tests::unrepresentable_concrete_descendant_fails_closed_instead_of_partial_sum ... ok
+test ada_optional::tests::direct_date_time_uses_the_optional_wrapper_only_without_facets ... ok
+test abstract_value::tests::valid_closed_sums_are_unchanged ... ok
+test ada_optional::tests::named_optionals_keep_task_034_behavior ... ok
+test ada_optional::tests::non_integral_primitives_require_default_constraints ... ok
+test ada_optional::tests::only_optional_one_uses_the_wrapper ... ok
+test abstract_value::tests::genuine_zero_descendant_target_still_reports_no_concrete_descendants ... ok
+test ada_optional::tests::direct_string_never_uses_a_per_field_wrapper ... ok
+test ada_optional::tests::nillable_optionals_stay_unsupported ... ok
+test ada_optional::tests::integral_shapes_task_020_rejects_stay_unsupported ... ok
+test ada_optional::tests::synthesized_builtin_integer_domains_are_supported ... ok
+test abstract_value::tests::optional_field_of_unrepresentable_target_is_not_absent_only_elided ... ok
+test ada_optional::tests::direct_duration_uses_the_optional_wrapper_only_without_facets ... ok
+test abstract_value::tests::transitive_descendancy_uses_declared_base_chain ... ok
+test backend_names::tests::a_leading_digit_cpp_namespace_component_is_rejected ... ok
+test backend_names::tests::a_global_planning_abort_still_checks_unrelated_emitted_names ... ok
+test backend_names::tests::ada_enumeration_literal_collision_marks_the_enumeration_and_the_type ... ok
+test backend_names::tests::a_zero_descendant_elided_target_reserves_no_kind_companion ... ok
+test backend_names::tests::a_non_emitted_abstract_record_reserves_no_sequence_callable ... ok
+test backend_names::tests::a_real_abstract_value_wrapper_still_reserves_its_name ... ok
+test backend_names::tests::ada_enumeration_literal_conflicts_with_a_type_name ... ok
+test backend_names::tests::ada_enumeration_literals_may_overload_each_other ... ok
+test backend_names::tests::ada_helper_collision_marks_the_generating_owner_and_the_declaration ... ok
+test backend_names::tests::ada_helper_versus_helper_marks_both_owners ... ok
+test backend_names::tests::ada_package_component_may_not_be_a_reserved_word ... ok
+test backend_names::tests::ada_kind_companion_collides_with_a_user_declaration ... ok
+test backend_names::tests::an_ada_choice_alternative_named_kind_value_remains_safe ... ok
+test backend_names::tests::an_ada_kind_alternative_marks_the_owning_choice_unsafe ... ok
+test backend_names::tests::an_ada_type_named_create_collides_with_the_generated_float_constructor ... ok
+test backend_names::tests::an_ada_type_named_create_collides_with_the_generated_temporal_constructor ... ok
+test backend_names::tests::ada_helper_emission_tracks_repeated_cardinality_only ... ok
+test backend_names::tests::ada_identity_key_folds_case_and_others_do_not ... ok
+test backend_names::tests::an_ada_type_named_create_or_value_collides_with_the_nato_carrier ... ok
+test backend_names::tests::a_task_024_wrapper_does_not_validate_the_original_record_surface ... ok
+test backend_layout::tests::errors_keep_the_backends_historical_text ... ok
+test backend_names::tests::accepted_identifier_spellings_are_unchanged ... ok
+test backend_names::tests::ada_required_minimum_unbounded_helpers_are_reserved ... ok
+test backend_names::tests::ada_binary_vectors_collides_only_when_instantiated ... ok
+test backend_names::tests::an_ada_choice_alternative_named_kind_collides_with_the_discriminant ... ok
+test ada_optional::tests::time_and_decimal_remain_unsupported ... ok
+test backend_names::tests::a_reserved_member_on_a_non_emitted_base_is_attributed_to_the_descendant ... ok
+test backend_names::tests::a_concrete_declaration_still_reserves_its_support_name ... ok
+test backend_layout::tests::components_are_split_on_every_non_alphanumeric_and_folded ... ok
+test ada_optional::tests::unconstrained_integral_optionals_are_supported ... ok
+test backend_names::tests::ada_direct_temporal_callables_follow_existing_overload_rules ... ok
+test backend_names::tests::an_elided_reserved_word_member_is_not_checked ... ok
+test backend_names::tests::an_elided_optional_field_reserves_no_ada_optional_wrapper_name ... ok
+test backend_names::tests::bounded_shapes_reserve_exactly_the_operations_they_emit ... ok
+test backend_names::tests::an_optional_wrapper_spelling_is_free_in_rust_and_cpp ... ok
+test backend_names::tests::callable_deferral_for_one_field_does_not_disable_checking ... ok
+test backend_names::tests::an_open_world_unrepresentable_optional_field_reserves_no_wrapper ... ok
+test backend_names::tests::an_inherited_unbounded_member_attributes_callables_to_the_descendant ... ok
+test backend_names::tests::an_emitted_sequence_still_collides_with_a_conflicting_type_name ... ok
+test backend_names::tests::an_unconstrained_float_reserves_no_callable_names ... ok
+test backend_names::tests::a_safe_namespace_passes_every_backend ... ok
+test backend_names::tests::a_global_planning_abort_does_not_promote_ancestry_only_abstracts_to_wrappers ... ok
+test backend_names::tests::a_stored_optional_named_field_still_reserves_its_optional_wrapper ... ok
+test backend_names::tests::ada_duration_callables_follow_existing_overload_rules ... ok
+test backend_layout::tests::real_uci_namespace_maps_to_the_established_layout ... ok
+test backend_names::tests::a_leading_digit_top_level_declaration_is_rejected ... ok
+test backend_names::tests::a_leading_digit_variant_is_rejected ... ok
+test backend_names::tests::a_generated_temporal_callable_collision_marks_both_declarations ... ok
+test backend_names::tests::a_generated_float_callable_collision_marks_both_declarations ... ok
+test backend_names::tests::a_failed_emission_plan_yields_no_name_verdict ... ok
+test backend_names::tests::a_leading_digit_member_is_rejected ... ok
+test backend_names::tests::a_non_emitted_abstract_record_reserves_no_ada_optional_wrapper_name ... ok
+test backend_names::tests::a_real_closed_sum_reserves_its_kind_companion ... ok
+test backend_names::tests::a_support_type_collision_marks_only_the_user_declaration ... ok
+test backend_names::tests::an_ancestry_only_abstract_choice_still_reserves_its_name ... ok
+test backend_names::tests::an_ada_type_named_value_collides_with_the_generated_temporal_accessor ... ok
+test backend_names::tests::ada_choice_literal_collision_marks_the_choice_and_the_type ... ok
+test backend_names::tests::an_inherited_helper_under_the_emitted_descendant_still_collides ... ok
+test backend_names::tests::an_ancestry_only_abstract_record_does_not_reserve_a_support_name ... ok
+test backend_names::tests::a_non_emitted_abstract_record_reserves_no_ada_helper_names ... ok
+test backend_names::tests::an_ada_type_named_value_collides_with_the_generated_float_accessor ... ok
+test backend_names::tests::a_task_026_elided_target_reserves_no_declaration_name ... ok
+test backend_names::tests::conditional_support_names_are_free_when_the_helper_is_not_emitted ... ok
+test backend_names::tests::an_inherited_optional_wrapper_under_the_emitted_descendant_still_collides ... ok
+test backend_names::tests::cpp_namespace_component_may_not_be_a_reserved_word ... ok
+test backend_names::tests::choice_kind_companions_are_registered_in_every_world ... ok
+test backend_names::tests::reserved_word_tables_are_sorted_for_binary_search ... ok
+test backend_names::tests::several_constrained_floats_may_share_overloaded_create_and_value ... ok
+test backend_names::tests::reserved_word_detection_is_case_insensitive_only_for_ada ... ok
+test backend_names::tests::multiple_sequences_with_valid_overloads_coexist ... ok
+test backend_names::tests::task054_enum_remapping_is_independent ... ok
+test backend_names::tests::rust_and_cpp_do_not_inherit_the_ada_kind_discriminant_rule ... ok
+test backend_names::tests::digits_after_the_first_character_remain_accepted ... ok
+test backend_names::tests::task054_inherited_post_remap_collision_condemns_the_descendant ... ok
+test backend_names::tests::shared_parser_helper_is_reserved_for_either_emitted_temporal_profile ... ok
+test backend_names::tests::distinct_ir_names_can_converge_on_one_generated_name ... ok
+test backend_names::tests::task054_choice_alternative_helper_escapes_only_reserved_candidates ... ok
+test backend_names::tests::create_and_value_are_free_when_no_constrained_float_is_declared ... ok
+test backend_names::tests::rust_and_cpp_do_not_reserve_create_or_value ... ok
+test backend_names::tests::support_predicates_track_the_schema_shape ... ok
+test backend_names::tests::closed_sum_wrapper_components_cannot_collide_with_their_kind_discriminant ... ok
+test backend_names::tests::kind_companion_is_an_ada_only_rule ... ok
+test backend_names::tests::task053_constrained_binary_create_and_value_collide_with_a_type ... ok
+test backend_names::tests::direct_duration_support_tracks_emitted_storage_and_inheritance ... ok
+test backend_names::tests::deferral_for_one_field_does_not_disable_name_checking ... ok
+test backend_names::tests::float_and_temporal_wrappers_may_share_overloaded_create_and_value ... ok
+test backend_names::tests::identifier_start_policy_is_applied_to_the_generated_spelling ... ok
+test backend_names::tests::direct_temporal_support_tracks_emitted_storage_and_inheritance ... ok
+test backend_names::tests::nato_carriers_share_overloaded_create_and_value_with_other_families ... ok
+test backend_names::tests::direct_duration_support_names_are_reserved_only_when_emitted ... ok
+test backend_names::tests::task044_ada_literal_type_collisions_attribute_both_owners ... ok
+test backend_names::tests::task044_reserved_and_malformed_non_enum_names_remain_unsafe ... ok
+test backend_names::tests::task054_ada_helper_stems_use_final_names_and_fixed_names_stay_independent ... ok
+test backend_names::tests::shared_duration_parser_is_reserved_only_when_emitted ... ok
+test backend_names::tests::task054_post_remap_collisions_fail_closed_with_source_attribution ... ok
+test backend_names::tests::task044_every_pinned_leading_digit_owner_and_value_is_supported ... ok
+test backend_names::tests::task054_record_field_helper_escapes_only_reserved_candidates ... ok
+test backend_names::tests::task054_safe_member_names_are_unchanged ... ok
+test backend_names::tests::ordinary_declaration_collision_attribution_is_unchanged ... ok
+test backend_names::tests::task053_unconstrained_or_unsupported_binary_reserves_no_callable ... ok
+test backend_names::tests::inherited_members_of_a_non_emitted_base_still_condemn_the_descendant ... ok
+test backend_names::tests::conditional_support_names_collide_when_the_helper_is_emitted ... ok
+test backend_names::tests::direct_temporal_support_names_are_reserved_only_when_emitted ... ok
+test backend_names::tests::task044_enum_policy_preserves_safe_spelling_and_maps_only_evidenced_categories ... ok
+test backend_names::tests::task054_malformed_member_names_still_fail_closed ... ok
+test backend_names::tests::task054_reserved_members_are_renderable_after_escaping ... ok
+test backend_names::tests::task044_coverage_attributes_enum_name_collisions_without_regressing_safe_names ... ok
+test backend_names::tests::task053_constrained_binary_overloads_coexist_with_other_carriers ... ok
+test backend_names::tests::unconditional_support_names_are_reserved ... ok
+test backend_preflight::tests::an_undeclared_but_consistent_namespace_is_single_namespace_input ... ok
+test backend_names::tests::the_open_world_does_not_reserve_closed_sum_companions ... ok
+test backend_preflight::tests::colliding_generated_names_fail_preflight ... ok
+test backend_names::tests::unsupported_temporal_declarations_reserve_no_callable ... ok
+test coverage::tests::a_generated_support_name_collision_is_reflected_in_coverage ... ok
+test binary::tests::task053_unsupported_facets_are_rejected ... ok
+test coverage::tests::optional_direct_integral_with_unlowerable_bounds_stays_unsupported ... ok
+test coverage::tests::locally_constrained_optional_named_field_remains_unsupported_for_ada ... ok
+test coverage::tests::primitive_expansion_alone_unblocks_time_field_closure ... ok
+test coverage::tests::pure_record_abstract_ancestry_is_currently_renderable ... ok
+test coverage::tests::optional_uninhabited_abstract_field_is_baseline_renderable_in_coverage ... ok
+test coverage::tests::a_top_level_normalized_name_collision_is_reflected_in_coverage ... ok
+test backend_names::tests::unsupported_nato_like_declarations_reserve_no_callable ... ok
+test binary::tests::task053_length_shapes_normalize_to_octet_intervals ... ok
+test coverage::tests::current_backend_metrics_and_report_are_deterministic ... ok
+test backend_preflight::tests::a_foreign_declaration_namespace_also_counts ... ok
+test coverage::tests::optional_named_field_is_baseline_occurrence_support_in_every_backend ... ok
+test binary::tests::task053_domain_membership_is_inclusive ... ok
+test binary::tests::task053_explicit_collapse_is_the_intrinsic_policy ... ok
+test backend_preflight::tests::a_single_namespace_schema_passes_for_every_backend ... ok
+test binary::tests::task053_unconstrained_binary_is_none ... ok
+test coverage::tests::constrained_simple_family_alone_unblocks_field_constraint_closure ... ok
+test coverage::tests::message_closure_includes_unsupported_transitive_dependency ... ok
+test coverage::tests::an_unusable_namespace_unit_zeroes_whole_schema_capability ... ok
+test coverage::tests::an_unsafe_name_preserves_narrower_capability_evidence ... ok
+test coverage::tests::constrained_binary_field_requires_constrained_simple_types ... ok
+test coverage::tests::cardinality_and_nillability_alone_unblocks_nillable_field_closure ... ok
+test coverage::tests::optional_occurrence_storage_does_not_grant_primitive_support ... ok
+test binary::tests::task053_carrier_predicate_matches_the_classifier ... ok
+test coverage::tests::dependency_closure_includes_alias_base_list_fields_and_choices_in_ir_order ... ok
+test coverage::tests::multi_namespace_coverage_does_not_overclaim_backend_capability ... ok
+test coverage::tests::duration_is_baseline_renderable_only_without_facets ... ok
+test coverage::tests::optional_direct_primitive_occurrence_support_is_per_kind ... ok
+test coverage::tests::a_reserved_generated_name_is_not_reported_as_fully_renderable ... ok
+test backend_preflight::tests::two_namespaces_are_a_backend_boundary_for_every_backend ... ok
+test coverage::tests::nillable_optional_named_field_remains_unsupported_in_every_backend ... ok
+test coverage::tests::raw_dependency_closure_excludes_virtual_abstract_variants ... ok
+test backend_preflight::tests::an_empty_schema_is_vacuously_generable ... ok
+test floating::tests::bound_kinds_map_to_ieee_comparisons ... ok
+test floating::tests::bound_literals_round_trip_at_their_width ... ok
+test coverage::tests::uninhabited_abstract_message_payload_stays_blocked_in_coverage ... ok
+test floating::tests::classifies_every_supported_bound_shape ... ok
+test floating::tests::nan_satisfies_no_bound ... ok
+test coverage::tests::closed_abstract_values_are_baseline_and_empty_values_remain_hypothetical ... ok
+test coverage::tests::renderable_message_names_match_coverage_and_exclude_blocked_closures ... ok
+test floating::tests::rejects_non_finite_bounds ... ok
+test coverage::tests::repeated_occurrences_match_ada_portable_boundaries ... ok
+test coverage::tests::single_namespace_control_metrics_are_unchanged ... ok
+test floating::tests::equal_inclusive_bounds_are_a_single_value_domain ... ok
+test floating::tests::one_sided_infinity_keeps_ieee_ordering ... ok
+test dependency_impact::tests::internal_cycle_distances_terminate ... ok
+test floating::tests::equal_bounds_with_an_exclusive_side_are_empty ... ok
+test coverage::tests::unrelated_features_preserve_pure_record_inheritance ... ok
+test coverage::tests::supported_choice_extends_pure_record_inheritance_baseline ... ok
+test floating::tests::negative_zero_follows_ieee_comparison ... ok
+test coverage::tests::supported_choice_metrics_are_baseline_and_hypothetical_features_are_additive ... ok
+test coverage::tests::supported_choice_payload_closure_is_baseline ... ok
+test coverage::tests::synthesized_builtin_integer_bounds_do_not_block_ada_occurrence ... ok
+test coverage::tests::task033_unsupported_float_constraint_shapes_remain_hypothetical ... ok
+test floating::tests::rejects_wrong_width_bounds ... ok
+test coverage::tests::task033_named_float_ranges_are_baseline_but_field_local_ones_are_not ... ok
+test coverage::tests::task031_snapshot_matches_full_coverage_declaration_counts ... ok
+test floating::tests::acceptance_is_width_specific ... ok
+test floating::tests::rejects_contradictory_and_non_floating_input ... ok
+test floating::tests::default_constraints_are_unconstrained ... ok
+test coverage::tests::unconstrained_binary_field_is_baseline_renderable ... ok
+test coverage::tests::task033_float_ranges_hold_across_all_feature_combinations_and_worlds ... ok
+test floating::tests::rejects_length_and_lexical_constraints ... ok
+test coverage::tests::unsupported_uninhabited_abstract_occurrences_stay_blocked_in_coverage ... ok
+test floating::tests::rejects_ambiguous_same_side_bounds ... ok
+test integral::tests::rejects_unsupported_integral_constraints ... ok
+test floating::tests::signed_zero_equality_follows_the_same_empty_rule ... ok
+test integral::tests::accepts_supported_integral_domains ... ok
+test service_api::tests::a_layout_claiming_the_wrapper_path_is_a_typed_collision ... ok
+test service_api::tests::ada_facade_names_do_not_fold_onto_task047_names ... ok
+test ipv6_address::tests::exact_ipv6_profile_and_all_facet_neighbors_fail_closed ... ok
+test service_api::tests::ada_payload_visibility ... ok
+test service_api::tests::cpp_scope_negative_controls ... ok
+test service_api::tests::reserved_looking_ids_are_safe_behind_the_prefix ... ok
+test service_api::tests::scope_names_follow_the_shared_rule ... ok
+test service_api::tests::task047_normalization_still_fails_closed_with_the_facade ... ok
+test service_api::tests::the_same_exchange_id_in_different_functions_is_legal ... ok
+test service_api::tests::zero_model_services_have_no_artifact_boundary ... ok
+test coverage::tests::recursive_closed_values_are_unsupported_without_aborting_coverage ... ok
+test service_api::tests::facade_names_are_claimed_per_operation ... ok
+test service_api::tests::facade_names_are_safe_and_unreachable_from_contract_ids ... ok
+test service_api::tests::facade_root_names_join_the_root_regions ... ok
+test service_api::tests::function_normalization_collision_fails_closed ... ok
+test service_api::tests::ids_outside_the_portable_grammar_are_rejected ... ok
+test service_api::tests::direction_alone_decides_the_operation ... ok
+test service_api::tests::exchange_normalization_collision_in_one_function_fails_closed ... ok
+test service_api::tests::facade_parameters_never_shadow_what_their_profile_uses ... ok
+test service_api::tests::fixed_names_are_safe_and_unreachable_from_contract_ids ... ok
+test service_api::tests::model_paths_cannot_contain_the_wrapper_file_by_construction ... ok
+test service_api::tests::ada_facade_names_after_payload_never_hide_the_model ... ok
+test service_api::tests::ada_hook_parameters_mirror_the_exchange_constants ... ok
+test coverage::tests::task028_all_feature_combinations_are_monotonic_in_both_worlds ... ok
+test service_codec::tests::task091_duration_uses_only_zero_facet_profiles ... ok
+test service_codec::tests::task093_binary_provenance_and_context_fail_closed ... ok
+test service_codec::tests::task087b_ada_scalar_domains_and_feature_boundaries ... ok
+test service_codec::tests::task088_ada_choice_checks_all_alternatives_and_wire_identity ... ok
+test service_codec::tests::task092_missing_and_cyclic_repeated_choice_dependencies_fail_closed ... ok
+test service_api::tests::cpp_model_top_level_names_are_upper_camel ... ok
+test service_api::tests::zero_oms_services_claim_no_facade_names ... ok
+test service_codec::tests::cpp_oms_004_float64_admission_boundary ... ok
+test service_codec::tests::task092_shared_repeated_choice_closure_is_cached ... ok
+test service_codec::tests::task093_binary_helpers_are_case_insensitively_reserved ... ok
+test service_codec::tests::task088_ada_choice_named_values_require_renderable_closure ... ok
+test service_codec::tests::task090r_direct_datetime_contexts_fail_closed ... ok
+test service_codec::tests::task088_shared_dependency_dag_has_bounded_capability_visits ... ok
+test service_codec::tests::task088_shared_nested_record_choice_dependencies_fail_closed ... ok
+test service_codec::tests::oms_json_names_follow_omsc_spc_013_section_6_1_2 ... ok
+test service_codec::tests::task095_float32_requires_explicit_runtime_and_rejects_facets ... ok
+test service_codec::tests::task093_named_binary_uses_own_provenance_and_domain ... ok
+test service_codec::tests::task093_c3_binary_float32_runtime_matrix ... ok
+test service_codec::tests::task093_combined_choice_temporal_binary_boundaries ... ok
+test service_codec::tests::task089_repeated_cardinalities_and_element_boundaries ... ok
+test service_codec::tests::task052_base64_binary_is_not_ready ... ok
+test service_codec::tests::task087b_ada_checks_every_member_not_only_authored_json ... ok
+test service_codec::tests::task090_ada_datetime_domains_remain_distinct ... ok
+test service_codec::tests::nillable_members_fail_closed ... ok
+test service_codec::tests::qualified_non_oam_is_ready_and_unqualified_members_fail_closed ... ok
+test service_codec::tests::task052_named_binary_uses_declaration_ancestry ... ok
+test service_codec::tests::task052_unknown_binary_provenance_fails_closed ... ok
+test service_codec::tests::cpp_oms_006_structured_ascii_admission_boundary ... ok
+test service_codec::tests::task089r_shared_repeated_record_dependencies_are_cached ... ok
+test service_codec::tests::task090r_datetime_helper_uses_case_insensitive_fixed_name_reservation ... ok
+test service_api::tests::cpp_scope_positive_controls ... ok
+test service_codec::tests::task089_repeated_named_record_checks_complete_closure ... ok
+test service_codec::tests::every_primitive_has_an_explicit_codec_decision ... ok
+test service_codec::tests::task095_qualified_record_admits_float32_but_direct_choice_does_not ... ok
+test service_codec::tests::unqualified_choice_alternative_fails_closed ... ok
+test string_profile::tests::a_class_admitting_line_breaks_is_never_the_visible_ascii_profile ... ok
+test string_profile::tests::a_length_facet_is_unsupported ... ok
+test string_profile::tests::an_unobserved_huge_visible_ascii_profile_is_not_supported ... ok
+test string_profile::tests::an_explicit_white_space_facet_is_unsupported ... ok
+test string_profile::tests::space_is_a_member_but_the_other_whitespace_characters_are_not ... ok
+test string_profile::tests::merely_containing_the_class_is_not_membership ... ok
+test string_profile::tests::nato_special_words_facet_near_misses_are_unsupported ... ok
+test service_codec::tests::cpp_oms_005_bounded_ascii_admission_boundary ... ok
+test string_profile::tests::the_older_profiles_still_reject_every_explicit_whitespace_facet ... ok
+test string_profile::tests::the_same_pattern_with_different_bounds_is_unsupported ... ok
+test string_profile::tests::the_stored_value_word_distinguishes_the_two_policies ... ok
+test string_profile::tests::the_implemented_profiles_remain_distinct ... ok
+test string_profile::tests::the_nato_pattern_under_non_authoritative_total_length_facets_stays_rejected ... ok
+test string_profile::tests::the_only_pattern_dialect_today_is_xml_schema ... ok
+test string_profile::tests::the_nato_constants_separate_total_length_from_suffix_length ... ok
+test string_profile::tests::an_unobserved_ordinary_visible_ascii_pair_is_not_supported ... ok
+test string_profile::tests::bounds_disagreeing_with_the_quantifier_fail_closed ... ok
+test string_profile::tests::every_authoritative_whitespace_visible_profile_is_supported ... ok
+test string_profile::tests::multiple_groups_or_alternatives_are_unsupported ... ok
+test string_profile::tests::nato_special_words_pattern_near_misses_are_unsupported ... ok
+test string_profile::tests::non_string_primitives_are_not_classified ... ok
+test string_profile::tests::the_authoritative_nato_special_words_profile_is_supported ... ok
+test string_profile::tests::the_declared_bounds_match_the_patterns_own_bounds ... ok
+test string_profile::tests::the_expected_expression_uses_expanded_characters ... ok
+test string_profile::tests::the_five_implemented_profiles_remain_distinct ... ok
+test string_profile::tests::the_four_group_version_pattern_is_not_the_supported_profile ... ok
+test service_codec::tests::task097_float64_profile_is_separate_and_facets_fail_closed ... ok
+test service_codec::tests::task098_named_time_composes_through_records_choices_and_repetition ... ok
+test service_codec::tests::task098_named_time_zulu_is_the_only_admitted_time_profile ... ok
+test string_profile::tests::numeric_facets_on_a_string_are_unsupported ... ok
+test string_profile::tests::the_two_bounded_string_families_stay_distinct ... ok
+test service_readiness::tests::task056_support_readiness_builds_one_projection_and_one_analysis ... ok
+test string_profile::tests::the_uuid_alphabet_is_entirely_ascii ... ok
+test string_profile::tests::the_supported_alphabet_is_entirely_ascii ... ok
+test string_profile::tests::length_bounds_without_a_pattern_are_unsupported ... ok
+test string_profile::tests::uci_uuid_is_a_supported_profile ... ok
+test string_profile::tests::the_uuid_pattern_is_the_exact_authoritative_text ... ok
+test string_profile::tests::the_whitespace_visible_expression_is_the_exact_authoritative_text ... ok
+test string_profile::tests::the_visible_ascii_alphabet_is_entirely_single_byte ... ok
+test string_profile::tests::the_uuid_profile_is_one_group_holding_one_expression ... ok
+test string_profile::tests::the_visible_ascii_256_profile_is_supported ... ok
+test string_profile::tests::uci_schema_version_is_the_supported_profile ... ok
+test string_profile::tests::the_whitespace_visible_profile_is_decided_by_facets_not_names ... ok
+test string_profile::tests::uuid_near_misses_are_unsupported ... ok
+test string_profile::tests::unconstrained_string_is_not_a_task_037_declaration ... ok
+test string_profile::tests::whitespace_visible_near_misses_are_unsupported ... ok
+test string_profile::tests::whitespace_visible_unobserved_bounds_are_unsupported ... ok
+test structure::tests::empty_extension_is_omitted_without_losing_ancestry ... ok
+test structure::tests::forward_base_and_abstract_metadata_are_preserved ... ok
+test structure::tests::effective_record_fields_are_ordered_and_reject_choice_segments ... ok
+test structure::tests::effective_choice_allows_empty_record_ancestry_and_preserves_order ... ok
+test structure::tests::inherited_member_name_collisions_fail_closed ... ok
+test structure::tests::malformed_ir_returns_errors_instead_of_panicking ... ok
+test structure::tests::mixed_compositors_remain_distinct ... ok
+test structure::tests::multilevel_records_are_base_to_derived ... ok
+test structure::tests::standalone_record_and_choice_project_as_one_segment ... ok
+test temporal::tests::a_different_pattern_fails_closed ... ok
+test string_profile::tests::every_authoritative_family_member_is_supported ... ok
+test temporal::tests::an_explicit_white_space_facet_fails_closed ... ok
+test string_profile::tests::the_whitespace_visible_axes_are_not_a_cartesian_product ... ok
+test temporal::tests::direct_date_time_is_distinct_from_named_zulu ... ok
+test string_profile::tests::visible_ascii_near_misses_are_unsupported ... ok
+test structure::tests::effective_choice_rejects_product_and_multiple_sum_shapes ... ok
+test string_profile::tests::the_two_profiles_stay_distinct ... ok
+test temporal::tests::direct_duration_is_supported_only_without_field_facets ... ok
+test temporal::tests::named_duration_is_supported_only_without_facets ... ok
+test temporal::tests::uci_zulu_date_time_is_the_supported_profile ... ok
+test tests::alias_base_list_and_choice_dependencies_are_recognized ... ok
+test tests::multi_level_structural_bases_are_planned_in_chain_order ... ok
+test temporal::tests::neighbouring_facets_fail_closed ... ok
+test tests::multi_node_cycle_fails ... ok
+test temporal::tests::time_zulu_is_supported_but_unconstrained_time_and_constrained_duration_are_not ... ok
+test tests::malformed_named_restriction_is_rejected_before_planning ... ok
+test tests::constrained_uninhabited_abstract_optional_field_remains_unsupported ... ok
+test tests::no_abstract_value_target_keeps_legacy_plan ... ok
+test tests::a_failed_target_is_scoped_in_the_fallback_but_fatal_to_the_planner ... ok
+test temporal::tests::multiple_pattern_groups_fail_closed ... ok
+test temporal::tests::every_error_reason_is_distinct ... ok
+test temporal::tests::unconstrained_date_time_is_temporal_but_unsupported ... ok
+test tests::later_dependency_moves_before_consumer ... ok
+test tests::primitive_fields_do_not_create_edges ... ok
+test tests::newly_ready_declarations_use_original_index_priority ... ok
+test tests::base_only_ancestry_plans_identically_in_both_worlds ... ok
+test tests::mutual_abstract_value_topology_is_recursive ... ok
+test tests::optional_uninhabited_abstract_value_is_elided_from_emissions_and_dependencies ... ok
+test tests::multiple_consumers_are_deterministic ... ok
+test tests::recursive_abstract_value_topologies_are_classified_deterministically ... ok
+test tests::open_world_planner_refuses_to_emit_a_closed_sum ... ok
+test tests::nillable_uninhabited_abstract_optional_field_remains_unsupported ... ok
+test tests::open_world_rejection_is_not_keyed_on_ext_names ... ok
+test tests::repeated_planning_produces_identical_qualified_name_sequences ... ok
+test tests::self_cycle_fails ... ok
+test tests::transitive_dependency_chain_orders_correctly ... ok
+test temporal::tests::recognition_reads_the_structured_pattern_representation ... ok
+test tests::structural_base_moves_before_derived ... ok
+test tests::the_shared_classifier_selects_exactly_the_emitted_entities ... ok
+test tests::base_only_abstract_declaration_needs_no_wrapper_or_projection ... ok
+test tests::command_pet_choice_topology_is_recursive_without_inheritance_containment ... ok
+test tests::repeated_reference_creates_one_dependency_edge ... ok
+test tests::no_dependencies_preserve_original_order ... ok
+test tests::uninhabited_abstract_value_as_choice_alternative_remains_unsupported ... ok
+test tests::repeated_uninhabited_abstract_value_remains_unsupported ... ok
+test tests::abstract_value_projection_and_emission_order_are_closed_and_deterministic ... ok
+test temporal::tests::direct_neighbors_and_field_facets_fail_closed ... ok
+test temporal::tests::multiple_alternatives_fail_closed ... ok
+test temporal::tests::non_temporal_primitives_are_not_task_036_declarations ... ok
+test tests::named_simple_restriction_bases_are_planned_base_first ... ok
+test tests::unrelated_declaration_before_later_dependency_remains_before_it ... ok
+test tests::unrelated_declarations_remain_stable ... ok
+test tests::value_target_without_concrete_descendants_fails_closed ... ok
+test tests::zero_descendant_optional_is_only_elided_in_the_closed_world ... ok
+test world::tests::closed_predicate_is_exact ... ok
+test world::tests::world_has_no_implicit_default ... ok
+test world::tests::labels_are_stable ... ok
+test tests::uninhabited_abstract_value_as_message_payload_remains_unsupported ... ok
+test ipv6_address::tests::exact_ipv6_semantics_match_independent_partition_corpus ... ok
+
+test result: ok. 372 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+     Running tests/alternating_ascii.rs (/home/zboll/py019-evidence/target/debug/deps/alternating_ascii-efdff374b13d4e61)
+
+running 7 tests
+test all_frozen_release_rows_match_the_name_free_core_boundary ... ok
+test exact_profiles_and_fail_closed_neighbors ... ok
+test semantic_group_and_alphabet_inventory ... ok
+test groups_are_intersection_and_branches_are_whole_value_union ... ok
+test high_value_profiles_and_independent_facets ... ok
+test delimiter_factoring_requires_the_complete_semantic_product ... ok
+test pinned_ipv4_expected_lexical_domain_is_not_a_platform_parser ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/bounded_ascii_coverage.rs (/home/zboll/py019-evidence/target/debug/deps/bounded_ascii_coverage-5721577c7ad2c959)
+
+running 6 tests
+test every_alphabet_is_a_disjoint_ordered_subset_of_visible_ascii ... ok
+test the_bounded_ascii_family_never_shadows_an_existing_profile ... ok
+test empty_type_and_aircraft_identifier_shapes_are_members ... ok
+test every_pinned_spelling_denotes_exactly_its_alphabets_ranges ... ok
+test negative_neighbours_fail_closed ... ok
+test every_pinned_row_classifies_and_is_baseline ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/dependency_impact.rs (/home/zboll/py019-evidence/target/debug/deps/dependency_impact-535886c490eda977)
+
+running 6 tests
+test abstract_descendants_are_not_reverse_edges ... ok
+test accepted_record_cycle_and_unrelated_seed ... ok
+test invalid_declarations_references_and_seeds_fail ... ok
+test full_qname_identity_and_primitive_root ... ok
+test base_alias_choice_list_and_optional_repeated_edges ... ok
+test direct_nested_diamond_duplicate_edges_shortest_and_permutation ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/generated_support_binding.rs (/home/zboll/py019-evidence/target/debug/deps/generated_support_binding-4dc817ceebac5de3)
+
+running 12 tests
+test added_descendant_changes_closed_support_topology ... ok
+test added_descendants_use_supplied_schema_order ... ok
+test nested_abstract_value_support_is_bound ... ok
+test changed_support_rejected_with_readiness_generation_parity ... ok
+test simultaneous_support_changes_use_original_schema_order_not_names_or_stack ... ok
+test removed_descendant_is_typed_missing_support ... ok
+test member_wire_namespace_is_bound_for_selected_and_support_members ... ok
+test task026_absent_only_topology_becoming_inhabited_is_bound ... ok
+test transitive_support_dependency_is_bound ... ok
+test selected_only_concrete_service_has_no_support_binding ... ok
+test open_world_preserves_authoritative_abstract_value_failure ... ok
+test compatible_rebuild_and_provenance_and_unrelated_edits_are_accepted ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/nato_special_words_coverage.rs (/home/zboll/py019-evidence/target/debug/deps/nato_special_words_coverage-6f4efaf2169b472c)
+
+running 4 tests
+test a_record_holding_the_profile_is_renderable_and_isolated ... ok
+test a_uci_name_with_wrong_facets_is_not_renderable ... ok
+test the_authoritative_profile_is_baseline_under_any_name ... ok
+test nato_near_misses_are_not_baseline ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/service_api.rs (/home/zboll/py019-evidence/target/debug/deps/service_api-56860b18d80f43b6)
+
+running 13 tests
+test oms_binding_uses_the_resolved_payload_not_the_message_name ... ok
+test global_message_identity_is_not_payload_or_topic_identity ... ok
+test lowering_preserves_contract_order_and_all_five_kinds ... ok
+test normalization_collision_makes_readiness_not_ready_without_touching_counts ... ok
+test primitive_payload_is_a_service_api_boundary_in_readiness ... ok
+test operation_is_decided_by_direction_only ... ok
+test non_oms_kinds_have_no_operation ... ok
+test artifact_boundary_is_part_of_readiness ... ok
+test unprojected_message_is_rejected ... ok
+test primitive_payload_cannot_be_bound ... ok
+test safe_service_stays_ready_and_preflight_agrees ... ok
+test zero_oms_service_lowers_without_a_type_model ... ok
+test repeated_message_selection_stays_two_endpoints ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/service_generation.rs (/home/zboll/py019-evidence/target/debug/deps/service_generation-210fadcb1c6d532e)
+
+running 16 tests
+test primitive_message_payload_invents_no_named_type ... ok
+test projection_keeps_only_selected_messages ... ok
+test non_uci_only_contract_projects_nothing ... ok
+test closed_sum_descendants_are_support_not_contract_selection ... ok
+test open_world_abstract_value_fails_closed ... ok
+test selected_and_support_lists_are_disjoint_and_complete ... ok
+test contract_exchange_order_does_not_reorder_the_type_model ... ok
+test projection_keeps_schema_order_and_omits_unselected ... ok
+test projection_preserves_metadata_and_leaves_the_original_schema_alone ... ok
+test plan_schema_mismatch_fails_without_panicking ... ok
+test abstract_message_payload_is_a_value_position ... ok
+test zero_descendant_abstract_value_gains_no_invented_support ... ok
+test concrete_only_selection_projects_identically_in_both_worlds ... ok
+test abstract_ancestry_alone_admits_no_descendants ... ok
+test repeated_message_selection_does_not_duplicate_types ... ok
+test support_expansion_reaches_a_nested_closed_sum_fixed_point ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/service_plan.rs (/home/zboll/py019-evidence/target/debug/deps/service_plan-60f975f715e171af)
+
+running 16 tests
+test ambiguous_same_local_name_fails_and_reports_candidates ... ok
+test capability_states_and_standard_roles_survive_into_the_plan ... ok
+test both_uci_version_strings_are_retained_without_comparison ... ok
+test resolution_is_exact_and_never_fuzzy ... ok
+test function_and_exchange_order_are_preserved ... ok
+test omitted_and_empty_capability_states_survive_into_the_plan ... ok
+test resolves_observation_measurement_report ... ok
+test non_uci_exchanges_are_preserved_and_never_resolved ... ok
+test selected_messages_are_deduplicated ... ok
+test selected_type_closure_follows_base_types_and_choices_and_lists ... ok
+test selected_messages_use_first_occurrence_order ... ok
+test selected_type_closure_narrows_with_the_contract ... ok
+test unknown_oms_message_fails_with_function_and_exchange_context ... ok
+test two_exchange_occurrences_may_share_one_message ... ok
+test resolves_position_report ... ok
+test selected_type_closure_is_deterministic_and_selective ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/service_plan_binding.rs (/home/zboll/py019-evidence/target/debug/deps/service_plan_binding-1db48a11f9666f68)
+
+running 10 tests
+test identical_semantics_with_different_documentation_are_compatible ... ok
+test identical_semantics_from_different_source_locations_are_compatible ... ok
+test an_absent_selected_message_is_reported_as_missing ... ok
+test a_changed_selected_message_payload_is_rejected ... ok
+test a_changed_selected_type_body_is_rejected ... ok
+test a_separately_rebuilt_equal_schema_is_compatible ... ok
+test provenance_independence_does_not_weaken_semantic_detection ... ok
+test task052_changed_binary_lexical_provenance_is_rejected ... ok
+test unrelated_unselected_declaration_changes_do_not_invalidate_the_plan ... ok
+test changed_transitive_constraints_or_cardinality_are_rejected ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/service_readiness.rs (/home/zboll/py019-evidence/target/debug/deps/service_readiness-bb67c49ce80e8fb6)
+
+running 30 tests
+test a_projection_binding_mismatch_is_propagated_not_swallowed ... ok
+test a_selected_ada_choice_kind_alternative_is_not_ready ... ok
+test a_selected_conditional_support_collision_remains_not_ready ... ok
+test an_unselected_conditional_support_collision_does_not_block_the_selection ... ok
+test multiple_blockers_report_schema_order_and_earliest_first_blocker ... ok
+test an_unselected_reserved_name_declaration_does_not_enter_the_selected_report ... ok
+test an_abstract_value_projection_failure_is_already_reported_as_not_ready ... ok
+test abstract_value_readiness_differs_by_world ... ok
+test non_uci_only_contract_is_vacuously_ready ... ok
+test an_unselected_converging_declaration_does_not_block_the_selected_service ... ok
+test plan_schema_mismatch_fails_deterministically ... ok
+test unsupported_primitive_payload_is_reported_as_a_primitive_blocker ... ok
+test selected_unsupported_closure_is_not_ready_with_deterministic_blocker ... ok
+test unselected_unsupported_declarations_are_never_reported ... ok
+test blocked_message_order_follows_contract_while_type_order_follows_schema ... ok
+test base_only_abstract_ancestry_is_world_independent ... ok
+test readiness_agrees_with_full_schema_coverage_when_everything_is_selected ... ok
+test zero_descendant_optional_readiness_differs_by_world ... ok
+test task056_abstract_intermediate_support_stays_ready ... ok
+test readiness_never_enables_hypothetical_features ... ok
+test repeated_message_selection_is_analyzed_once ... ok
+test task056_unrelated_unsupported_declaration_is_not_support ... ok
+test task056_open_extensions_reports_no_support_surface ... ok
+test readiness_records_the_requested_language_and_world ... ok
+test readiness_is_never_ready_when_projection_fails ... ok
+test selected_supported_closure_is_ready_despite_unselected_unsupported_declarations ... ok
+test selecting_both_converging_declarations_is_not_ready ... ok
+test readiness_results_are_deterministic ... ok
+test task056_support_only_unsupported_declaration_is_not_ready ... ok
+test task056_unsupported_support_types_follow_schema_order ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/string_profile_coverage.rs (/home/zboll/py019-evidence/target/debug/deps/string_profile_coverage-20e502993564ccb9)
+
+running 7 tests
+test the_supported_uuid_profile_is_baseline_renderable ... ok
+test an_unconstrained_named_string_declaration_is_unchanged ... ok
+test both_string_profiles_are_baseline_together ... ok
+test the_supported_schema_version_profile_is_baseline_renderable ... ok
+test every_visible_ascii_family_member_is_baseline_renderable ... ok
+test visible_ascii_near_misses_are_not_baseline ... ok
+test unsupported_constrained_string_profiles_are_not_baseline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/structured_ascii_coverage.rs (/home/zboll/py019-evidence/target/debug/deps/structured_ascii_coverage-d7e8c757b8b3aa89)
+
+running 3 tests
+test every_pinned_row_classifies_without_shadowing_earlier_families ... ok
+test exact_rows_have_fail_closed_neighbours ... ok
+test length_guided_prefix_is_exclusive_to_the_exact_pinned_row ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/temporal_coverage.rs (/home/zboll/py019-evidence/target/debug/deps/temporal_coverage-8cdf661d9b6bd795)
+
+running 7 tests
+test exact_named_time_zulu_is_baseline_renderable_without_name_recognition ... ok
+test the_pattern_dialect_is_part_of_the_supported_profile ... ok
+test a_named_zero_facet_duration_is_baseline_renderable ... ok
+test the_supported_date_time_zulu_profile_is_baseline_renderable ... ok
+test a_direct_primitive_date_time_field_is_baseline_renderable ... ok
+test time_and_constrained_duration_remain_unsupported ... ok
+test unsupported_date_time_constraint_profiles_are_not_baseline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/unicode_string.rs (/home/zboll/py019-evidence/target/debug/deps/unicode_string-764f1b8f7b1790ba)
+
+running 3 tests
+test task066_exact_classifier_and_fail_closed_neighbors ... ok
+test task066_support_names_and_renamed_profile_are_preflight_consistent ... ok
+test task066_authority_membership_and_independent_profile_corpus ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/whitespace_visible_coverage.rs (/home/zboll/py019-evidence/target/debug/deps/whitespace_visible_coverage-24ab696bd720d10c)
+
+running 6 tests
+test a_uci_name_with_wrong_facets_is_not_renderable ... ok
+test a_semantic_alias_under_any_name_is_equally_renderable ... ok
+test the_visible_ascii_controls_are_unchanged ... ok
+test every_evidenced_whitespace_visible_profile_is_baseline_renderable ... ok
+test the_whole_whitespace_visible_family_is_renderable_in_one_schema ... ok
+test whitespace_visible_near_misses_are_not_baseline ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ams_gra_oms_backend_python
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ams_gra_oms_backend_rust
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ams_gra_oms_codegen_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

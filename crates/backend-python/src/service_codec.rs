@@ -2,8 +2,8 @@
 //! capability, type spelling and primitive domains remain the PY-001 rules.
 use crate::{error, names};
 use ams_gra_oms_codegen_core::{
-    CodegenError, GeneratedFile, OAM_NAMESPACE, ServiceApiModel, oms_json_member_name,
-    plan_type_emissions,
+    CodegenError, GeneratedFile, OAM_NAMESPACE, ServiceApiModel, TypeEmission,
+    oms_json_member_name, oms_json_type_name, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     BinaryLexicalEncoding, ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr,
@@ -95,6 +95,9 @@ pub fn generate_service_codec(
     let declarations = crate::emitted_declarations(&emissions)?;
     // Render-time wire preflight is the readiness decision too.
     for declaration in &declarations {
+        if declaration.is_abstract {
+            continue;
+        }
         if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary)
             && declaration_binary_encoding(schema, declaration)
                 != Some(BinaryLexicalEncoding::HexBinary)
@@ -152,6 +155,15 @@ pub fn generate_service_codec(
         }
     }
     let mut output = include_str!("codec_runtime.py").to_owned();
+    let has_abstract = emissions
+        .iter()
+        .any(|emission| matches!(emission, TypeEmission::AbstractValue(_)));
+    if has_abstract {
+        output = output.replace(
+            "# No global-element envelope, polymorphism, transport or general XSD validator.",
+            "# Closed schema-known polymorphism; no envelope, transport or general XSD validator.",
+        );
+    }
     // Keep the established runtime bytes for schemas without unbounded members.
     // The same sequence contract accepts None only for an absent upper bound.
     let unbounded = schema.types.iter().any(|declaration| {
@@ -182,8 +194,57 @@ pub fn generate_service_codec(
     }) {
         output.push_str(include_str!("header_codec_runtime.py"));
     }
+    if has_abstract {
+        let runtime = include_str!("abstract_codec_runtime.py");
+        output.push_str(&if crate::uses_float64(schema) {
+            runtime
+                .replace("parse_int=_parse_integer", "parse_int=_Number")
+                .replace("parse_float=_reject_number", "parse_float=_Number")
+        } else {
+            runtime.to_owned()
+        });
+    }
     for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
+        if declaration.is_abstract {
+            let projection = emissions
+                .iter()
+                .find_map(|emission| match emission {
+                    TypeEmission::AbstractValue(projection)
+                        if projection.declaration.name == declaration.name =>
+                    {
+                        Some(projection)
+                    }
+                    _ => None,
+                })
+                .ok_or_else(|| error("unresolved abstract codec representation"))?;
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        alternative = value.alternative\n        payload = value.value\n    except AttributeError as error:\n        raise CodecError(f'{{path}}: missing abstract value storage') from error\n    _expect(alternative, tuple, path)\n    if len(alternative) != 2:\n        raise CodecError(f'{{path}}: invalid subtype QName')\n    for item in alternative:\n        _expect(item, str, path)").unwrap();
+            for descendant in &projection.concrete_descendants {
+                let concrete = names::symbol(&descendant.name.local_name, false);
+                let identity = crate::abstract_value::identity(&descendant.name);
+                let wire = names::literal(&oms_json_type_name(
+                    &descendant.name.namespace_uri,
+                    &descendant.name.local_name,
+                ));
+                writeln!(output, "    if alternative == {identity}:\n        _expect(payload, _model.{concrete}, path)\n        try:\n            result = _encode_{concrete}(payload, path)\n        except (AttributeError, TypeError, ValueError) as error:\n            if isinstance(error, CodecError):\n                raise\n            raise CodecError(f'{{path}}: invalid concrete payload: {{error}}') from error\n        return dict(result, **{{'$type': {wire}}})").unwrap();
+            }
+            writeln!(output, "    raise CodecError(f'{{path}}: unknown or abstract subtype QName')\n\ndef _decode_{symbol}(value, path):\n    _expect(value, dict, path)\n    selected = _required(value, '$type', path)\n    _expect(selected, str, path + '.$type')\n    payload = {{key: item for key, item in value.items() if key != '$type'}}").unwrap();
+            for descendant in &projection.concrete_descendants {
+                let concrete = names::symbol(&descendant.name.local_name, false);
+                let wire = names::literal(&oms_json_type_name(
+                    &descendant.name.namespace_uri,
+                    &descendant.name.local_name,
+                ));
+                let factory = crate::abstract_value::factory(&descendant.name.local_name);
+                writeln!(output, "    if selected == {wire}:\n        return _model.{symbol}.{factory}(_decode_{concrete}(payload, path))").unwrap();
+            }
+            writeln!(
+                output,
+                "    raise CodecError(f'{{path}}.$type: unknown or abstract subtype QName')"
+            )
+            .unwrap();
+            continue;
+        }
         if let Some((policy, min, max)) = crate::whitespace_visible_profile(declaration) {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        return _model._check_whitespace_visible(value.value, {policy:?}, {min}, {max}, True)\n    except (AttributeError, TypeError, ValueError) as error:\n        raise CodecError(f'{{path}}: invalid whitespace-visible value: {{error}}') from error\n\n\ndef _decode_{symbol}(value, path):\n    try:\n        return _model.{symbol}(value)\n    except (TypeError, ValueError) as error:\n        raise CodecError(f'{{path}}: invalid whitespace-visible value: {{error}}') from error").unwrap();
             continue;
@@ -297,8 +358,13 @@ pub fn generate_service_codec(
                 writeln!(output, "    result = {{}}").unwrap();
                 for field in crate::record_fields(schema, declaration)? {
                     let key = names::literal(&wire_key(field)?);
-                    let access = format!("value.{}", names::symbol(&field.name, true));
                     let path = format!("path + '.' + {key}");
+                    let member = names::symbol(&field.name, true);
+                    let access = if has_abstract {
+                        format!("_member(value, {}, {path})", names::literal(&member))
+                    } else {
+                        format!("value.{member}")
+                    };
                     let expr =
                         reference(&field.type_ref, &field.constraints, &access, &path, true)?;
                     match field.cardinality.shape() {

@@ -1,0 +1,381 @@
+{
+  "task112": {
+    "result": {
+      "completed": true,
+      "release": "26",
+      "cleanup": true,
+      "epochs": 8,
+      "callbacks": 48,
+      "ambiguous_publications": 1,
+      "broker_survived": true,
+      "consumer_exit": 0,
+      "resources": [
+        [
+          "1",
+          "8",
+          "3"
+        ],
+        [
+          "2",
+          "8",
+          "3"
+        ],
+        [
+          "3",
+          "8",
+          "3"
+        ],
+        [
+          "4",
+          "8",
+          "3"
+        ],
+        [
+          "5",
+          "8",
+          "3"
+        ],
+        [
+          "6",
+          "8",
+          "3"
+        ],
+        [
+          "7",
+          "8",
+          "3"
+        ],
+        [
+          "8",
+          "8",
+          "3"
+        ]
+      ],
+      "broker_connections": {
+        "2": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "3": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "4": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "5": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "6": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "7": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "8": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "9": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "server_exit": 0,
+      "relay_errors": [],
+      "broker_socket_closed": true
+    },
+    "consumer_binary": "/home/zboll/task112-evidence/accept16-openssl/build26/bin/recovery_consumer",
+    "consumer_sha256": "82f262188e330feb036d6dfe4d240fa7f347ec5400b807474af68fe67cae4bf7",
+    "artifact_manifest_sha256": "cc86c2dce64c580ebfec5a8f2ae46ea64dff59f44cccbef74408d711db5f1978",
+    "historical_consumer_source_unchanged": true
+  },
+  "task113": {
+    "result": {
+      "completed": true,
+      "release": "26",
+      "cleanup": true,
+      "epochs": 5,
+      "callbacks": 24,
+      "ambiguous_publications": 0,
+      "broker_survived": true,
+      "consumer_exit": 0,
+      "resources": [
+        [
+          "1",
+          "8",
+          "3"
+        ],
+        [
+          "2",
+          "8",
+          "3"
+        ],
+        [
+          "3",
+          "8",
+          "3"
+        ],
+        [
+          "4",
+          "8",
+          "3"
+        ],
+        [
+          "5",
+          "8",
+          "3"
+        ]
+      ],
+      "broker_connections": {
+        "2": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "3": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "4": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "5": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "6": [
+          [
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "pending_operations": [
+        {
+          "epoch": 2,
+          "operation": "sub",
+          "broker_connection": "3",
+          "processed": true,
+          "acknowledged_to_ada": false,
+          "broker_log": "2026-11-08T23:43:03.230013Z DEBUG connection{id=3 service_id=\"task110-multimessage\"}: sleet::server: subscription registered sid=3 topic=task110-survivability message_name=SurvivabilityRiskLevel"
+        },
+        {
+          "epoch": 4,
+          "operation": "unsub",
+          "broker_connection": "5",
+          "processed": true,
+          "acknowledged_to_ada": false,
+          "broker_log": "2026-11-08T23:43:03.621966Z DEBUG connection{id=5 service_id=\"task110-multimessage\"}: sleet::server: subscription removed sid=3"
+        }
+      ],
+      "server_exit": 0,
+      "relay_errors": [],
+      "broker_socket_closed": true
+    },
+    "consumer_binary": "/home/zboll/task113-evidence/final16-openssl/build26/bin/recovery_consumer",
+    "consumer_sha256": "f03774909447e4c209e0639056cb2698a5985e74425337948d2d75a105461391",
+    "artifact_manifest_sha256": "28165dbcccdc5e5185e9ffae6a7eedac7d11bb4e783799b5910a2b4187bd21f2",
+    "historical_consumer_source_unchanged": true
+  },
+  "task109_unit": {
+    "passed": true,
+    "sha256": "5a3629ff974a72091c0b8c925e813d493980941c986a13710824bc94c51a1839"
+  },
+  "task110_unit": {
+    "passed": true,
+    "sha256": "f621f0d146e51d6701e62505fcacc55f3902909149743dc927a4cd958cfa6115"
+  },
+  "task112_unit": {
+    "passed": true,
+    "sha256": "1bd8af595a7aa1a5824c32f4e329d626753acca63b6f7c2518125e3967dd8698"
+  },
+  "task113_unit": {
+    "passed": true,
+    "sha256": "bb2ef8daebe7af22b7e796b15d30662406a2df84d1150457bcfc9d411ff8c437"
+  },
+  "task114_unit": {
+    "passed": true,
+    "sha256": "7650df04efb09445d3cef350d702df60068ddc66b87d70c183fa628d2ece6908"
+  },
+  "pr_smoke_selector": {
+    "passed": true,
+    "tests": 39,
+    "sha256": "2d59e6970f085496f3b2fc2c1e7d64056304dc08cbba203097a0aef8913051e8"
+  },
+  "real_artifact_mutations": {
+    "rejected": 16,
+    "sha256": "d0e8b93946ea319dbfbb9cea91b68ea876836cdb8b1d70d10d39f3a82c2549cb"
+  }
+}

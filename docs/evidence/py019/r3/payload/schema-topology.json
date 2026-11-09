@@ -1,0 +1,21 @@
+{
+  "declared_bases": {
+    "Base": null,
+    "Zeta": "Base",
+    "Middle": "Base",
+    "Deep-Leaf": "Middle",
+    "Alpha": "Base",
+    "Selection": null,
+    "Payload": null
+  },
+  "concrete_types": [
+    "Zeta",
+    "Deep-Leaf",
+    "Alpha",
+    "Selection",
+    "Payload"
+  ],
+  "concrete_to_concrete_derivation": [],
+  "concrete_field_declared_type": "Zeta",
+  "concrete_field_descendants": []
+}

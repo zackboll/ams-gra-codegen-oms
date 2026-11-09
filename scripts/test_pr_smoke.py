@@ -41,6 +41,14 @@ class Routing(unittest.TestCase):
         for path in ("scripts/task109_other.py", "scripts/task1090/new.py", "scripts/task109-other/new.py"):
             self.assert_execution([path], list(smoke.BACKENDS))
 
+    def test_task116_ada_only_and_boundaries(self):
+        for path in ("scripts/task116/qualify.py", "scripts/task116/peer.py",
+                     "scripts/task116/verify.py", "scripts/task116/test_deadline.py",
+                     "tests/ada-wss-deadline/deadline_probe.adb"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task1160/new.py", "scripts/task116_other.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_task112_ada_only_and_boundaries(self):
         for path in ("scripts/task112/qualify.py", "scripts/task112/recovery.py",
                      "scripts/task112/test_recovery.py", "scripts/task112/nested/new.py",
@@ -56,6 +64,15 @@ class Routing(unittest.TestCase):
                      "tests/ada-wss-subscription-recovery/recovery_consumer.adb"):
             self.assert_execution([path], ["ada"])
         for path in ("scripts/task113_other.py", "scripts/task1130/new.py", "scripts/task113-other/new.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
+    def test_task114_ada_only_and_boundaries(self):
+        for path in ("scripts/task114/qualify.py", "scripts/task114/recovery.py",
+                     "scripts/task114/verify.py", "scripts/task114/framing.py",
+                     "scripts/task114/test_recovery.py", "scripts/task114/nested/new.py",
+                     "tests/ada-wss-prebroker-recovery/recovery_consumer.adb"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task114_other.py", "scripts/task1140/new.py", "scripts/task114-other/new.py"):
             self.assert_execution([path], list(smoke.BACKENDS))
 
     def test_task104_ada_only(self):
