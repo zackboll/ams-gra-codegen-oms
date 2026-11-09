@@ -123,15 +123,17 @@ flags and tests; the split changes only compiler selection to run independently.
 | Baseline no-codec / Ada+Rust codec parity | 59 pairs / 472 comparisons / 0 mismatches |
 | CPP-OMS-001 standalone | PASS, 6313 checks per execution |
 | CPP-OMS-002 standalone | PASS both releases, 307 checks each configuration |
-| CPP-OMS-003 full runtime rerun | PASS all six configurations: OWP 6/101, mock 30/364, shutdown 12/217, OAM 1/13; integrated-helper rerun tracked separately |
+| CPP-OMS-003 full runtime rerun | PASS all six configurations, including integrated helper: OWP 6/101, mock 30/364, shutdown 12/217, OAM 1/13 |
 | CPP-OMS-004 through 006 full reruns | Running; not claimed complete |
 | Workspace library tests | 650 passed, no failures or ignored tests |
 | Local C++ smoke | PASS; no-schema-fetch offline path |
 | Workspace/all-target Clippy, fmt | PASS |
 | Corrected Sleet transport (integrated helper) | PASS all 12 release/configuration executions, each 2 tests/150 checks, zero unavailable configurations |
+| Full CPP-OMS-007 standalone source-rebuild driver | PASS, failures=0, unavailable configurations=0; all six configurations, both releases, synthetic/boundaries/codec/real Sleet |
 | Full-release readiness | PASS, 400→401 READY each release, FileMetadata only newly READY; zero losses or decreased renderable counts |
 | C++ generated codec parity | 32 pairs / 96 files, zero mismatches |
 | Python generation parity | 118 comparisons, zero mismatches |
+| Model/API/facade/member-remapping refresh | 88 passed (7 + 13 + 68), zero failures |
 
 ### Corrected-Sleet authentic transport matrix
 
@@ -152,8 +154,8 @@ These are candidate-only results, not original-pin interoperability claims.
 The integrated focused rerun recompiles the current transport test in each
 configuration, using the earlier exact-flag runtime object files. Production
 runtime sources are byte-identical and checked with `git diff --exit-code`;
-compiler/sanitizer modes are never mixed. The standalone full driver separately
-rebuilds runtime objects from source and remains tracked to completion.
+The standalone full driver separately
+rebuilds runtime objects from source and also completed with exit 0.
 Both releases' codec-only consumers require 2 tests/42 checks. Synthetic binary
 boundaries pass all six configurations (98 checks), with the unchanged
 272-check consumer and 5/5 mutation controls.
