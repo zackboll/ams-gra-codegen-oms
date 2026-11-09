@@ -49,6 +49,24 @@ class Routing(unittest.TestCase):
         for path in ("scripts/task112_other.py", "scripts/task1120/new.py", "scripts/task112-other/new.py"):
             self.assert_execution([path], list(smoke.BACKENDS))
 
+    def test_task113_ada_only_and_boundaries(self):
+        for path in ("scripts/task113/qualify.py", "scripts/task113/recovery.py",
+                     "scripts/task113/verify.py", "scripts/task113/test_recovery.py",
+                     "scripts/task113/nested/new.py",
+                     "tests/ada-wss-subscription-recovery/recovery_consumer.adb"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task113_other.py", "scripts/task1130/new.py", "scripts/task113-other/new.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
+    def test_task114_ada_only_and_boundaries(self):
+        for path in ("scripts/task114/qualify.py", "scripts/task114/recovery.py",
+                     "scripts/task114/verify.py", "scripts/task114/framing.py",
+                     "scripts/task114/test_recovery.py", "scripts/task114/nested/new.py",
+                     "tests/ada-wss-prebroker-recovery/recovery_consumer.adb"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task114_other.py", "scripts/task1140/new.py", "scripts/task114-other/new.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_task104_ada_only(self):
         paths = ("scripts/task104/admission.py", "scripts/task104/cases.py",
                  "scripts/task104/inventory.py", "scripts/task104/qualify.py",

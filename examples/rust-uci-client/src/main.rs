@@ -7,8 +7,8 @@ use ams_gra_oms_runtime_rust::{OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetR
 use generated::{
     model as m,
     service_api::{
-        function_dlz as dlz, function_log as log, function_rdma as rdma,
-        function_survivability as survivability,
+        function_dlz as dlz, function_file_metadata as file_metadata, function_log as log,
+        function_rdma as rdma, function_survivability as survivability,
     },
     service_codec::ServiceCodec,
 };
@@ -26,6 +26,7 @@ enum Received {
     Survivability(Box<m::SurvivabilityRiskLevelMT>),
     #[allow(clippy::upper_case_acronyms)] // Preserve the UCI global message identity.
     DLZ(Box<m::DLZMT>),
+    FileMetadata(Box<m::FileMetadataMT>),
 }
 
 fn load<P>(path: &Path) -> Result<P, String>
@@ -54,6 +55,15 @@ fn validate_schema(actual: &str) -> Result<(), String> {
 
 fn print_received(epoch: u8, value: Received) {
     match value {
+        Received::FileMetadata(value) => println!(
+            "RECEIVED {} id={} filename={:?} creation-source={:?} timestamp={} sha-2-hash-present={} session={epoch}",
+            file_metadata::exchange_receive::MESSAGE_NAME,
+            value.messagedata.filemetadataid.uuid.as_str(),
+            value.messagedata.filename.as_str(),
+            value.messagedata.creationsource,
+            value.messagedata.timestamp.as_str(),
+            value.messagedata.sha_2_hash.is_some(),
+        ),
         Received::Log(value) => println!(
             "RECEIVED {} system={} severity={:?} label={:?} session={epoch}",
             log::exchange_receive::MESSAGE_NAME,
@@ -123,6 +133,8 @@ fn run(options: cli::Options) -> Result<(), String> {
     let survivability: Option<m::SurvivabilityRiskLevelMT> =
         options.survivability.as_deref().map(load).transpose()?;
     let dlz: Option<m::DLZMT> = options.dlz.as_deref().map(load).transpose()?;
+    let file_metadata: Option<m::FileMetadataMT> =
+        options.file_metadata.as_deref().map(load).transpose()?;
     if let Some(value) = &log {
         validate_schema(value.messageheader.schemaversion.as_str())?;
     }
@@ -134,6 +146,10 @@ fn run(options: cli::Options) -> Result<(), String> {
     }
     if let Some(value) = &dlz {
         validate_schema(value.messageheader.schemaversion.as_str())?;
+    }
+    if let Some(value) = &file_metadata {
+        validate_schema(value.messageheader.schemaversion.as_str())?;
+        println!("VALIDATED FileMetadata: generated codec accepted locally; not broker acceptance");
     }
     let mut session = session::Session::connect(
         &options,
@@ -164,6 +180,11 @@ fn run(options: cli::Options) -> Result<(), String> {
             dlz::exchange_publish::publish(&mut session.runtime, value)
                 .map_err(|error| format!("publish DLZ: {error}"))?;
             println!("PUBLISHED DLZ: frame written; broker acceptance not acknowledged");
+        }
+        if let Some(value) = &file_metadata {
+            file_metadata::exchange_publish::publish(&mut session.runtime, value)
+                .map_err(|error| format!("publish FileMetadata: {error}"))?;
+            println!("PUBLISHED FileMetadata: frame written; broker acceptance not acknowledged");
         }
         Ok(())
     })();
@@ -203,13 +224,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn one_codec_supports_all_four_payloads() {
+    fn one_codec_supports_all_five_payloads() {
         fn compatible<C>()
         where
             C: OmsJsonCodec<m::LogMT>
                 + OmsJsonCodec<m::RDMAInitializeSetupMT>
                 + OmsJsonCodec<m::SurvivabilityRiskLevelMT>
-                + OmsJsonCodec<m::DLZMT>,
+                + OmsJsonCodec<m::DLZMT>
+                + OmsJsonCodec<m::FileMetadataMT>,
         {
         }
         compatible::<ServiceCodec>();

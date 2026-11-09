@@ -200,14 +200,19 @@ def validate_output(output):
     return resources
 
 
-def execute(args):
+def execute(args, campaign=None):
+    # Optional test-only campaign hooks; the historical Task112 defaults remain.
+    campaign_plan = getattr(campaign, "plan", plan)
+    campaign_relay = getattr(campaign, "Relay", Relay)
+    campaign_wire = getattr(campaign, "validate_wire", validate_wire)
+    campaign_output = getattr(campaign, "validate_output", validate_output)
     out = args.evidence.resolve()
     out.mkdir(parents=True, exist_ok=False)
     release = args.release
     service = "task110-multimessage" if release == "26" else "task106-multimessage"
     prefix = "task110" if release == "26" else "task106"
     topics = [prefix + "-" + key for key in cases.MESSAGES]
-    corpus = plan(release)
+    corpus = campaign_plan(release)
     (out / "plan.jsonl").write_text("".join(json.dumps(item) + "\n" for item in corpus))
     services = out / "services.d"
     services.mkdir()
@@ -222,7 +227,7 @@ def execute(args):
         'system_uuid = "550e8400-e29b-41d4-a716-446655440000"\n')
     server_cmd = [str(args.sleet.resolve() / "target/release/sleet"), str(config)]
     (out / "server.command.json").write_text(json.dumps(server_cmd) + "\n")
-    relay = Relay(port, args.cert, args.key, out)
+    relay = campaign_relay(port, args.cert, args.key, out)
     child = reader = None
     result = dict(completed=False, release=release, cleanup=False)
     observations = []
@@ -300,11 +305,15 @@ def execute(args):
                                 require(json.loads(msg.split(" ", 2)[2]) == {name: doc}, "external publication witnessed")
                         elif parts[0] == "ARMED":
                             epoch = int(parts[1])
+                            if campaign is not None and hasattr(campaign, "on_armed"):
+                                campaign.on_armed(epoch, corpus[epoch - 1], send, recv, relay)
                             if parts[2] == "pending":
                                 text = recv()
                                 require(text.startswith("MSG w1 ") and json.loads(text.split(" ", 2)[2]) ==
                                         {"Log": corpus[epoch - 1]["ambiguous"]}, "ambiguous PUB independently observed once")
                             relay.armed[epoch - 1].set()
+                        elif parts[0] == "PROBE_REJECTED" and campaign is not None and hasattr(campaign, "on_probe"):
+                            campaign.on_probe(int(parts[1]), relay)
                     require(child.wait(timeout=5) == 0, "Ada application failure (see consumer.stdout)")
                 relay.thread.join(5)
                 require(not relay.thread.is_alive() and not relay.errors, "relay failure: " + repr(relay.errors))
@@ -312,9 +321,9 @@ def execute(args):
                 # queued on the same ordered observer stream after recovery.
                 send("UNSUB w1")
                 require(recv().startswith("+OK"), "unexpected queued/replayed witness delivery")
-            validate_wire(relay.results, release)
+            campaign_wire(relay.results, release)
             output = (out / "consumer.stdout").read_text()
-            resources = validate_output(output)
+            resources = campaign_output(output)
             require(server.poll() is None, "same broker survived campaign")
             broker_log = (out / "server.stdout").read_text()
             registrations = re.findall(r'connection\{id=(\d+)[^\n]*subscription registered sid=([123]) topic=(\S+) message_name=(\S+)', broker_log)
@@ -322,11 +331,16 @@ def execute(args):
             for connection, sid, topic, name in registrations:
                 owners.setdefault(connection, []).append((sid, topic, name))
             expected = [(str(i), topic, name) for i, (topic, name) in enumerate(zip(topics, NAMES), 1)]
-            require(len(owners) == 8 and all(rows == expected for rows in owners.values()),
-                    "broker must independently register three subscriptions on eight distinct Ada connections")
-            result.update(completed=True, epochs=8, callbacks=48, ambiguous_publications=1,
+            if campaign is not None and hasattr(campaign, "validate_owners"):
+                campaign.validate_owners(owners, expected)
+            else:
+                require(len(owners) == len(corpus) and all(rows == expected for rows in owners.values()),
+                        "broker must independently register three subscriptions on eight distinct Ada connections")
+            result.update(completed=True, epochs=len(corpus), callbacks=output.count("CALL "), ambiguous_publications=1 if campaign is None else 0,
                           broker_survived=True, consumer_exit=child.returncode, resources=resources,
                           broker_connections=owners)
+            if campaign is not None:
+                result.update(campaign.validate_broker(broker_log, owners, relay.results))
         except Exception as error:
             result["error"] = f"{type(error).__name__}: {error}"
         finally:

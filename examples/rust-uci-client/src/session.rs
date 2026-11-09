@@ -6,7 +6,7 @@ use std::io::{Error as IoError, ErrorKind};
 
 pub(super) struct Session {
     pub runtime: SleetRuntime<ServiceCodec>,
-    subscriptions: [SubscriptionHandle; 4],
+    subscriptions: Vec<(&'static str, SubscriptionHandle)>,
     epoch: u8,
     receiver: mpsc::Receiver<(u8, Received)>,
 }
@@ -19,9 +19,20 @@ impl Session {
     }
 
     fn subscribe(
-        mut runtime: SleetRuntime<ServiceCodec>,
+        runtime: SleetRuntime<ServiceCodec>,
         options: &cli::Options,
         epoch: u8,
+    ) -> Result<Self, String> {
+        Self::subscribe_with_metadata_barrier(runtime, options, epoch, |_| {})
+    }
+
+    // A no-op in the executable; tests synchronize a real worker loss exactly
+    // before fifth registration, without racing socket scheduling or sleeping.
+    fn subscribe_with_metadata_barrier(
+        runtime: SleetRuntime<ServiceCodec>,
+        options: &cli::Options,
+        epoch: u8,
+        before_metadata: impl FnOnce(&Self),
     ) -> Result<Self, String> {
         println!(
             "CONNECTED session={epoch} service={} UCI={} INIT.schema={SCHEMA}",
@@ -31,38 +42,70 @@ impl Session {
         // Each session owns its queue. Closing joins the only producer before
         // this receiver is dropped, so queued old values cannot cross epochs.
         let (sender, receiver) = mpsc::channel();
-        let logs = sender.clone();
-        let log_sub = log::exchange_receive::subscribe(&mut runtime, move |value| {
-            let _ = logs.send((epoch, Received::Log(Box::new(value.clone()))));
-        })
-        .map_err(|error| format!("subscribe Log: {error}"))?;
-        let rdmas = sender.clone();
-        let rdma_sub = rdma::exchange_receive::subscribe(&mut runtime, move |value| {
-            let _ = rdmas.send((epoch, Received::Rdma(Box::new(value.clone()))));
-        })
-        .map_err(|error| format!("subscribe RDMA_InitializeSetup: {error}"))?;
-        let risks = sender.clone();
-        let risk_sub = survivability::exchange_receive::subscribe(&mut runtime, move |value| {
-            let _ = risks.send((epoch, Received::Survivability(Box::new(value.clone()))));
-        })
-        .map_err(|error| format!("subscribe SurvivabilityRiskLevel: {error}"))?;
-        let dlz_sub = dlz::exchange_receive::subscribe(&mut runtime, move |value| {
-            let _ = sender.send((epoch, Received::DLZ(Box::new(value.clone()))));
-        })
-        .map_err(|error| format!("subscribe DLZ: {error}"))?;
-        println!(
-            "SUBSCRIBED session={epoch} Log sid={} RDMA_InitializeSetup sid={} SurvivabilityRiskLevel sid={} DLZ sid={} (frames written)",
-            log_sub.id(),
-            rdma_sub.id(),
-            risk_sub.id(),
-            dlz_sub.id()
-        );
-        Ok(Self {
+        let mut session = Self {
             runtime,
-            subscriptions: [log_sub, rdma_sub, risk_sub, dlz_sub],
+            subscriptions: Vec::with_capacity(5),
             epoch,
             receiver,
-        })
+        };
+        let setup = (|| {
+            let logs = sender.clone();
+            let handle = log::exchange_receive::subscribe(&mut session.runtime, move |value| {
+                let _ = logs.send((epoch, Received::Log(Box::new(value.clone()))));
+            })
+            .map_err(|error| format!("subscribe Log: {error}"))?;
+            session.subscriptions.push(("Log", handle));
+            let rdmas = sender.clone();
+            let handle = rdma::exchange_receive::subscribe(&mut session.runtime, move |value| {
+                let _ = rdmas.send((epoch, Received::Rdma(Box::new(value.clone()))));
+            })
+            .map_err(|error| format!("subscribe RDMA_InitializeSetup: {error}"))?;
+            session.subscriptions.push(("RDMA_InitializeSetup", handle));
+            let risks = sender.clone();
+            let handle =
+                survivability::exchange_receive::subscribe(&mut session.runtime, move |value| {
+                    let _ = risks.send((epoch, Received::Survivability(Box::new(value.clone()))));
+                })
+                .map_err(|error| format!("subscribe SurvivabilityRiskLevel: {error}"))?;
+            session
+                .subscriptions
+                .push(("SurvivabilityRiskLevel", handle));
+            let dlzs = sender.clone();
+            let handle = dlz::exchange_receive::subscribe(&mut session.runtime, move |value| {
+                let _ = dlzs.send((epoch, Received::DLZ(Box::new(value.clone()))));
+            })
+            .map_err(|error| format!("subscribe DLZ: {error}"))?;
+            session.subscriptions.push(("DLZ", handle));
+            if options.enable_file_metadata {
+                before_metadata(&session);
+                let handle = file_metadata::exchange_receive::subscribe(
+                    &mut session.runtime,
+                    move |value| {
+                        let _ =
+                            sender.send((epoch, Received::FileMetadata(Box::new(value.clone()))));
+                    },
+                )
+                .map_err(|error| format!("subscribe FileMetadata: {error}"))?;
+                session.subscriptions.push(("FileMetadata", handle));
+            }
+            Ok::<_, String>(())
+        })();
+        if let Err(error) = setup {
+            return match session.close(false) {
+                Ok(()) => Err(error),
+                Err(cleanup) => Err(format!("{error}\n{cleanup}")),
+            };
+        }
+        let handles: Vec<_> = session
+            .subscriptions
+            .iter()
+            .map(|(name, handle)| format!("{name} sid={}", handle.id()))
+            .collect();
+        println!(
+            "SUBSCRIBED session={epoch} {} (frames written)",
+            handles.join(" ")
+        );
+        Ok(session)
     }
 
     // Only an observed ConnectionClosed can return a recoverable outcome.
@@ -119,15 +162,7 @@ impl Session {
             }
             drop(subscriptions);
         } else {
-            for (name, subscription) in [
-                "Log",
-                "RDMA_InitializeSetup",
-                "SurvivabilityRiskLevel",
-                "DLZ",
-            ]
-            .into_iter()
-            .zip(subscriptions)
-            {
+            for (name, subscription) in subscriptions {
                 match subscription.unsubscribe() {
                     Ok(()) => println!(
                         "UNSUBSCRIBED {name}: frame written; handler removed; session={epoch}"
@@ -298,6 +333,9 @@ fn receive_sessions_with_activation_time(
 
 #[cfg(test)]
 mod deadline_tests;
+
+#[cfg(test)]
+mod setup_tests;
 
 #[cfg(test)]
 mod tests {

@@ -113,7 +113,6 @@ fn unsupported_inherited_service_selections_fail_atomically() {
     let field = "<xs:element name=\"Base_Required\" type=\"xs:int\"/>";
     let cases = [
         ("abstract-field", original.replace("name=\"Linked\" type=\"t:Token\"", "name=\"Linked\" type=\"t:Base\"")),
-        ("abstract-payload", original.replace("name=\"InheritedNotice\" type=\"t:Leaf\"", "name=\"InheritedNotice\" type=\"t:Base\"")),
         ("choice-segment", original.replacen("<xs:sequence>", "<xs:choice>", 1).replacen("</xs:sequence>", "</xs:choice>", 1)),
         ("abstract-choice", original.replace("<xs:sequence><xs:element name=\"Linked\" type=\"t:Token\"/></xs:sequence>", "<xs:choice><xs:element name=\"Abstract\" type=\"t:Base\"/></xs:choice>")),
         ("missing-base", original.replace("base=\"t:Third\"", "base=\"t:Absent\"")),
@@ -126,7 +125,7 @@ fn unsupported_inherited_service_selections_fail_atomically() {
         ("inherited-facet", original.replace(field, "<xs:element name=\"Base_Required\"><xs:simpleType><xs:restriction base=\"xs:string\"><xs:pattern value=\"[A-Z]+\"/></xs:restriction></xs:simpleType></xs:element>")),
         ("inherited-nillable", original.replace(field, "<xs:element name=\"Base_Required\" type=\"xs:int\" nillable=\"true\"/>")),
     ];
-    assert_eq!(cases.len(), 13);
+    assert_eq!(cases.len(), 12);
     for (name, source) in cases {
         let schema = temp.join(format!("{name}.xsd"));
         fs::write(&schema, source).unwrap();
@@ -144,6 +143,98 @@ fn unsupported_inherited_service_selections_fail_atomically() {
             }
         }
     }
-    println!("PY007 ATOMIC NEGATIVE SELECTIONS: PASSED cases=14 selections=56 checks=112");
+    println!("PY019 INHERITED NEGATIVE SELECTIONS: PASSED cases=12 selections=48 checks=96");
+    fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
+fn inhabited_abstract_service_payload_executes_closed_and_rejects_open() {
+    let temp = std::env::temp_dir().join(format!("py019-inherited-payload-{}", std::process::id()));
+    fs::create_dir(&temp).unwrap();
+    let fixture = root().join("tests/fixtures/python-inheritance");
+    let schema = temp.join("abstract-payload.xsd");
+    let original = fs::read_to_string(fixture.join("oam.xsd")).unwrap();
+    let changed = original.replace(
+        "name=\"InheritedNotice\" type=\"t:Leaf\"",
+        "name=\"InheritedNotice\" type=\"t:Base\"",
+    );
+    assert_ne!(changed, original);
+    fs::write(&schema, changed).unwrap();
+    let contract = fixture.join("service.yaml");
+    for codec in [false, true] {
+        let checked = run(&schema, &contract, "closed-schema", codec, None);
+        assert!(checked.status.success(), "{checked:?}");
+        let dest = temp.join(format!("models_{codec}"));
+        let generated = run(&schema, &contract, "closed-schema", codec, Some(&dest));
+        assert!(generated.status.success(), "{generated:?}");
+        assert_eq!(
+            fs::read_dir(&dest).unwrap().count(),
+            if codec { 3 } else { 2 }
+        );
+        let script = r#"import model as m,service_api as api,unittest,json
+class ClosedPayload(unittest.TestCase):
+ def test_inventory_and_all_variants(self):
+  common=dict(base_required=1,required_values=(2,))
+  values=[m.Base.from_Middle(m.Middle(**common)),m.Base.from_Third(m.Third(**common,linked=m.Token(3))),m.Base.from_Leaf(m.Leaf(**common,linked=m.Token(3),local='x',nested=m.Nested(count=4,label='n'))),m.Base.from_Sibling(m.Sibling(**common,other=True))]
+  wires=[{'Base_Required':1,'Required_Values':[2],'$type':'Middle'},{'Base_Required':1,'Required_Values':[2],'Linked':3,'$type':'Third'},{'Base_Required':1,'Required_Values':[2],'Linked':3,'Local':'x','Nested':{'Count':4,'Label':'n'},'$type':'Leaf'},{'Base_Required':1,'Required_Values':[2],'Other':True,'$type':'Sibling'}]
+  self.assertIs(api.function_loop.exchange_input.Payload,m.Base)
+  for value,wire in zip(values,wires):
+   self.assertEqual(value.alternative,('https://www.vdl.afrl.af.mil/programs/oam',wire['$type']))
+   self.assertEqual(value.value.base_required,1)
+   if WITH_CODEC:
+    import service_codec as c
+    self.assertEqual(json.loads(c.encode_Base(value)),wire)
+    self.assertEqual(c.decode_Base(json.dumps(wire)),value)
+  with self.assertRaises(TypeError):m.Base.from_Middle(values[1].value)
+  with self.assertRaises(ValueError):m.Base(('https://www.vdl.afrl.af.mil/programs/oam','Base'),values[0].value)
+  if WITH_CODEC:
+   import service_codec as c
+   for bad in [{'$type':'Private'},{'$type':'Middle'},{'Base_Required':True,'Required_Values':[2],'$type':'Middle'}]:
+    with self.assertRaises(c.CodecError):c.decode_Base(json.dumps(bad))
+unittest.main()
+"#;
+        for optimized in [false, true] {
+            let mut python =
+                Command::new(std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()));
+            if optimized {
+                python.arg("-O");
+            }
+            let script = format!(
+                "WITH_CODEC={}\n{script}",
+                if codec { "True" } else { "False" }
+            );
+            let result = python
+                .args(["-c", &script])
+                .current_dir(&dest)
+                .env("PYTHONDONTWRITEBYTECODE", "1")
+                .output()
+                .unwrap();
+            assert!(result.status.success(), "{result:?}");
+            assert!(String::from_utf8_lossy(&result.stderr).contains("Ran 1 test"));
+        }
+        let open = temp.join(format!("open-{codec}"));
+        let check = run(&schema, &contract, "open-extensions", codec, None);
+        assert!(!check.status.success());
+        assert!(
+            String::from_utf8_lossy(&check.stdout)
+                .contains("abstract value Base is not closed under open-extensions generation"),
+            "{check:?}"
+        );
+        assert!(
+            !run(&schema, &contract, "open-extensions", codec, Some(&open))
+                .status
+                .success()
+        );
+        assert!(!open.exists());
+        fs::create_dir(&open).unwrap();
+        fs::write(open.join("sentinel"), b"unchanged").unwrap();
+        assert!(
+            !run(&schema, &contract, "open-extensions", codec, Some(&open))
+                .status
+                .success()
+        );
+        assert_eq!(fs::read_dir(&open).unwrap().count(), 1);
+        assert_eq!(fs::read(open.join("sentinel")).unwrap(), b"unchanged");
+    }
     fs::remove_dir_all(temp).unwrap();
 }

@@ -13,7 +13,8 @@ import qualify
 import recovery
 
 
-def verify(directory):
+def verify(directory, profile=None):
+    campaign_recovery = getattr(profile, "recovery", recovery)
     def load(name):
         return json.loads((directory / name).read_text())
     campaign = load("result.json")
@@ -28,7 +29,7 @@ def verify(directory):
         recovery.require((directory / (name + "-identity.stdout")).read_text().splitlines()[0] == pin, "dependency identity")
         for suffix in ("-clean.stdout", "-final-clean.stdout"):
             recovery.require(not (directory / (name + suffix)).read_text().strip(), "dependency clean")
-    receipt = dict(format="task112-v1", source=campaign["source"], compiler=campaign["compiler"],
+    receipt = dict(format=getattr(profile, "FORMAT", "task112-v1"), source=campaign["source"], compiler=campaign["compiler"],
                    backend=campaign["backend"], dependencies=qualify.PINS,
                    dependency_trees={n: (directory / (n + "-identity.stdout")).read_text().splitlines()[1]
                                      for n in qualify.PINS},
@@ -62,13 +63,17 @@ def verify(directory):
                     document_frames=[dict(operation=t.split()[0], sha256=hashlib.sha256(t.encode()).hexdigest())
                                      for t in texts if t.startswith(("PUB ", "MSG "))])
             compact.append(row)
-        recovery.validate_wire(results, release)
+        campaign_recovery.validate_wire(results, release)
         output = (cell / "consumer.stdout").read_text()
-        recovery.validate_output(output)
+        campaign_recovery.validate_output(output)
+        if profile is not None:
+            recovery.require(campaign_recovery.validate_broker((cell / "server.stdout").read_text(),
+                result["broker_connections"], results) == {"pending_operations": result["pending_operations"]},
+                "independent broker operation evidence")
         receipt["releases"][release] = dict(result={k: v for k, v in result.items() if k != "epochs_observed"},
             generated=load("generated" + release + "-sources.json"), schemas=qualify.SCHEMAS[release],
             consumer_observations=[line for line in output.splitlines() if re.match(
-                r"^(CALL|SUBSCRIBED|ARMED|TRANSPORT_EXCEPTION|RETIRED|CLEANUP|TASK112_COMPLETE) ", line)],
+                r"^(CALL|SUBSCRIBED|PENDING|ARMED|TRANSPORT_EXCEPTION|RETIRED|CLEANUP|TASK11[23]_COMPLETE) ", line)],
             epochs=compact,
             artifacts={str(p.relative_to(directory)): qualify.digest(p) for p in
                        (cell / "consumer.stdout", cell / "consumer.stderr", cell / "server.stdout",

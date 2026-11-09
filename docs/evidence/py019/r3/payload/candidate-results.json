@@ -1,0 +1,52 @@
+{
+  "candidate": "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}",
+  "neighbor": "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}",
+  "classification": "Schema-valid self-type marker; documented unsupported concrete-position Python representation, not malformed abstract data",
+  "generated_command": [
+    "/home/zboll/py019-evidence/target/debug/ams-gra-codegen-oms",
+    "service-generate",
+    "--schema",
+    "/home/zboll/git/ams-gra-codegen-oms-py019/tests/fixtures/python-abstract-values/oam.xsd",
+    "--contract",
+    "/home/zboll/git/ams-gra-codegen-oms-py019/tests/fixtures/python-abstract-values/service.yaml",
+    "--language",
+    "python",
+    "--world",
+    "closed-schema",
+    "--with-codec",
+    "--output",
+    "/home/zboll/py019-evidence/r3/candidate_models"
+  ],
+  "direct": {
+    "error_type": "CodecError",
+    "error": "$.Concrete: unknown or unsupported member '$type'"
+  },
+  "decoder_calls": [
+    "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}",
+    "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\"}}"
+  ],
+  "decoder_errors": [
+    {
+      "input": "{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}",
+      "error": "$.Concrete: unknown or unsupported member '$type'",
+      "category": "CodecError"
+    }
+  ],
+  "direct_neighbor_exact_type": "Payload",
+  "runtime_sid": "sub-1",
+  "broker_response": "+OK",
+  "raw_observer_frame": "MSG raw {\"AbstractNotice\":{\"Required\":{\"Inherited\":1,\"Text\":\"z\",\"$type\":\"Zeta\"},\"Bounded\":[{\"Inherited\":3,\"Real\":1.5,\"$type\":\"Alpha\"}],\"Nested\":{\"Text\":\"n\"},\"Concrete\":{\"Inherited\":4,\"Text\":\"c\",\"$type\":\"Zeta\"}}}",
+  "event": {
+    "category": "CodecFailure",
+    "subscription_id": "sub-1",
+    "error": "payload decoder rejected message"
+  },
+  "candidate_decoder_delta": 1,
+  "candidate_typed_callbacks": 0,
+  "same_subscription_recovery": true,
+  "unsubscribed": true,
+  "post_unsubscribe_silence": true,
+  "runtime_closed": true,
+  "broker_exit": 0,
+  "remaining_tasks": []
+}
