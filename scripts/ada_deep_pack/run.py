@@ -115,6 +115,34 @@ def verify_suite(name, directory, compiler, source):
     return module.verify_bundle(*args)
 
 
+def worker_git_env(env, source):
+    """Trust only the verified checkout in this worker's protected Git scope.
+
+    HOME belongs to the private Alire setup, not the job's Git configuration.
+    Append command-scope entries without replacing any existing worker settings
+    or writing global/system policy. The empty entry resets inherited trust.
+    Plain Git in the frozen shell commands and their descendants inherits this.
+    """
+    repository = ROOT.resolve(strict=True)
+    if "*" in str(repository):
+        raise RuntimeError("wildcard worker source path")
+    trusted = dict(env)
+    count = int(trusted.get("GIT_CONFIG_COUNT", "0"))
+    if count < 0 or trusted.get("GIT_CONFIG_PARAMETERS"):
+        raise RuntimeError("unexpected worker Git command configuration")
+    for value in ("", str(repository)):
+        trusted[f"GIT_CONFIG_KEY_{count}"] = "safe.directory"
+        trusted[f"GIT_CONFIG_VALUE_{count}"] = value
+        count += 1
+    trusted["GIT_CONFIG_COUNT"] = str(count)
+    actual = subprocess.check_output(
+        ["git", "rev-parse", "--show-toplevel", "HEAD", "HEAD^{tree}"],
+        cwd=repository, env=trusted, text=True).splitlines()
+    if actual != [str(repository), source["sha"], source["tree"]]:
+        raise RuntimeError("worker source path/commit/tree mismatch")
+    return trusted
+
+
 def worker(name, directory, shared, compiler, source, cpu):
     started = time.monotonic()
     result = dict(suite=name, source=source, compiler=compiler, exit=1, steps=[])
@@ -127,6 +155,7 @@ def worker(name, directory, shared, compiler, source, cpu):
                AMS_GRA_ADA_BUILD_JOBS="1", CARGO_BUILD_JOBS="1", RAYON_NUM_THREADS="1",
                OMP_NUM_THREADS="1", GITHUB_WORKSPACE=str(ROOT))
     try:
+        env = worker_git_env(env, source)
         for index, step in enumerate(INVENTORY["suites"][name]["steps"]):
             command = render(step["run"], name, directory, shared, compiler)
             step_env = dict(env, **{k: render(v, name, directory, shared, compiler)
