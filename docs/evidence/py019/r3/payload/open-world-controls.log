@@ -1,0 +1,9 @@
+   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py019/crates/backend-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running tests/abstract_values.rs (/home/zboll/py019-evidence/target/debug/deps/abstract_values-b388b4aafcf8d4ac)
+
+running 2 tests
+test ambiguous_identity_and_factory_annotation_collisions_fail_closed ... ok
+test zero_one_multiple_and_private_descendants_never_close_open_world ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
