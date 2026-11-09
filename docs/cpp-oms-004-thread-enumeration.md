@@ -99,8 +99,38 @@ failures remain in `/home/zboll/cpp-oms-007r1-evidence` without modification.
 | clang++ TSan | PASS, 6 tests / 6094 checks |
 
 All six completed with exit 0 and no sanitizer findings. Smoke-harness regression:
-40 tests passed. Authentic full PositionReport, C++ smoke and shared runtime
-qualification are tracked separately to completion; pending runs are not passes.
+40 tests passed; local C++ PR smoke passed. Shared runtime qualification passed
+all six configurations: OWP 6 tests/101 checks, mock 30/364, shutdown 12/217,
+and OAM 1/13 per configuration. Live-worker and completed-shutdown failures
+remain observable. Five compiled negative controls were all detected: unchecked
+name, unchecked readdir, unchecked close, stale errno, and inverted live-worker
+filtering (each executed test exited 1; compilation failures do not count).
+
+Full CPP-OMS-004 PositionReport qualification passed both authentic pinned UCI
+releases and all six configurations, including clang-TSan in 2.5 and 2.6:
+
+| Configuration | UCI 2.5 | UCI 2.6 |
+|---|---|---|
+| g++ strict | PASS, 2 tests / 247 checks | PASS, 2 tests / 247 checks |
+| clang++ strict | PASS, 2 tests / 247 checks | PASS, 2 tests / 247 checks |
+| g++ ASan+UBSan | PASS, 2 tests / 247 checks | PASS, 2 tests / 247 checks |
+| clang++ ASan+UBSan | PASS, 2 tests / 247 checks | PASS, 2 tests / 247 checks |
+| g++ TSan | PASS, 2 tests / 247 checks | PASS, 2 tests / 247 checks |
+| clang++ TSan | PASS, 2 tests / 247 checks | PASS, 2 tests / 247 checks |
+
+No unavailable configuration or sanitizer findings. The unchanged standalone
+script rebuilt runtime objects from source, authenticated both full schema
+roots and SecurityMarkings, and verified original clean Sleet commit
+`e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b` / tree
+`7e705f4eb5f658957bd414b4abc8207311f3c1e4`. Its numerical, locale and six mutation
+controls passed: 27167 conversion and 20474 encoding oracle rows; per-release
+codec consumers 253 checks/35 rejections. The immediate post-close assertion
+remains exactly `threads_named("ams-lacal") == 0`.
+
+Implementation commit `dfa85d44d68ecb8f71fc2cadbf45d405b0111739`, tree
+`7547eeed727c70cafdec187a730dd840add4a520`, passed exact-head hosted PR smoke
+run `42558512562` and trusted signals. This subsequent receipt-only commit gets
+its own exact-head hosted inspection; prior green checks are not extrapolated.
 
 Only this existing PR #200 branch is updated. Production LA-CAL runtime, broker,
 codec, schema, immediate PositionReport assertion, and PR #198 are unchanged.
