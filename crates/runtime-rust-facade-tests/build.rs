@@ -106,12 +106,14 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_DLZ");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA");
+    println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA");
     let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_RDMA").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_DLZ").is_some()
-        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA").is_some();
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA").is_some()
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA").is_some();
     for (version, root_hash, include_hash) in [
         (
             "5",
@@ -132,6 +134,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             "survivability",
             "dlz",
             "file_metadata",
+            "orders_metadata",
         ] {
             println!("cargo::rustc-check-cfg=cfg(ams_gra_real_uci_{message}2{version})");
         }
@@ -159,6 +162,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             ("survivability", "rust-oms-004"),
             ("dlz", "rust-oms-006"),
             ("file_metadata", "rust-oms-010"),
+            ("orders_metadata", "rust-oms-012"),
         ] {
             let cfg = format!("ams_gra_real_uci_{message}2{version}");
             let contract = fixtures.join(format!("../{task}/uci2{version}-service.yaml"));
@@ -180,6 +184,15 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             check.push("--with-codec".into());
             let mut readiness = Vec::new();
             generate(message, check, &mut readiness);
+            if message == "orders_metadata" {
+                // Retain measured counts rather than assuming a closure size.
+                // Fail before generation if either readiness gate is not READY.
+                let report = String::from_utf8_lossy(&readiness);
+                for required in ["status: READY", "codec status: READY"] {
+                    assert!(report.lines().any(|line| line == required), "{report}");
+                }
+                println!("cargo:warning=OrdersMetadata UCI 2.{version}: {report}");
+            }
             if message == "file_metadata" {
                 let report = String::from_utf8_lossy(&readiness);
                 for required in [
@@ -235,9 +248,9 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
                 }
                 let mut generation = Vec::new();
                 generate(message, arguments, &mut generation);
-                if message == "file_metadata" {
+                if matches!(message, "file_metadata" | "orders_metadata") {
                     std::fs::write(directory.join("generation.txt"), generation)
-                        .expect("FileMetadata generation report");
+                        .expect("authentic metadata generation report");
                 }
             }
             // The codec must reuse the exact model and endpoint surface, with
