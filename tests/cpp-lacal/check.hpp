@@ -2,15 +2,19 @@
 #pragma once
 
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <cstdlib>
 #include <dirent.h>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
+#include <unistd.h>
 
 namespace check {
 
@@ -72,7 +76,25 @@ bool eventually(Predicate predicate, std::chrono::milliseconds timeout = std::ch
     return true;
 }
 
-/// Number of live threads of this process whose name starts with `prefix`.
+/// Linux /proc stat field 9, after the parenthesized comm (which may contain spaces).
+inline std::optional<unsigned long> task_flags(const std::string& stat) {
+    const auto end = stat.rfind(')');
+    if (end == std::string::npos) {
+        return std::nullopt;
+    }
+    std::istringstream fields(stat.substr(end + 1));
+    char state = '\0';
+    long parent = 0, group = 0, session = 0, tty = 0, foreground = 0;
+    unsigned long flags = 0;
+    if (!(fields >> state >> parent >> group >> session >> tty >> foreground >> flags)) {
+        return std::nullopt;
+    }
+    return flags;
+}
+
+/// Number of userspace-live threads whose name starts with `prefix`.
+/// pthread_join can return before Linux unlinks the exiting task from /proc.
+/// PF_EXITING tasks cannot execute further userspace code; they are not workers.
 inline int threads_named(const std::string& prefix) {
     int count = 0;
     DIR* dir = opendir("/proc/self/task");
@@ -88,6 +110,26 @@ inline int threads_named(const std::string& prefix) {
         std::string name;
         std::getline(comm, name);
         if (name.rfind(prefix, 0) == 0) {
+            std::ifstream stat("/proc/self/task/" + id + "/stat");
+            std::string record;
+            if (!std::getline(stat, record)) {
+                // A task can disappear between reading comm and stat. Any
+                // other read failure is a failed observation, not zero workers.
+                if (access(("/proc/self/task/" + id).c_str(), F_OK) != 0 && errno == ENOENT) {
+                    continue;
+                }
+                closedir(dir);
+                return -1;
+            }
+            const auto flags = task_flags(record);
+            if (!flags) {
+                closedir(dir);
+                return -1;
+            }
+            constexpr unsigned long exiting = 0x00000004UL;  // Linux PF_EXITING
+            if ((*flags & exiting) != 0) {
+                continue;
+            }
             ++count;
         }
     }
