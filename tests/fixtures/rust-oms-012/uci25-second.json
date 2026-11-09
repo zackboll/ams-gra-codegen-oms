@@ -1,0 +1,19 @@
+{
+  "SecurityInformation": {"Classification": "U", "OwnerProducer": [{"GovernmentIdentifier": "USA"}]},
+  "MessageHeader": {
+    "SystemID": {"UUID": "c0ffee00-0012-4000-8000-000000000025"},
+    "Timestamp": "2026-11-08T13:14:15Z",
+    "SchemaVersion": "002.5.0",
+    "Mode": "LIVE"
+  },
+  "ObjectState": "NEW",
+  "MessageData": {
+    "OrdersMetadataID": {"UUID": "c0ffee00-0012-4000-8000-000000000999", "DescriptiveLabel": "Independent order 999"},
+    "SourceSystemID": {"UUID": "c0ffee00-0012-4000-8000-000000000120"},
+    "OrdersAssociation": [{
+      "Orders": {"ATO": [{"Identifier": {"QualifierSerialNumber": 999}}]},
+      "AssociatedMessage": [{"MessageType": "LOG"}],
+      "TimeSpan": {"Begin": "2026-11-08T00:00:00Z", "End": "2026-11-09T00:00:00Z"}
+    }]
+  }
+}
