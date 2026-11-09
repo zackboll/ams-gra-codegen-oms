@@ -13,6 +13,7 @@ auto-merge, force-push or history rewrite is authorized or performed.
 | Sleet corrective candidate | `dff18c05d2d318b60b6a87e889f0daf15864f0e3` | `794069ffa2c1d6a5ea73166fd0b20f06f652c6ca` |
 | Recorded OMS review head | `e5c4320e004620df66d16f514a28c16052a35402` | `52232193457e2bb026dd11557ec1156e7f1c96e9` |
 | Main reconciled by ordinary merge | `aadf622` | recorded by Git |
+| Integrated test-observation correction | `da708ff342cd920014bc4ae35211f351be5fbcf3` | recorded by Git |
 
 * Sleet correction: https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet/pull/2
 * Separate test-observation correction: https://github.com/zackboll/ams-gra-codegen-oms/pull/200
@@ -52,7 +53,12 @@ test, and thread helper sources. Both are tested with clang 19.1.7, Boost 1.83,
 `-std=c++17 -g -fsanitize=thread -O1 -pthread`, original pinned Sleet, and full
 UCI 2.6. Repeated isolated executions retain stdout, stderr, sanitizer output,
 exit statuses and thread snapshots. The unmodified head reproduced the immediate
-post-close assertion (1/247 failed); baseline comparisons are tracked below.
+post-close assertion (1/247 failed). The original base reproduced the same
+failure **4 times in 60 runs**; the unmodified head failed **1 time in 10 runs**.
+Corrected-helper clang-TSan PositionReport passed **20/20 runs**, each 2 tests /
+247 checks, using the identical runtime objects. No sanitizer diagnostics were
+emitted. Baseline failures are `base-more-a/{1,4,6}` and `base-more-b/4`;
+the head failure is `head-tsan-runs/4`.
 
 `Runtime::close()` joins the I/O and dispatch workers and destroys the Asio
 context, including its resolver. A broker-free joined-thread probe proves a
@@ -69,8 +75,9 @@ only PF_EXITING/proven-vanished records, and fail closed on other read/parse
 errors. It preserves the immediate zero-worker assertion and production runtime.
 No timeout increase is used. All six compiler/sanitizer configurations pass its
 3 tests/6007 checks, including a blocked live-worker negative control and 2000
-joined workers. Independent review is required before incorporating that
-separate correction into the feature acceptance baseline.
+joined workers. Its ordinary commits are incorporated into the feature branch
+by an ordinary merge; PR #200 remains open, unapproved and unmerged on GitHub.
+Independent review of that separate correction is still required for acceptance.
 
 ## C++ boundary and transport coverage
 
@@ -109,18 +116,54 @@ Evidence directory: `/home/zboll/cpp-oms-007r1-evidence`. A missing `.exit` file
 is not a completed pass. The full driver and isolated clang split use identical
 flags and tests; the split changes only compiler selection to run independently.
 
-| Check | Result at initial R1 commit |
+| Check | R1 result |
 |---|---|
 | Codec suite | 27 passed, including new boundaries under g++/clang++ strict and ASan+UBSan |
 | Router harness after main reconciliation | 39 passed |
 | Baseline no-codec / Ada+Rust codec parity | 59 pairs / 472 comparisons / 0 mismatches |
 | CPP-OMS-001 standalone | PASS, 6313 checks per execution |
 | CPP-OMS-002 standalone | PASS both releases, 307 checks each configuration |
-| CPP-OMS-003 through 006 full reruns | Running; not claimed complete |
-| Workspace library tests and C++ smoke | Running; not claimed complete |
-| Corrected Sleet g++ strict | Both releases: codec 42 checks; absent/hash-present transport 75 checks each, PASS |
-| Remaining corrected-broker compiler matrix | Running; not claimed complete |
-| Full-release readiness/parity refresh | Running; require >=401 READY each, zero losses |
+| CPP-OMS-003 full runtime rerun | PASS all six configurations: OWP 6/101, mock 30/364, shutdown 12/217, OAM 1/13; integrated-helper rerun tracked separately |
+| CPP-OMS-004 through 006 full reruns | Running; not claimed complete |
+| Workspace library tests | 650 passed, no failures or ignored tests |
+| Local C++ smoke | PASS; no-schema-fetch offline path |
+| Workspace/all-target Clippy, fmt | PASS |
+| Corrected Sleet transport (integrated helper) | PASS all 12 release/configuration executions, each 2 tests/150 checks, zero unavailable configurations |
+| Full-release readiness | PASS, 400→401 READY each release, FileMetadata only newly READY; zero losses or decreased renderable counts |
+| C++ generated codec parity | 32 pairs / 96 files, zero mismatches |
+| Python generation parity | 118 comparisons, zero mismatches |
+
+### Corrected-Sleet authentic transport matrix
+
+Every cell below means **2 tests/150 checks**, exit 0: both hash-present and
+hash-absent tests, exact retained bytes, malformed publication rejection and
+recovery, acknowledged unsubscribe, no further callbacks, and worker cleanup.
+These are candidate-only results, not original-pin interoperability claims.
+
+| Configuration | UCI 2.5 | UCI 2.6 |
+|---|---|---|
+| g++ strict | PASS | PASS |
+| clang++ strict | PASS | PASS |
+| g++ ASan+UBSan | PASS | PASS |
+| clang++ ASan+UBSan | PASS | PASS |
+| g++ TSan | PASS | PASS |
+| clang++ TSan | PASS | PASS |
+
+The integrated focused rerun recompiles the current transport test in each
+configuration, using the earlier exact-flag runtime object files. Production
+runtime sources are byte-identical and checked with `git diff --exit-code`;
+compiler/sanitizer modes are never mixed. The standalone full driver separately
+rebuilds runtime objects from source and remains tracked to completion.
+Both releases' codec-only consumers require 2 tests/42 checks. Synthetic binary
+boundaries pass all six configurations (98 checks), with the unchanged
+272-check consumer and 5/5 mutation controls.
+
+Readiness remains exactly 50/50 for 2.5 and 52/52 for 2.6 FileMetadata. Four
+messages per release have increased renderable counts; only FileMetadata crosses
+to READY. Remaining first blockers on partially advanced messages are still
+reported rather than relabeled supported. All previously READY messages remain
+READY. First-blocker histogram shifts (Float32/Choice after removing the hash
+blocker) are expected, not additional readiness changes.
 
 Later exact-head receipts update completed evidence without extrapolating hosted
 CI from earlier commits. The prior review head's hosted smoke passed. Current
