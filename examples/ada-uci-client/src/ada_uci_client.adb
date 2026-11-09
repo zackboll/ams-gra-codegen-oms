@@ -333,8 +333,8 @@ begin
          Say ("RECONNECT remaining=" & Image (Remaining));
          delay until P.Wake_Time (Ada.Real_Time.Clock, Deadline, Config.Reconnect_Delay_MS);
          if Ada.Real_Time.Clock >= Deadline then
-             Say ("FAILED deadline_during_delay");
-             Ada.Command_Line.Set_Exit_Status (1);
+            Say ("FAILED deadline_during_delay");
+            Ada.Command_Line.Set_Exit_Status (1);
             exit;
          end if;
          Number := Number + 1;

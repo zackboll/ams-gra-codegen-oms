@@ -134,6 +134,12 @@ class Relay(ExistingRelay):
                                 peer.sendall(data)
                                 streams["delivered"].extend(data)
                     stats["completed"] = True
+                except ssl.SSLEOFError:
+                    # Caller-deadline Close intentionally drops without waiting
+                    # for TLS close_notify. This is a peer-side observation, not
+                    # an application recovery classifier; exit/time/wire checks
+                    # below independently qualify the application outcome.
+                    stats.update(completed=True, shutdown="client_abortive_tls_eof")
                 except ssl.SSLError as error:
                     # An invalid-trust test must abort TLS before any WS bytes.
                     if stats.get("injected") == "invalid_tls_record":
