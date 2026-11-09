@@ -1,0 +1,173 @@
+{
+  "112": {
+    "source": [
+      "865bb824db0f84033fffaa5c9fdf40808baa5144",
+      "ce2b7443d2419ea69dd862807aaa17b678cb4f42"
+    ],
+    "compiler": "16.1.0",
+    "backend": "openssl",
+    "completed": true,
+    "epochs": 8,
+    "callbacks": 48,
+    "cleanup": true,
+    "resources": [
+      [
+        "1",
+        "8",
+        "3"
+      ],
+      [
+        "2",
+        "8",
+        "3"
+      ],
+      [
+        "3",
+        "8",
+        "3"
+      ],
+      [
+        "4",
+        "8",
+        "3"
+      ],
+      [
+        "5",
+        "8",
+        "3"
+      ],
+      [
+        "6",
+        "8",
+        "3"
+      ],
+      [
+        "7",
+        "8",
+        "3"
+      ],
+      [
+        "8",
+        "8",
+        "3"
+      ]
+    ],
+    "result_sha256": "1d2d0654ce210f1c38916268dfdbf8ee1d043b0c065a81add95d22368b149cde",
+    "recovery_result_sha256": "9ef9def89b2dabfee30f8ad0d36bf429b7c08c3a803caed61cbd41fffc13a5d9",
+    "verified_receipt_sha256": "cef350b3b7d8abb3fb851e2635b3dc8eb2f9a1ba1bdc5033d62f0c13b2f93d19",
+    "artifacts_sha256": "9f23fe1117e5a21d5768b6cb13158b0b9e7d86b13e575d290826caba7361b0fa"
+  },
+  "113": {
+    "source": [
+      "865bb824db0f84033fffaa5c9fdf40808baa5144",
+      "ce2b7443d2419ea69dd862807aaa17b678cb4f42"
+    ],
+    "compiler": "16.1.0",
+    "backend": "openssl",
+    "completed": true,
+    "epochs": 5,
+    "callbacks": 24,
+    "cleanup": true,
+    "resources": [
+      [
+        "1",
+        "8",
+        "3"
+      ],
+      [
+        "2",
+        "8",
+        "3"
+      ],
+      [
+        "3",
+        "8",
+        "3"
+      ],
+      [
+        "4",
+        "8",
+        "3"
+      ],
+      [
+        "5",
+        "8",
+        "3"
+      ]
+    ],
+    "result_sha256": "1d2d0654ce210f1c38916268dfdbf8ee1d043b0c065a81add95d22368b149cde",
+    "recovery_result_sha256": "3b260967d4048f6632fa7ca0edbb79a9b3c2ad061d1dbbc3df9a53dc4987f7bf",
+    "verified_receipt_sha256": "3d76d9bb0409aeb9faae4a30c54c42219d39cca5c30f0357f516de4d4e57db48",
+    "artifacts_sha256": "ec1747923a9d1b0af6c4fddd29ad67483297017887f5c8c9daabb7b8da0c5ad0"
+  },
+  "114": {
+    "source": [
+      "865bb824db0f84033fffaa5c9fdf40808baa5144",
+      "ce2b7443d2419ea69dd862807aaa17b678cb4f42"
+    ],
+    "compiler": "16.1.0",
+    "backend": "openssl",
+    "completed": true,
+    "epochs": 5,
+    "callbacks": 24,
+    "cleanup": true,
+    "resources": [
+      [
+        "1",
+        "8",
+        "3"
+      ],
+      [
+        "2",
+        "8",
+        "3"
+      ],
+      [
+        "3",
+        "8",
+        "3"
+      ],
+      [
+        "4",
+        "8",
+        "3"
+      ],
+      [
+        "5",
+        "8",
+        "3"
+      ]
+    ],
+    "result_sha256": "1d2d0654ce210f1c38916268dfdbf8ee1d043b0c065a81add95d22368b149cde",
+    "recovery_result_sha256": "a5ca76afb06e453eac93a68fe8fb201617c42a71b429aa0c46735b14772ca6bb",
+    "verified_receipt_sha256": "d27f6527345748940457d0b1b7578711274a2c23a544fdbaf880c822aabc95ec",
+    "artifacts_sha256": "1ae19116dd65928264a4b831ea29b9c287b208651e7c91c81edf75886dcb7959"
+  },
+  "111": {
+    "source": [
+      "865bb824db0f84033fffaa5c9fdf40808baa5144",
+      "ce2b7443d2419ea69dd862807aaa17b678cb4f42"
+    ],
+    "compiler": "16.1.0",
+    "backend": "openssl",
+    "completed": true,
+    "attempts": 147,
+    "baseline": "RESOURCES fd= 5 tasks= 1\nDONE baseline",
+    "final": "RESOURCES fd= 5 tasks= 1\nCOMPLETE",
+    "lifecycle_cycles": 20,
+    "result_sha256": "40cd9118cbdb72eb485e18eb7c7315126a7734c5fd9fa48e05a7f30d0845948c",
+    "verified_receipt_sha256": "ef596fe14b0df6952c1e777c62523215f5d68ca79cbcd6d42b9da5aa5bd5d9c5"
+  },
+  "108": {
+    "source": [
+      "0b5e5f28273c25d9ed72ddd2c151011ad64151c3",
+      "99732ab871ea461fcc11f63b0fd549df64d117a8"
+    ],
+    "compiler": "16",
+    "backend": "openssl",
+    "completed": true,
+    "result_sha256": "e8f3e7844256640d0d63b8e2f52b0df8672bc193b76ef8ca840bb61658bd40ff",
+    "input_sources_sha256": "c60524fd615cd7de12c7952fab09be1f7f9d36b4c52845705957ec8b3a3dbf46",
+    "note": "Production source identical to 865bb82; only short-budget peer test changed afterward"
+  }
+}

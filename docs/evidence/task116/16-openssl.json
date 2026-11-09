@@ -1,0 +1,243 @@
+{
+  "verified": true,
+  "source": [
+    "865bb824db0f84033fffaa5c9fdf40808baa5144",
+    "ce2b7443d2419ea69dd862807aaa17b678cb4f42"
+  ],
+  "compiler": "GNAT 16.1.0",
+  "backend": "openssl",
+  "dependencies": {
+    "aht": [
+      "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "d137b924a7b0fa8b71c1ee8c582749e97294335b"
+    ],
+    "codec": [
+      "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "6198cf7b10346003b91b379b568f26b378654565"
+    ],
+    "sleet": [
+      "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+      "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+    ],
+    "uci25": [
+      "093610b7753944059360d3236770ab446d039556",
+      "f811683ce81a3fcc5c306627cb43c3df5b525b54"
+    ],
+    "uci26": [
+      "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "43a8a74b15d2e20d00d4d8ed8543590dd9789046"
+    ]
+  },
+  "executable_sha256": "2cf886740af2e75a9bdad69091844d81cb3988f74fe96d4235f577ea0063122d",
+  "artifacts_sha256": "7de5a0fa66ed8345377eaa1573939a9c214319b97412cdaf1462b22b67172bce",
+  "cases": [
+    {
+      "mode": "handshake",
+      "deadline_ms": 1000,
+      "elapsed": 0.36494452599436045,
+      "connections": 1,
+      "fd": 4,
+      "tasks": 1
+    },
+    {
+      "mode": "handshake",
+      "deadline_ms": 50,
+      "elapsed": 0.0419866180018289,
+      "connections": 1,
+      "fd": 4,
+      "tasks": 1
+    },
+    {
+      "mode": "upgrade",
+      "deadline_ms": 1000,
+      "elapsed": 1.0592909900005907,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "trickle-upgrade",
+      "deadline_ms": 1000,
+      "elapsed": 1.0239369660121156,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "cumulative-upgrade",
+      "deadline_ms": 1000,
+      "elapsed": 1.0256865849951282,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "write",
+      "deadline_ms": 1000,
+      "elapsed": 1.0315606819931418,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "queued-write",
+      "deadline_ms": 1000,
+      "elapsed": 1.0435064760094974,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "close",
+      "deadline_ms": 1000,
+      "elapsed": 1.0324359280057251,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "expired-open",
+      "deadline_ms": -1,
+      "elapsed": 0.028357918999972753,
+      "connections": 0,
+      "fd": 4,
+      "tasks": 1
+    },
+    {
+      "mode": "short-open",
+      "deadline_ms": 1,
+      "elapsed": 0.02547508700808976,
+      "connections": 0,
+      "fd": 4,
+      "tasks": 1
+    },
+    {
+      "mode": "expired-send",
+      "deadline_ms": 1000,
+      "elapsed": 1.026220480009215,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "expired-close",
+      "deadline_ms": 1000,
+      "elapsed": 1.0558470640098676,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "normal",
+      "deadline_ms": 1000,
+      "elapsed": 0.10684291399957146,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "reuse",
+      "deadline_ms": 1000,
+      "elapsed": 0.08658308399026282,
+      "connections": 2,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "normal",
+      "deadline_ms": 9000,
+      "elapsed": 0.041718623993801884,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "long-handshake",
+      "deadline_ms": 9000,
+      "elapsed": 2.032508724005311,
+      "connections": 1,
+      "fd": 4,
+      "tasks": 1
+    },
+    {
+      "mode": "legacy-handshake",
+      "deadline_ms": 0,
+      "elapsed": 2.0366929129959317,
+      "connections": 1,
+      "fd": 4,
+      "tasks": 1
+    },
+    {
+      "mode": "legacy-normal",
+      "deadline_ms": 0,
+      "elapsed": 0.07237485500809271,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    },
+    {
+      "mode": "legacy-close",
+      "deadline_ms": 0,
+      "elapsed": 0.3002628589892993,
+      "connections": 1,
+      "fd": 5,
+      "tasks": 1
+    }
+  ],
+  "allocation": "min(2 seconds, (remaining caller time - 2 ms) / 3) per AHT setup duration",
+  "tolerance_seconds": 0.15,
+  "limitations": [
+    "Conservative setup allocation may fail early; shares are not redistributed",
+    "No preemption of local CPU/filesystem work or scheduler delays",
+    "Pinned AHT DNS may retain its own detached resolver worker until OS resolver completion"
+  ],
+  "input_sources": {
+    "ada/oms-lacal-runtime/oms_websocket_dependencies.gpr": "265c665c446a33b53520275babc8a9ca04283989eefbdc8bc88ba701ce18b166",
+    "ada/oms-lacal-runtime/.gitignore": "8281098cde45f7d3d2268770b8dee593495ff966d16ec112ef5d995d9cd60092",
+    "ada/oms-lacal-runtime/oms_lacal_websocket.gpr": "f093b29b78104383254c5c63695e13ad196b009b591238434642df61ebd40a02",
+    "ada/oms-lacal-runtime/oms_lacal_runtime.gpr": "d452be64a864966bac3d95522fbd65a6480cbff7a55b3843f963b41b297f136a",
+    "ada/oms-lacal-runtime/README.md": "6d66d0d9a2c7747cfd28ace5d6b08da011b5519fb44369be4a04529933d2ef6e",
+    "ada/oms-json-support/alire.toml": "958316eeeec7132a7abbdc4ffdfe5529c6963984ab0c99028e3241f8c656e642",
+    "ada/oms-json-support/ams_gra_oms_json.gpr": "6a282866dabb9dad48fdc11895ba886bab4240763923686bb14d50de85486ead",
+    "ada/oms-json-support/ams_gra_oms_json_float32.gpr": "24529c82e40ac8bda8b7221c27e4f357c670e1b2fb3fe379abee8f6f5b21aa9b",
+    "ada/oms-json-support/README.md": "1260c80ae5123431ad4519ded834eaf01fd8834157c41878cb3e896ff658d2c2",
+    "ada/oms-json-support/ams_gra_oms_json_lossless.gpr": "6979be3b6a8300500fb557a9f62108ae55381f75711fe92d13a10587a4be1a37",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_lossless_ingress.ads": "fad3d03b983ec8b640879ef7b6c7829f32b05664adbb1c445a5a5728eb3810d7",
+    "ada/oms-json-support/lossless/ams_gra_float64.h": "c4946cfe544e0516125e0fddc16139b7c97f92a0ff7553e7240670796bd13d3a",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_lossless_ingress.adb": "28beb3505c086944d3d2b37e584378f1ad826ac6502e491187a9ca4ca83f77a3",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_emitter.adb": "87f3c0cdc95d3d4d36c406a805d10790674582322635560742e47e5b9e62f644",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_float64.adb": "92d9b838fd5ee9e2774b6f177902d079148d269226d5911372302827d100cfd1",
+    "ada/oms-json-support/lossless/ams_gra_float64.c": "637ac60a28da1226ffa208d89897d0132df12d7c4da88d77de8f23bad04d9840",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_emitter.ads": "9c675c822c43a12e3312fdd6c4591bfd4b3b887e57fbc7d682090e187d3fe7ca",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_float64.ads": "4b3f3e749e36bed8cb29533e8baac5e6368037e038882f67b3ce3f4c2170acdd",
+    "ada/oms-json-support/src/ams_gra_oms_json_guard.ads": "e5175601265338eea218b10467f26ffc19cb24bc181d8386359affefef5a6a47",
+    "ada/oms-json-support/src/ams_gra_oms_json_guard.adb": "ff4fe37bc4efb7d5f620f0e5fe2a77b708118f525a2af70c407b3c00edd6006a",
+    "ada/oms-json-support/float32/ams_gra_oms_json_occurrences.ads": "9ed6b94a3861c9de2ea9a2186e9d48f69b668ca8469e8650201392a16ddeac59",
+    "ada/oms-json-support/float32/ams_gra_float32.c": "ec7217befcf053dfd133d836c983c0153f82099caaa273fffd34553b4c8b5320",
+    "ada/oms-json-support/float32/ams_gra_oms_json_occurrences.adb": "72a0f820dc794efadda510046ea4bea5e3cc5277468457b0cb460c1f447bba06",
+    "ada/oms-json-support/float32/ams_gra_oms_json_float32.ads": "f5bb00faf0529105f13550ba96ff87f5b2f11909518cac91f9dfaa460f84f289",
+    "ada/oms-json-support/float32/ams_gra_oms_json_float32.adb": "f3d77a4858a3fb08677b403ee792ba8ee74a0ff69266292838638354a22d18e5",
+    "ada/oms-lacal-runtime/src/oms_lacal-dispatchers.ads": "374d9b397942b8cba3ca3dcf26f0396e07a12e6469554423498ac9e5244276d2",
+    "ada/oms-lacal-runtime/src/oms_lacal-transports-mock.ads": "04aa4aa6e5774d5050fc470ce7010a0ced07f07c3df333938119e6d742a65e96",
+    "ada/oms-lacal-runtime/src/oms_lacal-envelopes.adb": "a7dc02bbfabafc9d204ff654a65d57c55cccc9471ad066abe3cd17aecfb42f29",
+    "ada/oms-lacal-runtime/src/oms_lacal-dispatchers.adb": "86cc6ef501ce2b8e0ccc13f5741b330f4505eb2bf446688db6acd0f446f2838b",
+    "ada/oms-lacal-runtime/src/oms_lacal.adb": "fd48fb983860460c827225216d1ff87611ae4211257fdce75c96baae74d5cf55",
+    "ada/oms-lacal-runtime/src/oms_lacal-envelopes.ads": "a68cefc7ae947e3c3ac623f39232090c3b20799a44c7c6975aefbfbae2e7a6d5",
+    "ada/oms-lacal-runtime/src/oms_lacal.ads": "eb779f30ad9dedfe7d1dde308dd931fe4b42b88f4ebc3ae43b2c993d1257f69c",
+    "ada/oms-lacal-runtime/src/oms_lacal-connections.ads": "3667df94b7f9b53e48e1495f7dbc7b16a132745a4e584b092c53236ae6f87e11",
+    "ada/oms-lacal-runtime/src/oms_lacal-transports-mock.adb": "95dd2cccf8e591e108f22a3218b912884806ca16bf779067a7b2f731dec42e8d",
+    "ada/oms-lacal-runtime/src/oms_lacal-typed.ads": "633ec00bfb655d49e8339d73cf531c31a7665612d11a72c6cca49562f06bd84d",
+    "ada/oms-lacal-runtime/src/oms_lacal-typed.adb": "485b875b533dfdd49ca576d50048e00e2e1b98eb24e1543a8ba9b7789e5a6e79",
+    "ada/oms-lacal-runtime/src/oms_lacal-transports.ads": "ae292d9ff1500bdb98386b77067dd22e8afa2526ce1aedd9bfe58c2e3868cb3e",
+    "ada/oms-lacal-runtime/src/oms_lacal-connections.adb": "2556c100e7dd51e00ca1a800043d025b75bb36a372999eba33bffb6bc464ab80",
+    "ada/oms-lacal-runtime/websocket/oms_lacal-transports-websocket.ads": "d9b387173f150dc8637bc42cc44a919462050934432e4d4c74b147d2daa0d9af",
+    "ada/oms-lacal-runtime/websocket/oms_lacal-transports-websocket.adb": "77a5353b72394517134f29e782b51c1751d05947633e10e5c9092d2b68619e18",
+    "ada/oms-lacal-runtime/websocket/oms_ws_handshake.ads": "d8e99c1555d7504e90a290fde0611075a745be54700b89c66d0ede993d8e3c9f",
+    "scripts/task116/peer.py": "04891dbfb8453358c244795ff169a4eb0f64ac87caadc370a7136f4844423a13",
+    "scripts/task116/test_deadline.py": "775c710bcaf82c2a523bf19c8ce14c6b10cd92cec43787654c14fc548838e64c",
+    "scripts/task116/verify.py": "76ad0e1c93f654ff0812e04bfa6063a7bea44a1ceb906c81ccb406847abca60a",
+    "scripts/task116/qualify.py": "ebbbbde057d55b09e4266b099fee4b707fcba9bf3472f59b06b28fc31c1d45b9",
+    "tests/ada-wss-deadline/deadline_probe.adb": "9dbc8796f40e7633ea4caade51adbcbadb9e0d77fd2a940c90bac85134f138ee"
+  },
+  "result_sha256": "e25cdb631ab5c9ea44205c5418327dabd40263ab4576a204bd352fca6e50b450"
+}

@@ -1,4 +1,5 @@
 with Ada.Finalization;
+with Ada.Real_Time;
 with Ada.Strings.Unbounded;
 with GNAT.Sockets;
 with AHT.Bytes;
@@ -14,6 +15,19 @@ package OMS_LACAL.Transports.WebSocket is
    --  after its bounded write. Finalization releases without waiting.
    Transport_Error : exception;
    type Client is new Ada.Finalization.Limited_Controlled and Transport with private;
+   procedure Set_Absolute_Deadline
+     (Self : in out Client; Deadline : Ada.Real_Time.Time);
+   --  Optional monotonic bound on subsequent Open, Send and graceful Close.
+   --  Set before Open to bound the entire session; changing it replaces the
+   --  bound, not the connection. No implicit reset on failure, Close or reuse.
+   --  An expired Open/Send fails closed; expired Close releases abortively.
+   --  Unconfigured clients retain the historical operation budgets.
+   --  AHT accepts separate relative setup budgets: configured Open allocates
+   --  at most one third of remaining caller time (less a 2 ms rounding reserve)
+   --  to EACH of resolve/connect/handshake, each capped at two seconds. This
+   --  can time out early; unused setup shares are not redistributed. Local
+   --  CPU/filesystem work and scheduler latency are not preempted. All later
+   --  blocking waits use the earlier operation/caller bound. No task is added.
    procedure Open (Self : in out Client; URL : String);
    --  WSS always verifies the original hostname and certificate chain.
    --  Empty CA inputs select backend defaults; there is no insecure mode.
@@ -30,6 +44,8 @@ package OMS_LACAL.Transports.WebSocket is
 private
    type TLS_Access is access AHT.Transport.TLS.TLS_Transport;
    type Client is new Ada.Finalization.Limited_Controlled and Transport with record
+      Has_Deadline : Boolean := False;
+      Absolute_Deadline : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
       Socket : GNAT.Sockets.Socket_Type := GNAT.Sockets.No_Socket;
       TLS : TLS_Access := null;
       --  At most one masked control frame (131 bytes). Backpressure pauses
