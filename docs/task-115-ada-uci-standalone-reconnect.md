@@ -65,8 +65,71 @@ as full TASK115 acceptance. No dependency or transport upgrade is proposed here.
 
 ## Validation record
 
-Results and exact source identities will be recorded in compact receipts under
+Results and exact source identities are recorded in compact receipts under
 `/docs/evidence/task115/`. Full build commands, generated source, wire captures,
 broker logs, private keys and binaries remain outside Git. Local results and
 hosted exact-HEAD smoke are distinct authorities. A helper timeout is failure,
 not a successful reconnect.
+
+All five clean-source builds and real-WSS campaigns use implementation HEAD
+`760e4a429d043386fd8236793dc049b775aed2e2`, tree
+`ff28539a723a8508a21697a30072a331e67a2b22`. Receipt/document-only delivery
+changes do not relabel those campaigns as runs on a different HEAD.
+
+| Compiler | OpenSSL / UCI2.6 six cases | mbedTLS / UCI2.6 six cases |
+| --- | --- | --- |
+| GNAT 14.2.0 | PASS, deadline blocker observed | PASS, deadline blocker observed |
+| GNAT 16.1.0 | PASS, deadline blocker observed | PASS, deadline blocker observed |
+
+GNAT16/OpenSSL ran first. Authentic UCI2.5 GNAT16/OpenSSL also passes all six
+cases. Production service-check reports READY for all three selected messages:
+UCI2.6 has 65/65 model types and 64/64 codec declarations; UCI2.5 has 64/64 model
+types and 63/63 codec declarations. Each executable reports its compiled schema.
+
+Each campaign independently confirms:
+
+- Default: one epoch, three callbacks, established loss, exit 1, no replacement.
+- Budget two: three epochs, nine callbacks, fresh INIT/INFO and three SUB ACKs
+  per epoch; no fourth connection; requested duration ends with exit 0.
+- Budget one: two epochs, six callbacks, two losses, exit 1; no third attempt.
+- Invalid trust: TLS rejected before HTTP/OWP; exit 1 and no retry/fallback.
+- Unauthorized service: real Sleet -ERR, no subscriptions/callbacks/retry, exit 1.
+- Normal: explicit CA_PEM input, three typed callbacks, duration shutdown,
+  exit 0 and no retry despite positive recovery budget.
+
+All successful retirement samples have 5 FDs / 1 task (the FD directory sample
+includes its own temporary directory handle). Counts remain stable through all
+three recovery epochs. Application code adds no background task. Relay, publisher,
+application and Sleet processes/threads finish, and broker listening sockets close.
+Every captured application operation is exactly INIT followed by three intended
+SUBs; no PUB/UNSUB/replay is sent. Epoch-specific generated header timestamps
+match actual broker deliveries and callback output. Every terminal event is
+drained, lost-event count stays zero, and no retired epoch has later callbacks.
+
+Deadline probe elapsed times (one second requested): GNAT16/OpenSSL 2.012s,
+GNAT16/mbedTLS 2.003s, GNAT14/OpenSSL 2.020s, GNAT14/mbedTLS 2.016s.
+These are observed **failures of strict deadline compliance**, not harness timeouts
+or acceptance PASS. The stalled initial connection fails closed without retry.
+
+Actual Ada policy/parser tests execute 35 checks in every build. Python focused
+source tests: 4 PASS; selector tests: 40 PASS. Unchanged TASK109/110/112/113/114
+unit suites pass (5/12/12/10/12 tests). No historical helper modifications require
+re-running their entire real campaign. Seven mutations of actual Task115 evidence
+reject missing/stale callbacks, extra attempts, changed wire bytes, missing broker
+registration, resource growth and duplicate independent publication.
+
+Hosted PR smoke on implementation `760e4a4` passed:
+https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42539862992 .
+Final delivery HEAD hosted status is reported separately in PR203 and the final
+report; it is not inferred from this earlier successful run.
+
+## Remaining limitations
+
+In addition to the blocking deadline and ambiguous-transport classification
+constraints, Linux FD/task sampling does not establish arbitrary heap leak freedom.
+The relay is the verified TLS endpoint and Sleet is unchanged loopback WS upstream.
+Only authenticated peer closure is exercised for successful recovery; socket-reset
+exceptions remain terminal. The build helper expects already provisioned isolated
+Alire dependencies and authentic local source, not an automatic downloader. PEM
+input storage is capped at 1 MiB. There is no signal-driven shutdown feature,
+publication, replay or recovery of messages sent while disconnected.
