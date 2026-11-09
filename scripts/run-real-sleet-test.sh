@@ -44,7 +44,10 @@ fi
 if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}${AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA:-}" ]; then
+if [ "${AMS_GRA_RUST_ORDERS_METADATA_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}${AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA:-}${AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
@@ -61,11 +64,44 @@ test "$(git -C "$CHECKOUT" rev-parse 'HEAD^{tree}')" = "$SLEET_TREE"
 # Unmodified: no tracked or untracked changes in the checkout.
 test -z "$(git -C "$CHECKOUT" status --porcelain)"
 
-# Build with Sleet's own pinned toolchain (rust-toolchain.toml).
-(cd "$CHECKOUT" && cargo build --release --locked -p sleet)
+# Build with Sleet's own pinned toolchain (rust-toolchain.toml). Keep its binary
+# at the exported path even when qualification uses an external Cargo target.
+(cd "$CHECKOUT" && CARGO_TARGET_DIR="$CHECKOUT/target" cargo build --release --locked -p sleet)
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 
 cd "$ROOT"
+# RUST-OMS-012 reuses the single pinned checkout/build above. Both the focused
+# mode and the ordinary main-only runner require actual execution evidence.
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/scripts/test_rust_orders_metadata_runner.py" \
+    OrdersRunner.test_consumer_uses_repository_locked_dependencies -v
+  cargo +1.95.0 fmt --all -- --check
+  rustfmt +1.95.0 --edition 2024 --check "$ROOT/tests/fixtures/rust-oms-012/consumer.rs" \
+    "$ROOT/crates/runtime-rust-facade-tests/tests/real_orders_metadata_cases/mod.rs"
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_orders_metadata --test real_orders_metadata_consumer -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    for marker in 'MODEL CODEC' 'TYPED PUBLISH AND INDEPENDENT RECEIVE' 'PINNED SLEET' 'SUBSCRIPTION REMOVAL AND CLEANUP'; do
+      grep -Fqx "RUST-OMS-012 $version $marker: PASSED" <<<"$output"
+    done
+    grep -Fqx "EXTERNAL ORDERSMETADATA $version: PASSED" <<<"$output"
+  done
+  grep -Fqx 'RUST-OMS-012 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
+  if grep -qE 'SKIPPED|^test result:.*(0 passed|[1-9][0-9]* ignored)' <<<"$output"; then
+    echo 'OrdersMetadata qualification must execute without skips' >&2
+    exit 1
+  fi
+fi
+if [ "${AMS_GRA_RUST_ORDERS_METADATA_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-012 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
+fi
 # Four-message standalone acceptance uses this same unmodified broker build
 # and independent Task092/093, Task104/105 and Task101 fixtures.
 # The existing main-only real-sleet job supplies both roots; no new runner lane.

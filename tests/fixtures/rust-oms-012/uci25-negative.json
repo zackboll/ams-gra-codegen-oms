@@ -1,0 +1,258 @@
+[
+  {
+    "name": "qualifier-zero",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": 0,
+    "diagnostic": "FacetViolation",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-thousand",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": 1000,
+    "diagnostic": "FacetViolation",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-negative",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": -1,
+    "diagnostic": "FacetViolation",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-float-one",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": 1.0,
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-fraction",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": 1.5,
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-string",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": "1",
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-boolean",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": true,
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-null",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": null,
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-object",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": {},
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "qualifier-array",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier/QualifierSerialNumber",
+    "value": [],
+    "diagnostic": "OccurrenceMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "missing-security",
+    "path": "/SecurityInformation",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-header",
+    "path": "/MessageHeader",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-data",
+    "path": "/MessageData",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-orders-id",
+    "path": "/MessageData/OrdersMetadataID",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-associations",
+    "path": "/MessageData/OrdersAssociation",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-orders",
+    "path": "/MessageData/OrdersAssociation/0/Orders",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-system",
+    "path": "/MessageHeader/SystemID",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-timestamp",
+    "path": "/MessageHeader/Timestamp",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-schema-version",
+    "path": "/MessageHeader/SchemaVersion",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "missing-mode",
+    "path": "/MessageHeader/Mode",
+    "value": null,
+    "diagnostic": "MissingRequiredMember",
+    "boundary": "broker",
+    "omit": true
+  },
+  {
+    "name": "empty-associations",
+    "path": "/MessageData/OrdersAssociation",
+    "value": [],
+    "diagnostic": "OccurrenceMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "association-not-array",
+    "path": "/MessageData/OrdersAssociation",
+    "value": {},
+    "diagnostic": "OccurrenceMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "association-null",
+    "path": "/MessageData/OrdersAssociation/0",
+    "value": null,
+    "diagnostic": "ExpectedObject",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "orders-null",
+    "path": "/MessageData/OrdersAssociation/0/Orders",
+    "value": null,
+    "diagnostic": "ExpectedObject",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "ato-not-array",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO",
+    "value": {},
+    "diagnostic": "OccurrenceMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "ato-null",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0",
+    "value": null,
+    "diagnostic": "ExpectedObject",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "identifier-null",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier",
+    "value": null,
+    "diagnostic": "ExpectedObject",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "identifier-array",
+    "path": "/MessageData/OrdersAssociation/0/Orders/ATO/0/Identifier",
+    "value": [],
+    "diagnostic": "OccurrenceMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "schema-version-lexical",
+    "path": "/MessageHeader/SchemaVersion",
+    "value": "not-a-version",
+    "diagnostic": "FacetViolation",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "schema-version-null",
+    "path": "/MessageHeader/SchemaVersion",
+    "value": null,
+    "diagnostic": "TypeMismatch",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "mode-invalid",
+    "path": "/MessageHeader/Mode",
+    "value": "NOT_A_MODE",
+    "diagnostic": "FacetViolation",
+    "boundary": "broker",
+    "omit": false
+  },
+  {
+    "name": "timestamp-calendar-invalid",
+    "path": "/MessageHeader/Timestamp",
+    "value": "not-a-dateZ",
+    "diagnostic": "Timestamp",
+    "boundary": "decoder",
+    "omit": false
+  }
+]
