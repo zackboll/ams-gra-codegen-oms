@@ -273,7 +273,7 @@ def run_case(args, name, budget, epochs, interrupts, duration=4, permanent=None,
             if not permanent:
                 require(callbacks == {e: NAMES for e in range(1, usable_epochs + 1)}, "three typed callbacks each usable epoch")
                 broker_log = (out / "server.stdout").read_text()
-                require(broker_log.count("disconnected") >= epochs, "broker retirement cleanup")
+                require(broker_log.count("disconnected") >= usable_epochs, "broker retirement cleanup")
             else:
                 require(not callbacks and not any(x.startswith("RECONNECT") for x in output), "permanent failure retried")
             require(not relay.errors, "relay errors: " + repr(relay.errors))

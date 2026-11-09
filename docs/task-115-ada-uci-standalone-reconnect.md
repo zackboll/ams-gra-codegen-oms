@@ -37,7 +37,7 @@ are terminal. Only an established epoch's unambiguous peer closure authorizes
 another attempt. Bindings, receiver access values, deliveries and SIDs cannot
 cross epoch masters. Receive-only contracts and the application contain no PUB.
 
-## Blocking API constraints (not hidden as successful qualification)
+## Historical blocking API constraints (original TASK115, before R1)
 
 The unchanged production transport specification
 `/ada/oms-lacal-runtime/websocket/oms_lacal-transports-websocket.ads` documents
@@ -123,7 +123,7 @@ https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42539862992 .
 Final delivery HEAD hosted status is reported separately in PR203 and the final
 report; it is not inferred from this earlier successful run.
 
-## Remaining limitations
+## Historical remaining limitations (before R1)
 
 In addition to the blocking deadline and ambiguous-transport classification
 constraints, Linux FD/task sampling does not establish arbitrary heap leak freedom.
@@ -133,3 +133,74 @@ exceptions remain terminal. The build helper expects already provisioned isolate
 Alire dependencies and authentic local source, not an automatic downloader. PEM
 input storage is capped at 1 MiB. There is no signal-driven shutdown feature,
 publication, replay or recovery of messages sent while disconnected.
+
+## TASK115R1 — reconciliation and safety boundary
+
+R1 merges `origin/main` at `43fa1934235ae1f4c818a586a5022ddd7366b8d1`
+(PR204) by ordinary merge commit `fb2a5289b60e6ca0c72623902b4895c950ab9c34`,
+tree `ba7cf984aecfeb61b739414a04ee2130dab4de57`. The only conflict was
+adjacent TASK115/TASK116 tests in
+`/home/zboll/git/ams-gra-codegen-oms-task115/scripts/test_pr_smoke.py`;
+both test methods are retained. The automatically merged selector retains both
+Ada path owners. All 41 selector tests pass. Production Ada transport, unrelated
+Python/Rust/C++ functionality, authentic contracts, builder and historical receipts
+are preserved; no published history is rewritten.
+
+Every epoch now sets `WS.Set_Absolute_Deadline (Wire, Deadline)` immediately
+before `WS.Open`. The supervisor constructs that monotonic absolute time once.
+All initial/replacement TLS setup, upgrade, command writes, queued control writes
+and Close therefore use the unchanged production PR204 bounds. The application's
+INFO/ACK/progress checks remain. No transport timeout allocation is duplicated.
+Expiry while the current epoch is fully established remains successful; expiry
+during initial/replacement initialization or subscriptions, a failed setup operation,
+and expiry while disconnected in the recovery delay are failures. Cleanup still
+runs, with abortive release once the transport deadline has expired. A transport
+exception is not converted to success merely because the clock has advanced.
+
+### Classification review and stop condition
+
+Pinned AHT `827b0c17dd964e935f8e88912ce0611ee92b6f16` exposes
+`Try_Read_Status = (Would_Block, Data_Ready, Peer_Closed)` and `TLS_Error`.
+Its specification explicitly reserves `Peer_Closed` for authenticated close_notify;
+unauthenticated TCP EOF raises `TLS_Error` on both backends. OpenSSL
+`Try_Read` recognizes `ERROR_ZERO_RETURN`; mbedTLS recognizes its authenticated
+close notification. These are production typed/status decisions, not application
+matching of backend text or numeric errors.
+
+| Condition | Production path / application decision |
+| --- | --- |
+| Authenticated TLS EOF | AHT `Peer_Closed` → WS `Peer_Closed` → connection `Closed`, no fatal event → `Session_Lost`; recover only after a usable epoch, within remaining budget/time. |
+| Valid WS Close | Validated by `F.Classify_Inbound_Close`, reply queued/flushed, WS `Peer_Closed`; same bounded recovery. Invalid Close is terminal. |
+| Established TCP reset | Socket/TLS exception → WS Poll `when others` → `WS.Transport_Error`; terminal even with budget remaining. |
+| TLS record/cryptographic failure | AHT `TLS_Error` → same `WS.Transport_Error`; terminal. |
+| Malformed WS frame | Decode/validation error → same `WS.Transport_Error`; terminal. |
+| Invalid upgrade | Open validation error → same `WS.Transport_Error`; terminal before INIT. |
+| Incorrect certificate/hostname | AHT verified setup failure → same `WS.Transport_Error`; terminal before upgrade/INIT. |
+| OWP rejection | Runtime protocol error event → application `Fatal`/`Application_Error`; terminal. |
+| Replacement setup timeout | AHT timeout or WS caller-bound failure → same `WS.Transport_Error`; terminal, never spend another attempt speculatively. |
+
+The WS wrapper's `Open`, `Send` and `Poll` erase precise exception identities
+with `when others`. AHT itself also combines integrity failures, truncation and
+some socket failures into TLS exceptions. Examining `Protocol` after failure
+cannot recover the cause because `Drop` has already cleared the session.
+Therefore merely preserving an AHT exception name in the wrapper is insufficient.
+
+**CORRECTIVE_WORK_REQUIRED:** the smallest prerequisite for broader abrupt-network
+recovery is a trustworthy backend-neutral structured cause at the TLS/socket
+boundary, propagated through the WS wrapper without collapsing unsafe failures.
+It must distinguish proven network interruption from certificate, integrity,
+protocol, timeout and internal failure, poison/release failed sessions, preserve
+the authenticated-close status, and be tested on both TLS backends. This requires
+a separate focused production/dependency correction, not a speculative hierarchy
+or AHT change here. Replacement-attempt retries are intentionally unsupported:
+one authorized replacement may succeed, but a failed replacement is terminal.
+No exception-message, Linux errno or backend-text classifier is introduced.
+
+R1 evidence is separate under
+`/home/zboll/git/ams-gra-codegen-oms-task115/docs/evidence/task115/r1/`;
+the original `task115_acceptance: false` receipts are unchanged. External raw
+captures, broker logs, executable builds and negative controls are retained under
+`/home/zboll/task115-r1-evidence`. External monotonic measurements include process
+startup and allow 150 ms measurement/scheduling overhead; these are not hard
+real-time scheduling guarantees. Stable Linux FD/task samples do not establish
+arbitrary heap-leak freedom.

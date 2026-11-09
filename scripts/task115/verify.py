@@ -158,7 +158,8 @@ def verify_control(out, control, release, corpus):
     require(control["exit"] == (0 if success else 1) and ("COMPLETE" in output) == success,
             "control exit classification")
     require(control["application_elapsed"] <= control["duration"] + 0.150, "control external deadline")
-    require(output.count("RECONNECT") == epochs - 1, "no speculative retry")
+    require(output.count("RECONNECT") == epochs - 1 + (control["name"] == "delay-deadline"),
+            "no speculative retry; delay reservation does not open a new epoch")
     resources = control["resources"]
     require(len(resources) == epochs and all(r["tasks"] == 1 and r["fd"] == resources[0]["fd"]
                                             for r in resources), "control resource stability")

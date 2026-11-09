@@ -8,9 +8,11 @@ subscriptions. It is independent of the qualification harness at runtime.
 **Current safety limitation:** recovery is deliberately limited to unambiguous
 peer closure. The production transport combines I/O failures, WebSocket protocol
 violations and unexpected exceptions into `Transport_Error`; those exceptions
-remain terminal. Its fixed blocking setup/write timeouts cannot be shortened by
-the application to the remaining execution deadline. Consequently this version
-does **not** satisfy TASK115's strict setup-deadline acceptance requirement.
+remain terminal. R1 incorporates PR204's caller-deadline transport: each fresh
+WebSocket receives the same global absolute deadline before Open. Setup, writes,
+queued controls and cleanup are bounded without resetting time on recovery.
+Broader abrupt-network recovery still requires separate structured transport
+classification work; full TASK115 acceptance is **not** claimed.
 See `/docs/task-115-ada-uci-standalone-reconnect.md`.
 
 ## Prerequisites and authentic inputs
@@ -93,6 +95,11 @@ delay 50–2000 ms (default 250). Unknown, duplicate, conflicting, malformed and
 out-of-range arguments are rejected before `CONNECTING`. `--help` stands alone.
 Exit status is 0 on duration completion, 1 on session/application failure, and 2
 on invalid arguments.
+
+Duration expiry is successful only in a fully established current epoch. Initial
+or replacement setup expiry and expiry while disconnected in a recovery delay
+exit 1. Transport/setup failures remain failures even when the deadline has passed.
+Close releases abortively rather than waiting after the global deadline expires.
 
 Output shows compiled schema, epoch, acknowledged subscriptions and selected
 generated fields (timestamps, severity, setup/risk UUIDs and collection counts).
