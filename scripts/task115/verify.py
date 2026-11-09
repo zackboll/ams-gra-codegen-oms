@@ -116,12 +116,25 @@ def verify(out):
                    compiler=metadata["compiler"], backend=metadata["backend"], release=release,
                    dependencies=metadata["dependencies"], schemas=metadata["schemas"], inputs=metadata["inputs"],
                    generated=metadata["generated"], executable_sha256=metadata["executable_sha256"], cases=summaries,
-                   limitations=["Only unambiguous peer closure is retryable; broad Transport_Error is terminal",
-                                "Fixed transport setup/write deadlines can overrun global deadline"])
+                   limitations=["Only unambiguous peer closure is retryable; broad Transport_Error is terminal"])
+    if result.get("revision") == "r1":
+        require([c["name"] for c in result["controls"]] ==
+                ["tcp-reset", "malformed-frame", "tls-integrity", "ws-close-recovery",
+                 "replacement-tls-stall", "replacement-deadline", "delay-deadline",
+                 "info-deadline", "subscription-deadline", "invalid-upgrade", "wrong-hostname"], "R1 controls")
+        for control in result["controls"]:
+            verify_control(out, control, release, corpus)
+        receipt["controls"] = result["controls"]
+        receipt["disposition"] = "CORRECTIVE_WORK_REQUIRED"
     if "deadline_probe" in result:
         require(result["deadline_probe"] == json.loads((out / "deadline-probe/result.json").read_text()),
                 "deadline probe disagreement")
         receipt["deadline_probe"] = result["deadline_probe"]
+        if result.get("revision") == "r1":
+            probe = result["deadline_probe"]
+            require(probe["exit"] == 1 and probe["retry_count"] == 0 and
+                    not probe["externally_killed"] and probe["within_deadline"] and
+                    probe["elapsed"] <= 1.150, "caller deadline negative")
     receipt["task115_acceptance"] = False
     if (out / "artifacts.json").exists():
         artifacts = json.loads((out / "artifacts.json").read_text())
@@ -129,6 +142,75 @@ def verify(out):
             require(build.digest(out / name) == pin, "artifact changed: " + name)
         receipt["artifacts_sha256"] = build.digest(out / "artifacts.json")
     return receipt
+
+
+def verify_control(out, control, release, corpus):
+    directory = out / control["name"]
+    require(control == json.loads((directory / "result.json").read_text()), "control receipt disagreement")
+    require(control["completed"] and control["cleanup"] and not control["relay_errors"], "control cleanup")
+    output = (directory / "consumer.stdout").read_text()
+    epochs, usable = control["expected_epochs"], control["usable_epochs"]
+    require(output.count("CONNECTING epoch=") == epochs and output.count("FINALIZED epoch=") == epochs,
+            "control attempt/finalization count")
+    require(len(control["relay"]) == epochs and all(r["completed"] for r in control["relay"]),
+            "control actual connections")
+    success = control["name"] == "ws-close-recovery"
+    require(control["exit"] == (0 if success else 1) and ("COMPLETE" in output) == success,
+            "control exit classification")
+    require(control["application_elapsed"] <= control["duration"] + 0.150, "control external deadline")
+    require(output.count("RECONNECT") == epochs - 1, "no speculative retry")
+    resources = control["resources"]
+    require(len(resources) == epochs and all(r["tasks"] == 1 and r["fd"] == resources[0]["fd"]
+                                            for r in resources), "control resource stability")
+    broker = (directory / "server.stdout").read_text()
+    registrations = re.findall(r'connection\{id=(\d+)[^\n]*subscription registered sid=([123]) topic=(\S+) message_name=(\S+)', broker)
+    owners = {}
+    for owner, sid, topic, name in registrations:
+        owners.setdefault(owner, []).append((sid, topic, name))
+    complete = [(str(i), t, n) for i, (t, n) in enumerate(zip(TOPICS, NAMES), 1)]
+    if control["name"] == "subscription-deadline":
+        require(len(owners) == 1 and list(owners.values()) == [complete[:1]], "one withheld SUB acknowledgment")
+    else:
+        require(len(owners) == usable and all(rows == complete for rows in owners.values()),
+                "control fresh broker owners")
+    observer = json.loads((directory / "observer.json").read_text())
+    pubs = [r["text"] for r in observer if r["direction"] == "send" and r["text"].startswith("PUB ")]
+    require(len(pubs) == usable * 3, "control independent publications")
+    for epoch in range(1, epochs + 1):
+        ada = (directory / f"epoch{epoch}-ada.wire").read_bytes()
+        sleet = (directory / f"epoch{epoch}-sleet.wire").read_bytes()
+        commands = [f["text"] for f in frames(ada)["frames"] if f["opcode"] == 1] if ada else []
+        require(not any(c.startswith(("PUB ", "UNSUB ")) for c in commands), "receive-only control")
+        require(sum(c.startswith("INIT ") for c in commands) <= 1 and
+                len([c for c in commands if c.startswith("SUB ")]) <= 3, "no duplicate commands")
+        finalized = output.index(f"FINALIZED epoch={epoch}")
+        require(not re.search(rf"RECEIVED epoch={epoch} ", output[finalized:]), "retired control callback")
+        if epoch > usable:
+            require(f"RECEIVED epoch={epoch} " not in output, "incomplete setup callbacks")
+            continue
+        require(commands and commands[0].startswith("INIT ") and commands == [commands[0]] +
+                [f"SUB {i} {n} {t}" for i, (n, t) in enumerate(zip(NAMES, TOPICS), 1)],
+                "fresh exact control commands")
+        init = json.loads(commands[0][5:])
+        require(init == dict(versions=["1.0"], schema=f"002.{release[-1]}.0",
+                             service_id="ada-uci-client", verbose=True), "control INIT identity")
+        received = [f["text"] for f in frames(sleet)["frames"] if f["opcode"] == 1]
+        require(received.count("+OK") == 4 and sum(t.startswith("INFO ") for t in received) == 1,
+                "control acknowledgments")
+        messages = [t.split(" ", 2) for t in received if t.startswith("MSG ")]
+        require(len(messages) == 3, "control real messages")
+        for sid, name, original, message in zip(range(1, 4), NAMES, corpus, messages):
+            timestamp = f"2026-01-{epoch:02}T03:04:05Z"
+            doc = copy.deepcopy(original)
+            doc["MessageHeader"]["Timestamp"] = timestamp
+            require(message[1] == str(sid) and json.loads(message[2]) == {name: doc}, "control authentic payload")
+            require(f"RECEIVED epoch={epoch} {name} timestamp={timestamp}" in output, "control typed callback")
+            require(f"subscription registered sid={sid} topic={TOPICS[sid - 1]} message_name={name}" in broker,
+                    "control independent registration")
+    if control["name"] == "tcp-reset":
+        require(control["relay"][0]["shutdown"] == "established_tcp_reset_without_close_notify" and
+                "exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR" in output and "LOST" not in output,
+                "reset is ambiguous and terminal, not authenticated EOF")
 
 
 if __name__ == "__main__":

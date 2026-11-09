@@ -97,6 +97,9 @@ package body UCI_Client.Policy is
       return Result;
    end Parse;
 
+   function Duration_Result (Established : Boolean) return Outcome is
+     (if Established then Completed else Terminal_Failure);
+
    function Take_Attempt
      (Result : Outcome; Established : Boolean;
       Remaining : in out Natural; Now, Deadline : Ada.Real_Time.Time)

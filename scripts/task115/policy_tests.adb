@@ -6,6 +6,7 @@ with UCI_Client.Policy;
 procedure Policy_Tests is
    package P renames UCI_Client.Policy;
    use type P.Arguments;
+   use type P.Outcome;
    use type Ada.Real_Time.Time;
    Base : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
    Deadline : constant Ada.Real_Time.Time := Base + Ada.Real_Time.Seconds (1);
@@ -61,6 +62,8 @@ begin
    Reject (Valid & (T ("--duration-seconds"), T ("9999999999")));
    Check (not P.Take_Attempt (P.Peer_Loss, False, Remaining, Base, Deadline));
    Check (Remaining = 2);
+   Check (P.Duration_Result (False) = P.Terminal_Failure);
+   Check (P.Duration_Result (True) = P.Completed);
    Check (not P.Take_Attempt (P.Terminal_Failure, True, Remaining, Base, Deadline));
    Check (not P.Take_Attempt (P.Completed, True, Remaining, Base, Deadline));
    Check (not P.Take_Attempt (P.Peer_Loss, True, Remaining, Deadline, Deadline));

@@ -36,6 +36,22 @@ class SourceTests(unittest.TestCase):
             self.assertNotIn("unchecked_access", text)
             self.assertNotIn("unchecked_deallocation", text)
 
+    def test_one_global_deadline_configured_before_each_open(self):
+        source = (build.ROOT / "examples/ada-uci-client/src/ada_uci_client.adb").read_text()
+        self.assertEqual(source.count("Deadline := Ada.Real_Time.Clock"), 1)
+        self.assertEqual(source.count("WS.Set_Absolute_Deadline (Wire, Deadline);"), 1)
+        self.assertLess(source.index("WS.Set_Absolute_Deadline"), source.index("WS.Open"))
+        self.assertIn("Result := P.Duration_Result (Established);", source)
+        self.assertIn('Say ("FAILED deadline_during_delay");', source)
+        self.assertNotIn('Say ("COMPLETE deadline_during_delay");', source)
+
+    def test_no_exception_message_recovery_classifier(self):
+        source = (build.ROOT / "examples/ada-uci-client/src/ada_uci_client.adb").read_text()
+        epoch = source[source.index("procedure Epoch"):source.index("end Epoch;")]
+        self.assertNotIn("Exception_Message", epoch)
+        self.assertEqual(epoch.count("Result := P.Peer_Loss;"), 1)
+        self.assertIn("when Session_Lost =>", epoch)
+
 
 def live_tests(scratch):
     """Run, don't model, the argument parser and supervisor decision functions."""

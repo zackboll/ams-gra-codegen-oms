@@ -214,6 +214,7 @@ procedure Ada_UCI_Client is
       begin
          Check_Time;
          Say ("CONNECTING epoch=" & Image (Number) & " schema=" & Schema);
+          WS.Set_Absolute_Deadline (Wire, Deadline);
          WS.Open (Wire, To_String (Config.URL), CA_Path => To_String (Config.CA_Path),
                   CA_PEM => To_String (CA_PEM));
          Check_Time;
@@ -246,7 +247,10 @@ procedure Ada_UCI_Client is
          Established := True;
          loop Step; delay 0.001; end loop;
       exception
-         when Stop_Requested => Result := P.Completed;
+         when Stop_Requested =>
+            --  Expiry is successful only while this epoch is fully usable.
+            --  Neither initial nor replacement setup may masquerade as success.
+            Result := P.Duration_Result (Established);
          when Session_Lost =>
             Result := P.Peer_Loss;
             Say ("LOST epoch=" & Image (Number));
@@ -329,7 +333,8 @@ begin
          Say ("RECONNECT remaining=" & Image (Remaining));
          delay until P.Wake_Time (Ada.Real_Time.Clock, Deadline, Config.Reconnect_Delay_MS);
          if Ada.Real_Time.Clock >= Deadline then
-            Say ("COMPLETE deadline_during_delay");
+             Say ("FAILED deadline_during_delay");
+             Ada.Command_Line.Set_Exit_Status (1);
             exit;
          end if;
          Number := Number + 1;

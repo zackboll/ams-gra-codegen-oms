@@ -14,6 +14,8 @@ package UCI_Client.Policy is
      Ada.Strings.Unbounded.Unbounded_String;
    function Parse (Args : Arguments) return Options;
    type Outcome is (Completed, Peer_Loss, Terminal_Failure);
+   function Duration_Result (Established : Boolean) return Outcome;
+   --  Expiry before a usable session (including replacement setup) is failure.
    --  Only Peer_Loss from a fully established epoch authorizes recovery.
    --  Exceptions, including ambiguous transport exceptions, fail closed.
    function Take_Attempt
