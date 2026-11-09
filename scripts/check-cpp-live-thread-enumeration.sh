@@ -15,7 +15,7 @@ for compiler in g++ clang++; do
         "$compiler" "${flags[@]}" "$repo/tests/cpp-lacal/thread_enumeration_test.cpp" -o "$out/$label"
         ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 TSAN_OPTIONS=halt_on_error=1 \
             "$out/$label" > "$out/$label.stdout" 2> "$out/$label.stderr"
-        grep -qxF 'CPP_LIVE_THREAD_ENUMERATION tests=3 checks=6007' "$out/$label.stdout"
-        echo "$label PASS (3 tests / 6007 checks)"
+        grep -qxF 'CPP_LIVE_THREAD_ENUMERATION tests=6 checks=6094' "$out/$label.stdout"
+        echo "$label PASS (6 tests / 6094 checks)"
     done
 done

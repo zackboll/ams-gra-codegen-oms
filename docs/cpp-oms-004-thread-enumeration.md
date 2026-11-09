@@ -31,7 +31,8 @@ there is no timeout increase, test skip or permissive nonzero count.
 `thread_enumeration_test.cpp` tests stat parsing, a deliberately blocked live
 worker (must count as one), and 2,000 joined workers with completion flags.
 `scripts/check-cpp-live-thread-enumeration.sh SCRATCH` passes all six g++/clang++
-strict, ASan+UBSan and TSan configurations, each 3 tests / 6007 checks.
+strict, ASan+UBSan and TSan configurations. The initial correction required
+3 tests / 6007 checks; R1 extends the exact marker to 6 tests / 6094 checks.
 
 Independent base/head PositionReport repetitions and stderr, exact exits,
 sanitizer output, and thread snapshots are retained under
@@ -46,3 +47,63 @@ base runs (40 total) passed; this does not invalidate the later baseline
 reproduction. Corrected-helper clang-TSan PositionReport passed 20/20 isolated
 executions (2 tests/247 checks each) with identical runtime objects, broker,
 schema, compiler and sanitizer flags. No sanitizer report was emitted.
+
+## CPP-OMS-004R1: fail-closed observation review
+
+Starting reviewed commit: `dfa38fd79d828ec672f0b8e351f4757b1a1379f3`;
+tree: `ca120db15ca1a9f94de49e031cf5e73825a7a9cb`. It already contains main
+`43fa1934235ae1f4c818a586a5022ddd7366b8d1`; no additional main merge was
+needed. Existing commits and baseline reproduction evidence are preserved.
+
+Independent review found two incomplete-observation paths in
+`tests/cpp-lacal/check.hpp`:
+
+* The task-name `getline()` result was unchecked. A failed open/read left an
+  empty name that did not match the worker prefix, allowing a false zero count.
+* A null `readdir()` result was always treated as successful end-of-directory,
+  and `closedir()` failure was ignored.
+
+The helper now checks name extraction and rejects empty names. A failed name
+or stat read is ignored only if the existing task-directory existence check
+proves ENOENT; any other outcome returns -1. Malformed stats still fail closed.
+It clears errno immediately before **each** directory-read call and examines
+errno immediately on a null result, before other I/O. Directory completion is
+successful only with errno zero. All opened-directory paths converge on one
+close; close failure also returns -1, including after an otherwise valid zero
+count. No retry, sleep, timeout change or permissive nonzero check is introduced.
+
+A small test-only `check::detail` I/O adapter permits deterministic failures
+without globals, privileged operations, real `/proc` changes or timing races.
+Normal callers still use `threads_named(prefix)`. Negative tests use the same
+enumeration algorithm; name-open and name-read failures exercise the real
+line-reader on `/dev/null/not-a-file` and `/dev/null`, respectively. Further
+tests cover empty names, failed disappearance proof, vanished tasks, empty
+and nonempty directories, mid-enumeration failure, close failure (also after
+an earlier failure), malformed/unavailable stats, and stale errno from other
+successful operations. Positive controls count R/S/D live tasks and exclude
+only PF_EXITING tasks; the original parser and real blocked/joined worker tests
+remain. Exact markers are 6 tests / 6094 checks in the script and consumer.
+
+### R1 qualification
+
+Evidence is retained in `/home/zboll/cpp-oms-004r1-evidence`; historical baseline
+failures remain in `/home/zboll/cpp-oms-007r1-evidence` without modification.
+
+| Configuration | Focused enumeration |
+|---|---|
+| g++ 14.2 strict C++17 | PASS, 6 tests / 6094 checks |
+| clang++ 19.1.7 strict C++17 | PASS, 6 tests / 6094 checks |
+| g++ ASan+UBSan | PASS, 6 tests / 6094 checks |
+| clang++ ASan+UBSan | PASS, 6 tests / 6094 checks |
+| g++ TSan | PASS, 6 tests / 6094 checks |
+| clang++ TSan | PASS, 6 tests / 6094 checks |
+
+All six completed with exit 0 and no sanitizer findings. Smoke-harness regression:
+40 tests passed. Authentic full PositionReport, C++ smoke and shared runtime
+qualification are tracked separately to completion; pending runs are not passes.
+
+Only this existing PR #200 branch is updated. Production LA-CAL runtime, broker,
+codec, schema, immediate PositionReport assertion, and PR #198 are unchanged.
+Final source identities and exact-head hosted status are attached to the PR
+receipt after pushing ordinary corrective commits. Independent review remains
+required; no approval, merge, auto-merge or history rewriting is performed.
