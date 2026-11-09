@@ -1,0 +1,23 @@
+{
+  "candidate_schema_valid": true,
+  "scope": "documented Python concrete-position codec boundary preserved by PY-019",
+  "not_malformed_abstract_data": true,
+  "authority": [
+    {
+      "path": "docs/task-py-004-python-oms-json-codecs.md",
+      "lines": [
+        39,
+        41,
+        113
+      ],
+      "sha256": "3059758e4256a8b486b1bf80769eaade9792ce1127599f767e95b6ea5f887625"
+    },
+    {
+      "path": "tests/fixtures/python-abstract-values/runtime.py",
+      "test": "test_unexpected_concrete_type_marker_and_payload_class",
+      "sha256": "c1043765cd58ecc07b020169422100490600b85d09f1688b275fd1823e61eacc"
+    }
+  ],
+  "production_defect_demonstrated": false,
+  "existing_concrete_descendant_candidate": false
+}

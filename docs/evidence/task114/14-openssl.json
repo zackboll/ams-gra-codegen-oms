@@ -1,0 +1,1148 @@
+{
+  "format": "task114-v1",
+  "source": [
+    "ec4c95b3ad073a181784a10b684f511710bffad4",
+    "bd2b3bcaff073b015606c1455c90b33ab7e862d3"
+  ],
+  "compiler": "14.2.0",
+  "backend": "openssl",
+  "dependencies": {
+    "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+    "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+    "sleet": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "uci25": "093610b7753944059360d3236770ab446d039556",
+    "uci26": "78eb61b6112c8bffa40820c33124b57787fc5bd9"
+  },
+  "dependency_trees": {
+    "aht": "d137b924a7b0fa8b71c1ee8c582749e97294335b",
+    "codec": "6198cf7b10346003b91b379b568f26b378654565",
+    "sleet": "7e705f4eb5f658957bd414b4abc8207311f3c1e4",
+    "uci25": "f811683ce81a3fcc5c306627cb43c3df5b525b54",
+    "uci26": "43a8a74b15d2e20d00d4d8ed8543590dd9789046"
+  },
+  "full_artifact_manifest_sha256": "7b7ab6b0cc1904329b269bed954c871f6412ac567082cec4fc7e55b8ffee48ac",
+  "generator_sha256": "9bf13020e1cb970da73c8004c3ff417ad6bb71533336cf122feeda90ff7c039f",
+  "sleet_binary_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94",
+  "steps": [
+    {
+      "label": "source",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "source-status",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "aht-identity",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "aht-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "aht-archive",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "aht-extract",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "codec-identity",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "codec-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "codec-archive",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "codec-extract",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "sleet-identity",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "sleet-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "uci25-identity",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "uci25-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "uci26-identity",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "uci26-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "printenv",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "compiler",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "platform",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "certificate",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "generate26",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "build26",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "recovery26",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "aht-final-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "codec-final-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "sleet-final-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "uci25-final-clean",
+      "exit": 0,
+      "timed_out": false
+    },
+    {
+      "label": "uci26-final-clean",
+      "exit": 0,
+      "timed_out": false
+    }
+  ],
+  "releases": {
+    "26": {
+      "result": {
+        "completed": true,
+        "release": "26",
+        "cleanup": true,
+        "epochs": 5,
+        "callbacks": 24,
+        "ambiguous_publications": 0,
+        "broker_survived": true,
+        "consumer_exit": 0,
+        "resources": [
+          [
+            "1",
+            "8",
+            "3"
+          ],
+          [
+            "2",
+            "8",
+            "3"
+          ],
+          [
+            "3",
+            "8",
+            "3"
+          ],
+          [
+            "4",
+            "8",
+            "3"
+          ],
+          [
+            "5",
+            "8",
+            "3"
+          ]
+        ],
+        "broker_connections": {
+          "2": [
+            [
+              "1",
+              "task110-log",
+              "Log"
+            ],
+            [
+              "2",
+              "task110-rdma",
+              "RDMA_InitializeSetup"
+            ],
+            [
+              "3",
+              "task110-survivability",
+              "SurvivabilityRiskLevel"
+            ]
+          ],
+          "3": [
+            [
+              "1",
+              "task110-log",
+              "Log"
+            ],
+            [
+              "2",
+              "task110-rdma",
+              "RDMA_InitializeSetup"
+            ]
+          ],
+          "4": [
+            [
+              "1",
+              "task110-log",
+              "Log"
+            ],
+            [
+              "2",
+              "task110-rdma",
+              "RDMA_InitializeSetup"
+            ],
+            [
+              "3",
+              "task110-survivability",
+              "SurvivabilityRiskLevel"
+            ]
+          ],
+          "5": [
+            [
+              "1",
+              "task110-log",
+              "Log"
+            ],
+            [
+              "2",
+              "task110-rdma",
+              "RDMA_InitializeSetup"
+            ],
+            [
+              "3",
+              "task110-survivability",
+              "SurvivabilityRiskLevel"
+            ]
+          ],
+          "6": [
+            [
+              "1",
+              "task110-log",
+              "Log"
+            ],
+            [
+              "2",
+              "task110-rdma",
+              "RDMA_InitializeSetup"
+            ],
+            [
+              "3",
+              "task110-survivability",
+              "SurvivabilityRiskLevel"
+            ]
+          ]
+        },
+        "pending_operations": [
+          {
+            "epoch": 1,
+            "operation": "normal",
+            "broker_connection": "2",
+            "processed": true,
+            "registration": [
+              "2026-11-08T23:48:29.309839Z DEBUG connection{id=2 service_id=\"task110-multimessage\"}: sleet::server: subscription registered sid=3 topic=task110-survivability message_name=SurvivabilityRiskLevel"
+            ],
+            "application_removal": [
+              "2026-11-08T23:48:29.454012Z DEBUG connection{id=2 service_id=\"task110-multimessage\"}: sleet::server: subscription removed sid=3"
+            ],
+            "received_operations": [
+              "INIT",
+              "SUB",
+              "SUB",
+              "SUB",
+              "PUB",
+              "PUB",
+              "PUB",
+              "UNSUB"
+            ],
+            "broker_acks": 8
+          },
+          {
+            "epoch": 2,
+            "operation": "sub",
+            "broker_connection": "3",
+            "processed": false,
+            "registration": [],
+            "application_removal": [],
+            "received_operations": [
+              "INIT",
+              "SUB",
+              "SUB"
+            ],
+            "broker_acks": 3
+          },
+          {
+            "epoch": 3,
+            "operation": "normal",
+            "broker_connection": "4",
+            "processed": true,
+            "registration": [
+              "2026-11-08T23:48:29.574004Z DEBUG connection{id=4 service_id=\"task110-multimessage\"}: sleet::server: subscription registered sid=3 topic=task110-survivability message_name=SurvivabilityRiskLevel"
+            ],
+            "application_removal": [
+              "2026-11-08T23:48:29.722153Z DEBUG connection{id=4 service_id=\"task110-multimessage\"}: sleet::server: subscription removed sid=3"
+            ],
+            "received_operations": [
+              "INIT",
+              "SUB",
+              "SUB",
+              "SUB",
+              "PUB",
+              "PUB",
+              "PUB",
+              "UNSUB"
+            ],
+            "broker_acks": 8
+          },
+          {
+            "epoch": 4,
+            "operation": "unsub",
+            "broker_connection": "5",
+            "processed": false,
+            "registration": [
+              "2026-11-08T23:48:29.781272Z DEBUG connection{id=5 service_id=\"task110-multimessage\"}: sleet::server: subscription registered sid=3 topic=task110-survivability message_name=SurvivabilityRiskLevel"
+            ],
+            "application_removal": [],
+            "received_operations": [
+              "INIT",
+              "SUB",
+              "SUB",
+              "SUB",
+              "PUB",
+              "PUB",
+              "PUB"
+            ],
+            "broker_acks": 7
+          },
+          {
+            "epoch": 5,
+            "operation": "normal",
+            "broker_connection": "6",
+            "processed": true,
+            "registration": [
+              "2026-11-08T23:48:30.069110Z DEBUG connection{id=6 service_id=\"task110-multimessage\"}: sleet::server: subscription registered sid=3 topic=task110-survivability message_name=SurvivabilityRiskLevel"
+            ],
+            "application_removal": [
+              "2026-11-08T23:48:30.210576Z DEBUG connection{id=6 service_id=\"task110-multimessage\"}: sleet::server: subscription removed sid=3"
+            ],
+            "received_operations": [
+              "INIT",
+              "SUB",
+              "SUB",
+              "SUB",
+              "PUB",
+              "PUB",
+              "PUB",
+              "UNSUB"
+            ],
+            "broker_acks": 8
+          }
+        ],
+        "server_exit": 0,
+        "relay_errors": [],
+        "broker_socket_closed": true
+      },
+      "generated": {
+        "service_api.ads": "abe3f9933fa2521b649b5bd3973eb09891bea757197933eae36a1594907700f6",
+        "service_codec.adb": "ca0ac6ebd5517df1075f023d9728ec29ed669ef4ef30486f1c82e1d8a4e9f632",
+        "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+        "service_codec.ads": "60bbec5768703bad5bdf276764b9db89837d0d7be918de2d23d793a8259731b1",
+        "programs-oam.ads": "d7fcf77ec9471b64b0ce18fc894a879c5dd44e21a79ddf94fc9b36119fcafb81",
+        "programs-oam.adb": "7c7ff8289932666769da1f2d3c0f51c52c27c594a516c789f69a318963cd4ddf"
+      },
+      "schemas": {
+        "UCI_MessageDefinitions_v2_6_0.xsd": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "UCI_SecurityMarkings_v2_6_0.xsd": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+      },
+      "consumer_observations": [
+        "SUBSCRIBED 1 1 2 3",
+        "CALL 1 1 1",
+        "CALL 1 2 1",
+        "CALL 1 3 1",
+        "CALL 1 1 2",
+        "CALL 1 2 2",
+        "CALL 1 3 2",
+        "CONTROL_UNSUB 1 sid=3 acks=8 active=false",
+        "RETIRED 1 callbacks= 2 2 2 acks= 8 close=1 active=0 lost=0 busy=false",
+        "CLEANUP 1 fd= 8 tasks= 3",
+        "PENDING 2 sub sid=3 busy=true active=true,true,false acks=3",
+        "ARMED 2 sub",
+        "TRANSPORT_EXCEPTION 2 raised OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR : TCP read failed: [104] Connection reset by peer",
+        "RETIRED 2 callbacks= 0 0 0 acks= 3 close=1 active=0 lost=0 busy=false",
+        "CLEANUP 2 fd= 8 tasks= 3",
+        "SUBSCRIBED 3 1 2 3",
+        "CALL 3 1 1",
+        "CALL 3 2 1",
+        "CALL 3 3 1",
+        "CALL 3 1 2",
+        "CALL 3 2 2",
+        "CALL 3 3 2",
+        "CONTROL_UNSUB 3 sid=3 acks=8 active=false",
+        "RETIRED 3 callbacks= 2 2 2 acks= 8 close=1 active=0 lost=0 busy=false",
+        "CLEANUP 3 fd= 8 tasks= 3",
+        "SUBSCRIBED 4 1 2 3",
+        "CALL 4 1 1",
+        "CALL 4 2 1",
+        "CALL 4 3 1",
+        "CALL 4 1 2",
+        "CALL 4 2 2",
+        "CALL 4 3 2",
+        "PENDING 4 unsub sid=3 busy=true active=true,true,false acks=7",
+        "ARMED 4 unsub",
+        "PROBE_REJECTED 4 sid=3 busy=true acks=7",
+        "TRANSPORT_EXCEPTION 4 raised OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR : TCP read failed: [104] Connection reset by peer",
+        "RETIRED 4 callbacks= 2 2 2 acks= 7 close=1 active=0 lost=0 busy=false",
+        "CLEANUP 4 fd= 8 tasks= 3",
+        "SUBSCRIBED 5 1 2 3",
+        "CALL 5 1 1",
+        "CALL 5 2 1",
+        "CALL 5 3 1",
+        "CALL 5 1 2",
+        "CALL 5 2 2",
+        "CALL 5 3 2",
+        "CONTROL_UNSUB 5 sid=3 acks=8 active=false",
+        "RETIRED 5 callbacks= 2 2 2 acks= 8 close=1 active=0 lost=0 busy=false",
+        "CLEANUP 5 fd= 8 tasks= 3",
+        "TASK114_COMPLETE epochs=5"
+      ],
+      "epochs": [
+        {
+          "epoch": 1,
+          "mode": "normal",
+          "completed": true,
+          "shutdown": "broker_eof_then_authenticated_tls_eof",
+          "ada_sha256": "0b3e980d0a3ff033700978017d05c1d0b025710f08fd1d2c7fa44a6bcdac63c3",
+          "forwarded_sha256": "0b3e980d0a3ff033700978017d05c1d0b025710f08fd1d2c7fa44a6bcdac63c3",
+          "sleet_sha256": "b4fe10c56f26c44ac48c7bdecec4598bebb9011e47d2cf056e0a6ecabe4c71a8",
+          "delivered_sha256": "b4fe10c56f26c44ac48c7bdecec4598bebb9011e47d2cf056e0a6ecabe4c71a8",
+          "protocol": {
+            "ada": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: 0gDwf75uu7zitdM5x02q5w==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "45c72e4c7cbb65a6418d8c0168e945a4196fca17198e2b77dc60af980dfe6944"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "ea28986486052bb9d5ec3ff9e60f68ae99e3b8cc4db48c006c54e4b010f0769f"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "d4f3e712b4c990cb1ab711ce3ae8b710a21f66da1b454f6078d136f59a158099"
+                }
+              ]
+            },
+            "forwarded": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: 0gDwf75uu7zitdM5x02q5w==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "45c72e4c7cbb65a6418d8c0168e945a4196fca17198e2b77dc60af980dfe6944"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "ea28986486052bb9d5ec3ff9e60f68ae99e3b8cc4db48c006c54e4b010f0769f"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "d4f3e712b4c990cb1ab711ce3ae8b710a21f66da1b454f6078d136f59a158099"
+                }
+              ]
+            },
+            "sleet": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: DVBh/G+CWME3WTh1B4zZwYlCOto=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 6,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "bf5b3e6acc81e62a4abb690acdb3a688a9f36646b99382e9926a4f8f47802655"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "e436163a48642c453025fdbc819d045526f7ada1dbe555e3fa8fd266d9d69c18"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "385ebe9798ecaf1b4c17451e91c83fed21ab263a4454a1f789ab114166c5fa61"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "24e3e03aae5e288238350cbfa412f272efd67947a124178f78c2d646a941c5d2"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "a8a4b2e163bb2739e5a63a8a6081766e0e153a8c0b5e011c538a5257f3c3e1bd"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "f9072e92ef3564c634e5f7501f8895ae6910adda11df5b37685db38d6d031643"
+                }
+              ]
+            },
+            "delivered": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: DVBh/G+CWME3WTh1B4zZwYlCOto=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 6,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "bf5b3e6acc81e62a4abb690acdb3a688a9f36646b99382e9926a4f8f47802655"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "e436163a48642c453025fdbc819d045526f7ada1dbe555e3fa8fd266d9d69c18"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "385ebe9798ecaf1b4c17451e91c83fed21ab263a4454a1f789ab114166c5fa61"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "24e3e03aae5e288238350cbfa412f272efd67947a124178f78c2d646a941c5d2"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "a8a4b2e163bb2739e5a63a8a6081766e0e153a8c0b5e011c538a5257f3c3e1bd"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "f9072e92ef3564c634e5f7501f8895ae6910adda11df5b37685db38d6d031643"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "epoch": 2,
+          "mode": "sub",
+          "completed": true,
+          "target_offset": 356,
+          "target_bytes": 56,
+          "target_text": "SUB 3 SurvivabilityRiskLevel task110-survivability",
+          "target_sha256": "84db4c70d8b958480baf80734093f6b6824ce3b832fc1836f938a6887407ef81",
+          "shutdown": "reset_after_complete_interception_and_pending_barrier",
+          "ada_sha256": "45f3f6ef35ddb6b7f6b4763cde56b4a1a0f2576ab697671aa8cef1a8d8acbc0d",
+          "forwarded_sha256": "cab0c4588cf1598e4d2340614216ef5eb5518f94f85b9dd1c710d65d4cf09d70",
+          "sleet_sha256": "f388099bd42a6cd3bf7d0fcc89546573ed62f13465aaa70c29fbddd8fbb92dc9",
+          "delivered_sha256": "f388099bd42a6cd3bf7d0fcc89546573ed62f13465aaa70c29fbddd8fbb92dc9",
+          "protocol": {
+            "ada": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: LVXdBAYWEe50/hx7ubMJ2w==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability"
+              ],
+              "pub_count": 0,
+              "msg_count": 0,
+              "document_frames": []
+            },
+            "forwarded": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: LVXdBAYWEe50/hx7ubMJ2w==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma"
+              ],
+              "pub_count": 0,
+              "msg_count": 0,
+              "document_frames": []
+            },
+            "sleet": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: KP/A/kPv5rMXcNPmlHCrNsVJD7s=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 0,
+              "document_frames": []
+            },
+            "delivered": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: KP/A/kPv5rMXcNPmlHCrNsVJD7s=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 0,
+              "document_frames": []
+            }
+          }
+        },
+        {
+          "epoch": 3,
+          "mode": "normal",
+          "completed": true,
+          "shutdown": "broker_eof_then_authenticated_tls_eof",
+          "ada_sha256": "e3bf9713f629e2ac61bf19e422b8ff784a60718135db15efff42bd593fe5c6ff",
+          "forwarded_sha256": "e3bf9713f629e2ac61bf19e422b8ff784a60718135db15efff42bd593fe5c6ff",
+          "sleet_sha256": "9aebc3ac15122dad95b7b68b77a5fcb59985aa8f0c29335c22221b8ed97e41df",
+          "delivered_sha256": "9aebc3ac15122dad95b7b68b77a5fcb59985aa8f0c29335c22221b8ed97e41df",
+          "protocol": {
+            "ada": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: 1yznqBhVwmRaHA5YQFnQyg==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "ce72b84e854ffd80f50bbf3220966c840e4a2400129c17824cda0efeabd1181e"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "b33787977eb92d1a6563ea0b267b0ddd7bd51077aa2bd6aca3858de35f9a7b65"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "dabd6ca860a63de7768c69587d9dd9a738355ce68ed9e33603ca29a6d8d39478"
+                }
+              ]
+            },
+            "forwarded": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: 1yznqBhVwmRaHA5YQFnQyg==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "ce72b84e854ffd80f50bbf3220966c840e4a2400129c17824cda0efeabd1181e"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "b33787977eb92d1a6563ea0b267b0ddd7bd51077aa2bd6aca3858de35f9a7b65"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "dabd6ca860a63de7768c69587d9dd9a738355ce68ed9e33603ca29a6d8d39478"
+                }
+              ]
+            },
+            "sleet": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: FAoRpBJgflKC0eBJSuQNsK5vGxA=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 6,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "fb598f8df3199ef318b1c7ff9126f80b1a7f47f8c64661d88817ed183306290b"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "6ad3aadd12722c91dbe456af1c1a8adbedbda1dd5bdd7007d4945838abc06ee6"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "d5dc5e91b92f38163b2a709d10f28de31ba7c15bdbda593b4fb3d317d6007980"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "e1443026da82db92c7c02fcdb5543000ede529448aebbc38439394183a2c67d2"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "0f0ef4a956ee4c384a1cbed7fbf3f16289c26a3fa2212368272bb4533b71bcac"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "25b9737f7af6c0515f2c7b866154e7d1b41995c6757e4e98883803312c9ee0e1"
+                }
+              ]
+            },
+            "delivered": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: FAoRpBJgflKC0eBJSuQNsK5vGxA=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 6,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "fb598f8df3199ef318b1c7ff9126f80b1a7f47f8c64661d88817ed183306290b"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "6ad3aadd12722c91dbe456af1c1a8adbedbda1dd5bdd7007d4945838abc06ee6"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "d5dc5e91b92f38163b2a709d10f28de31ba7c15bdbda593b4fb3d317d6007980"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "e1443026da82db92c7c02fcdb5543000ede529448aebbc38439394183a2c67d2"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "0f0ef4a956ee4c384a1cbed7fbf3f16289c26a3fa2212368272bb4533b71bcac"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "25b9737f7af6c0515f2c7b866154e7d1b41995c6757e4e98883803312c9ee0e1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "epoch": 4,
+          "mode": "unsub",
+          "completed": true,
+          "target_offset": 1991,
+          "target_bytes": 13,
+          "target_text": "UNSUB 3",
+          "target_sha256": "2a867559c717c6a14d7311f15c481aa8ae44d2de903d4a8617fe76d8bc805c8b",
+          "shutdown": "reset_after_complete_interception_and_pending_barrier",
+          "ada_sha256": "095626de7062552ab33a2d021201770a076ad84598eea503aa37b1d8f00a0a29",
+          "forwarded_sha256": "6367bd47728e58fd2079646c58c40a00b950e169e5f783f32d110505790228e4",
+          "sleet_sha256": "6b0bc7e6423fe11fe3a1dca409ea7d6381a742b5fe5cc05dba60d5c20c8e8e24",
+          "delivered_sha256": "6b0bc7e6423fe11fe3a1dca409ea7d6381a742b5fe5cc05dba60d5c20c8e8e24",
+          "protocol": {
+            "ada": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: E6wocUOAQUsq/NOmzVhhRA==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "8fb0747696a2fa473ee60c3b35c1ff9bca418a3e8454b6623ff4f443c149d3c5"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "f7f83c47863c7637b2654eb54800055487e2138d41113c874b5c865e7c97c9ff"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "90b0d5ce1e34cbaa364e1fc4299556fffee4d9b7c430e2109976b7bb0bb3652a"
+                }
+              ]
+            },
+            "forwarded": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: E6wocUOAQUsq/NOmzVhhRA==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "8fb0747696a2fa473ee60c3b35c1ff9bca418a3e8454b6623ff4f443c149d3c5"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "f7f83c47863c7637b2654eb54800055487e2138d41113c874b5c865e7c97c9ff"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "90b0d5ce1e34cbaa364e1fc4299556fffee4d9b7c430e2109976b7bb0bb3652a"
+                }
+              ]
+            },
+            "sleet": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: 3acsbZeeH5TNLHSaBAYUCTWCo8A=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 7,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "37ddfdfd0cb2fb9344045a06a2c0109250f686b51923011b309ca7c247812948"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "5902ea0d562dc1774788e32358baa1a65078ea0f223e37b3f38c33634168bd40"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "3dca94c4234c5400579678021e63c92e7cb46652bd3c3080cefe3ec03f898538"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "b79a37700314d1ce040fa59a95c72083779941591025a43390202cd2d2141e3f"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "8be9329bc65beb292434adc47d583c6117457ecac0e0920974ef053c2c157ae2"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "c57e55ffebc8151372f6024df01a3f51a72c5057bf523c54ea51a2571ed86542"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "c57e55ffebc8151372f6024df01a3f51a72c5057bf523c54ea51a2571ed86542"
+                }
+              ]
+            },
+            "delivered": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: 3acsbZeeH5TNLHSaBAYUCTWCo8A=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 7,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "37ddfdfd0cb2fb9344045a06a2c0109250f686b51923011b309ca7c247812948"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "5902ea0d562dc1774788e32358baa1a65078ea0f223e37b3f38c33634168bd40"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "3dca94c4234c5400579678021e63c92e7cb46652bd3c3080cefe3ec03f898538"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "b79a37700314d1ce040fa59a95c72083779941591025a43390202cd2d2141e3f"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "8be9329bc65beb292434adc47d583c6117457ecac0e0920974ef053c2c157ae2"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "c57e55ffebc8151372f6024df01a3f51a72c5057bf523c54ea51a2571ed86542"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "c57e55ffebc8151372f6024df01a3f51a72c5057bf523c54ea51a2571ed86542"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "epoch": 5,
+          "mode": "normal",
+          "completed": true,
+          "shutdown": "broker_eof_then_authenticated_tls_eof",
+          "ada_sha256": "8a7c827987e11464e0cc27dcf2475cdd1fca01e6be6d4cb94e4f92953ea47a92",
+          "forwarded_sha256": "8a7c827987e11464e0cc27dcf2475cdd1fca01e6be6d4cb94e4f92953ea47a92",
+          "sleet_sha256": "7386666768942d6940218c3f7fa3238009654bc09a5feea65d9f2ee05f90554a",
+          "delivered_sha256": "7386666768942d6940218c3f7fa3238009654bc09a5feea65d9f2ee05f90554a",
+          "protocol": {
+            "ada": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: /AA8dIZOw1X6Nc6yPz3l0w==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "73c76ce52675f259ce55b52b1b900466621809c01ab8e60d86f86bd6e53a9f67"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "c68b4687291dddb20a8dc2684cd3286fce3d03476eac14d3099a629872b88885"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "1a072fb637c5b47342644a1a983cb72e9a6d26c7629d473488ffb87ea38a83c2"
+                }
+              ]
+            },
+            "forwarded": {
+              "upgrade": "GET / HTTP/1.1\r\nHost: localhost:51893\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: /AA8dIZOw1X6Nc6yPz3l0w==\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: owp",
+              "commands": [
+                "INIT {\"schema\":\"002.6.0\",\"service_id\":\"task110-multimessage\",\"verbose\":true,\"versions\":[\"1.0\"]}",
+                "SUB 1 Log task110-log",
+                "SUB 2 RDMA_InitializeSetup task110-rdma",
+                "SUB 3 SurvivabilityRiskLevel task110-survivability",
+                "UNSUB 3"
+              ],
+              "pub_count": 3,
+              "msg_count": 0,
+              "document_frames": [
+                {
+                  "operation": "PUB",
+                  "sha256": "73c76ce52675f259ce55b52b1b900466621809c01ab8e60d86f86bd6e53a9f67"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "c68b4687291dddb20a8dc2684cd3286fce3d03476eac14d3099a629872b88885"
+                },
+                {
+                  "operation": "PUB",
+                  "sha256": "1a072fb637c5b47342644a1a983cb72e9a6d26c7629d473488ffb87ea38a83c2"
+                }
+              ]
+            },
+            "sleet": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: mV4f4jZG9t61Hw6DlLwl7/Uprj4=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 6,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "5c8765b1b26f969902a8a9268bdb6b8818bd14e856fdd3bcb8cda7276e2c94f5"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "fba1e36e6f7f0e42c0be84cd15f298768fe992e6f1fc5a0c0106c154e7cf3949"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "c489147a9afbe87ec9954ee5759899728070bf7fa9ae558378ee170f9f846bdf"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "e5b032ec51a90f26ffe3851df26a09826bb08ef773067c008b486f94e7093e43"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "dd11a1c75c9ee9c6930e1ff36ce27c80c79ed4ecd089ef2c5ffab45fbd60761f"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "4f29817948f8ed4c48c61394c0c09757addbf15ecf59af1b93e09e8eda753fbd"
+                }
+              ]
+            },
+            "delivered": {
+              "upgrade": "HTTP/1.1 101 Switching Protocols\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-accept: mV4f4jZG9t61Hw6DlLwl7/Uprj4=\r\nsec-websocket-protocol: owp",
+              "commands": [
+                "+OK",
+                "INFO {\"version\":\"1.0\",\"server_id\":\"task112\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440112\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task112\"}",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK",
+                "+OK"
+              ],
+              "pub_count": 0,
+              "msg_count": 6,
+              "document_frames": [
+                {
+                  "operation": "MSG",
+                  "sha256": "5c8765b1b26f969902a8a9268bdb6b8818bd14e856fdd3bcb8cda7276e2c94f5"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "fba1e36e6f7f0e42c0be84cd15f298768fe992e6f1fc5a0c0106c154e7cf3949"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "c489147a9afbe87ec9954ee5759899728070bf7fa9ae558378ee170f9f846bdf"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "e5b032ec51a90f26ffe3851df26a09826bb08ef773067c008b486f94e7093e43"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "dd11a1c75c9ee9c6930e1ff36ce27c80c79ed4ecd089ef2c5ffab45fbd60761f"
+                },
+                {
+                  "operation": "MSG",
+                  "sha256": "4f29817948f8ed4c48c61394c0c09757addbf15ecf59af1b93e09e8eda753fbd"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "artifacts": {
+        "recovery26/consumer.stdout": "5461c5dff9e288b58ae17654392b7a410ffbc43cb121dd899adcf70010ab2e70",
+        "recovery26/consumer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recovery26/server.stdout": "414f0750c2d746f4d76a9070824fa1f25796a8191500122c364180c2074dd263",
+        "recovery26/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recovery26/observer.json": "b06a703cd71f74a5c6721a35140ba0544d6fbf8b10feeb7c4587f9abb8b376d0",
+        "recovery26/result.json": "d61d95c1994b24c4996d7578abdabc27b7b5f5f71cc8626bad014ec87c371928",
+        "recovery26/plan.jsonl": "3a1a03b1ca478bdf96da1c92ac72ee3f4931ed63669d2a57b32c5717a6231b18"
+      }
+    }
+  },
+  "full_receipt_sha256": "2609d703491430bfdbb1de4afa48ea1e06903f09c3ab36515c157337ef43b3a9",
+  "input_sources_manifest_sha256": "a94ce5a81ba91f7056dc8724a1dc8a659ff1ce88024237b296b8f78fa0eb0b1c",
+  "task114_sources": {
+    "scripts/task114/recovery.py": "0a0b6ecf7444eae79abb4e530e6a3b8f606ec5e2d884f1694547b51343270294",
+    "scripts/task114/framing.py": "ea1aec882a2639ba7ae723865c11172f15dd90d58cfecb350ff1f22eaf1231f4",
+    "scripts/task114/verify.py": "23f9d9cff9d1ebffd3e8bbac84d73c3f92251a15e6c26efe48f759d67cbcec03",
+    "scripts/task114/test_recovery.py": "5bd647b805f56517694f0a08b34c5c5844eed381cc78f98e7870359db3e74c79",
+    "scripts/task114/qualify.py": "dcf8628ac1a100d20080d661ab887d308cf15cc33d8a5a6e7d30d2d2c6e6a162",
+    "scripts/task112/recovery.py": "a25ada4420a87993b5e8531bbb662ee06526187a661c752a200e9c65ceee4a8e",
+    "tests/ada-wss-prebroker-recovery/recovery_consumer.adb": "120ac0d989fe93c5674a9dbb7e0e47bc043812bde47718e7bf7b28d9eaa88215"
+  }
+}
