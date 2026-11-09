@@ -1,0 +1,23 @@
+{
+  "original_head": "6b8bdf080cb5ab678c54902d17e0bce0bb25a989",
+  "main": "43fa1934235ae1f4c818a586a5022ddd7366b8d1",
+  "merge": "fb2a5289b60e6ca0c72623902b4895c950ab9c34",
+  "merge_tree": "ba7cf984aecfeb61b739414a04ee2130dab4de57",
+  "qualified_source": "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+  "qualified_tree": "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3",
+  "historical_sha256": {
+    "docs/evidence/task115/14-mbedtls.json": "fd3d251ef275b653ffcc0e39a955d00c97aa0e2f73edecc398bf1b56c4dcd843",
+    "docs/evidence/task115/14-openssl.json": "390cd40c909189f561e3662b47a4687508dc3936935bb5296e15146bbd0d8c74",
+    "docs/evidence/task115/16-mbedtls.json": "04c64f80ae3aa5b7bd69fdf7ae1eef1f47afaf5d7033b520df131b71fe552594",
+    "docs/evidence/task115/16-openssl-25.json": "1cd2fc0a69cb91b67d1351c14d30cf34d5fa2521da9a7d743aac3c913f489fed",
+    "docs/evidence/task115/16-openssl.json": "478f40dd498163bdabfd23eba91c846081f1326c402f91740cce0ecb30a717dd",
+    "docs/evidence/task115/README.md": "efa8420a035dcf135de64bf322a7ef44af948c52ce39b3ec2a224d1a5ae8de54"
+  },
+  "unchanged_historical_and_contracts": true,
+  "production_unchanged_from_main": true,
+  "conflict_paths": [
+    "scripts/test_pr_smoke.py"
+  ],
+  "resolution": "retain TASK115 and TASK116 boundary/ownership test methods; selector auto-merges both path owners",
+  "clean": true
+}

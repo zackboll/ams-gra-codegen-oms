@@ -204,3 +204,22 @@ captures, broker logs, executable builds and negative controls are retained unde
 startup and allow 150 ms measurement/scheduling overhead; these are not hard
 real-time scheduling guarantees. Stable Linux FD/task samples do not establish
 arbitrary heap-leak freedom.
+
+### R1 executed acceptance matrix
+
+All five clean-source campaigns at `7fa13386fb97cec44ac739d7c017c76ca30dd801`
+(tree `5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3`) passed six real-Sleet
+interoperability cases plus eleven controls. GNAT16/OpenSSL ran first. Initial
+one-second stalled TLS measurements: GNAT16/OpenSSL 0.335993 s,
+GNAT16/mbedTLS 0.334947 s, GNAT14/OpenSSL 0.337965 s, GNAT14/mbedTLS
+0.335907 s; authentic UCI2.5 GNAT16/OpenSSL 0.336366 s. All exit 1 without
+initial retry, INIT, SUB or external kill. Two-second replacement-deadline runs
+exit 1 at 2.002–2.005 s, preserving the original absolute time. Normal requested
+duration succeeds. INFO/ACK/delay expiry fails closed with clean finalization.
+
+TCP reset, invalid TLS record and malformed frame controls terminate with no
+retry; authenticated EOF and valid WS Close controls recover. Failed replacement
+TLS terminates with one unused attempt and no third epoch. All established-session
+retirement samples remain 5 FDs / 1 task. Wire, typed callback timestamps and
+independent Sleet owners are verified; ten evidence mutations are rejected.
+See the new R1 receipts for exact identities, measurements and remaining limits.
