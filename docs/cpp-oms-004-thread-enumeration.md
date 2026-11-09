@@ -37,3 +37,12 @@ Independent base/head PositionReport repetitions and stderr, exact exits,
 sanitizer output, and thread snapshots are retained under
 `/home/zboll/cpp-oms-007r1-evidence`. The original failing observation is kept;
 passing reruns alone are not used to dismiss it. Independent review is required.
+
+The identical assertion was reproduced on the original CPP-OMS-007 base
+`a6a0f575ccdb6a850205d3e93e6fbd21823dfeaa` in isolated repetitions
+`base-more-a/1`, `base-more-a/4`, and `base-more-b/4` (each exit 1, 1/247 failed).
+The unmodified feature head failed `head-tsan-runs/4` in the same way. Initial
+base runs (40 total) passed; this does not invalidate the later baseline
+reproduction. Corrected-helper clang-TSan PositionReport passed 20/20 isolated
+executions (2 tests/247 checks each) with identical runtime objects, broker,
+schema, compiler and sanitizer flags. No sanitizer report was emitted.
