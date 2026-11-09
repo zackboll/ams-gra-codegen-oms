@@ -13,7 +13,8 @@ generated, consumer, scratch = map(Path, sys.argv[1:])
 codec = (generated / "service_codec.hpp").read_text()
 model = (generated / "oam.hpp").read_text()
 mutations = [
-    ("carrier-length", "oam.hpp", "if (octets < min_octets || octets > max_octets) return std::nullopt;", "static_cast<void>(octets);"),
+    ("carrier-length", "oam.hpp", "if (octets < min_octets || octets > max_octets) return std::nullopt;\n        return Digest(std::move(value));",
+     "static_cast<void>(octets);\n        return Digest(std::move(value));"),
     ("codec-bypass", "service_codec.hpp", "auto result = M::Digest::create(std::move(*octets));",
      "auto result = M::Digest::create(std::vector<std::uint8_t>(32, 0));"),
     ("canonical-case", "service_codec.hpp", 'static const char digits[] = "0123456789ABCDEF";',

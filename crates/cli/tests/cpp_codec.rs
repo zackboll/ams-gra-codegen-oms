@@ -135,6 +135,27 @@ fn constrained_hex_mutations_are_detected() {
 }
 
 #[test]
+fn constrained_hex_min_max_boundaries_use_checked_carriers() {
+    let dir = generate(&constrained_hex_case(), true, "hex-boundaries");
+    let source = root().join("tests/cpp-codec/constrained_hex_boundaries.cpp");
+    for compiler in ["g++", "clang++"] {
+        for (label, flags) in [("strict", STRICT), ("sanitized", SANITIZE)] {
+            assert!(compiler_available(compiler), "{compiler} required");
+            assert_eq!(
+                compile_and_run(
+                    compiler,
+                    flags,
+                    &dir,
+                    std::slice::from_ref(&source),
+                    &format!("hex-boundaries-{compiler}-{label}")
+                ),
+                "CPP_OMS_007_BOUNDARIES checks=98\n"
+            );
+        }
+    }
+}
+
+#[test]
 fn constrained_hex_carriers_are_clean_under_sanitizers() {
     let dir = generate(&constrained_hex_case(), true, "hex-sanitizers");
     let source = root().join("tests/cpp-codec/constrained_hex_consumer.cpp");

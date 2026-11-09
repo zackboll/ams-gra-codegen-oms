@@ -8,11 +8,20 @@ scratch="$(realpath -m "${1:?scratch directory required}")"
 checkout="$(realpath "${2:?existing pinned Sleet checkout required}")"
 mkdir -p "$scratch"
 cd "$repo"
-[[ "$(git -C "$checkout" rev-parse HEAD)" == e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b ]]
-[[ "$(git -C "$checkout" rev-parse 'HEAD^{tree}')" == 7e705f4eb5f658957bd414b4abc8207311f3c1e4 ]]
+# Candidate qualification is explicit and does not change the production pin.
+sleet_rev="${CPP_OMS_007_SLEET_CANDIDATE_REV:-e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b}"
+sleet_tree="${CPP_OMS_007_SLEET_CANDIDATE_TREE:-7e705f4eb5f658957bd414b4abc8207311f3c1e4}"
+[[ "$(git -C "$checkout" rev-parse HEAD)" == "$sleet_rev" ]]
+[[ "$(git -C "$checkout" rev-parse 'HEAD^{tree}')" == "$sleet_tree" ]]
+git -C "$checkout" merge-base --is-ancestor e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b HEAD
 [[ -z "$(git -C "$checkout" status --porcelain)" ]]
-(cd "$checkout" && cargo build --release --locked -p sleet)
-sleet_bin="$checkout/target/release/sleet"
+(cd "$checkout" && cargo build --release --locked -p sleet --target-dir "$scratch/sleet-target")
+sleet_bin="$scratch/sleet-target/release/sleet"
+printf 'Sleet source commit=%s tree=%s\n' "$sleet_rev" "$sleet_tree"
+sha256sum "$sleet_bin"
+if [[ -n "${CPP_OMS_007_SLEET_CANDIDATE_REV:-}" ]]; then
+    echo 'CONDITIONAL CANDIDATE qualification only; production Sleet pin unchanged'
+fi
 cli="${AMS_GRA_CLI:-$repo/target/release/ams-gra-codegen-oms}"
 if [[ -z "${AMS_GRA_CLI:-}" ]]; then cargo build --locked --release -p ams-gra-codegen-oms; fi
 root25="${AMS_GRA_UCI_2_5_ROOT:-}"
@@ -90,6 +99,9 @@ for entry in "${configs[@]}"; do
     "$compiler" "${flags[@]}" -I "$scratch/synthetic" tests/cpp-codec/constrained_hex_consumer.cpp -o "$out/synthetic"
     summary="$("$out/synthetic")"
     [[ "$summary" == 'CPP_OMS_007_HEX checks=272 rejections=67' ]]; echo "$label $summary"
+    "$compiler" "${flags[@]}" -I "$scratch/synthetic" tests/cpp-codec/constrained_hex_boundaries.cpp -o "$out/boundaries"
+    summary="$("$out/boundaries")"
+    [[ "$summary" == 'CPP_OMS_007_BOUNDARIES checks=98' ]]; echo "$label $summary"
     compile_flags=()
     # -no-pie is a linker option; clang rejects it with -c under -Werror.
     for flag in "${flags[@]}"; do [[ "$flag" == -no-pie ]] || compile_flags+=("$flag"); done
@@ -125,7 +137,7 @@ for entry in "${configs[@]}"; do
                 echo "FAILED: $label UCI $v $test exit=$status"
                 failures=$((failures+1))
             else
-                [[ "$summary" == "CPP_OMS_007_REAL_FILE_METADATA uci=$v tests=1 checks=25" ]]
+                [[ "$summary" == "CPP_OMS_007_REAL_FILE_METADATA uci=$v tests=1 checks=75" ]]
                 echo "$label $test $summary"
             fi
         done

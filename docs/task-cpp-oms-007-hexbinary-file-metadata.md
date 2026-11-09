@@ -1,3 +1,10 @@
+# CPP-OMS-007R1 follow-up
+
+Current corrective-dependency review and refreshed qualification are recorded in
+[the R1 acceptance ledger](task-cpp-oms-007r1-acceptance.md). Historical
+original-pin failures below remain valid; candidate-broker success is conditional
+and does not change the production pin or authorize merging.
+
 # CPP-OMS-007 — constrained hexBinary codecs and authentic FileMetadata
 
 ## Status: codec complete; hash-present pinned-Sleet acceptance BLOCKED
