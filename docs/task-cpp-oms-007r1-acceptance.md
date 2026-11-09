@@ -124,8 +124,8 @@ flags and tests; the split changes only compiler selection to run independently.
 | CPP-OMS-001 standalone | PASS, 6313 checks per execution |
 | CPP-OMS-002 standalone | PASS both releases, 307 checks each configuration |
 | CPP-OMS-003 full runtime rerun | PASS all six configurations, including integrated helper: OWP 6/101, mock 30/364, shutdown 12/217, OAM 1/13 |
-| CPP-OMS-004 authentic focused matrix | PASS both releases/all six configurations, each 2 tests/247 checks; full numerical+transport script still running |
-| CPP-OMS-005 full rerun | Running; not claimed complete |
+| CPP-OMS-004 full numerical/transport script and focused matrix | PASS both releases/all six configurations, each authentic execution 2 tests/247 checks; 27167 conversion and 20474 encoding oracle rows, locale and all six mutants passed |
+| CPP-OMS-005 full rerun | PASS both releases/all six configurations, each authentic Sleet execution 2 tests/206 checks; all 13 mutants detected |
 | CPP-OMS-006 full rerun | PASS all six configurations; 323/166 and 828/259 synthetic checks/rejections, 21/21 mutants, per-release model and six-message compile probes |
 | Workspace library tests | 650 passed, no failures or ignored tests |
 | Local C++ smoke | PASS; no-schema-fetch offline path |
@@ -136,6 +136,7 @@ flags and tests; the split changes only compiler selection to run independently.
 | C++ generated codec parity | 32 pairs / 96 files, zero mismatches |
 | Python generation parity | 118 comparisons, zero mismatches |
 | Model/API/facade/member-remapping refresh | 88 passed (7 + 13 + 68), zero failures |
+| Authenticated UCI inventory/impact/readiness tests | 3 passed, including both full roots |
 
 ### Corrected-Sleet authentic transport matrix
 
