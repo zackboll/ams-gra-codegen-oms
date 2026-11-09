@@ -148,3 +148,80 @@ Committed clean-source matrix, compatibility, optional integration and hosted
 exact-HEAD results are recorded separately below and in compact receipts under
 `/docs/evidence/task116/`; full logs/captures/builds/keys remain outside Git at
 `/home/zboll/task116-evidence`.
+
+### Clean-source four-cell acceptance
+
+All 19 cases pass in each cell on HEAD
+`865bb824db0f84033fffaa5c9fdf40808baa5144`, tree
+`ce2b7443d2419ea69dd862807aaa17b678cb4f42`. GNAT16/OpenSSL ran first.
+The following values are externally measured seconds for one-second caller time:
+
+| Compiler/backend | TLS stall | Upgrade stall | Write stall | Close stall | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| GNAT16.1/OpenSSL | 0.365 | 1.059 | 1.032 | 1.032 | PASS |
+| GNAT16.1/mbedTLS | 0.340 | 1.012 | 1.007 | 1.009 | PASS |
+| GNAT14.2/OpenSSL | 0.361 | 1.028 | 1.029 | 1.024 | PASS |
+| GNAT14.2/mbedTLS | 0.350 | 1.018 | 1.019 | 1.017 | PASS |
+
+Trickled and delayed cumulative upgrades also remain within 1.150 s. Legacy
+handshake stalls remain approximately two seconds; long caller budgets retain the
+old two-second stage cap. Each configured expired Open and 1 ms setup makes no
+connection; 50 ms setup may expire before ClientHello under system load and is
+classified only as a short-budget control, not evidence of a completed TLS stage.
+One-second handshake cases independently require actual ClientHello bytes.
+
+Both backends fail blocked writes closed with ordered numbered complete frames,
+one possible partial tail, no replay, and exactly one preceding queued Pong in
+the queued-control case. Repeated Close/finalization and an explicit new deadline
+before client reuse pass. Final resource samples are 4 or 5 FDs / 1 task; the
+directory handle is included and first-use TLS can retain one provider entropy FD.
+
+An initial acceptance attempt correctly failed because a 50 ms setup exhausted
+before ClientHello. The short-budget control was corrected to distinguish that
+valid early expiration from the one-second real handshake case, committed normally,
+and the entire matrix rerun. Initial recovery/trust campaigns overlapping that edit
+were rejected for changed/dirty source and are not claimed as PASS. No historical
+test or receipt was edited to turn those rejected campaigns into acceptance.
+
+### Unchanged compatibility
+
+GNAT16/OpenSSL representative runs pass:
+
+- TASK108 full focused WSS safety/API/control/backpressure/regression and real
+  Sleet runner: PASS on `0b5e5f2` (production source identical to `865bb82`).
+- TASK111 trust: 147 attempts, 20 lifecycle cycles; 5 FDs / 1 task baseline/final.
+- TASK112 recovery: eight epochs, 48 callbacks; stable original 8 FD / 3 task
+  accounting at every retirement.
+- TASK113 recovery: five epochs, 24 callbacks; stable original resource counts.
+- TASK114 pre-broker recovery: five epochs, 24 callbacks; stable original counts.
+
+TASK111–114 clean-source runs use `865bb82`. Original verifiers recheck their
+source/artifact hashes, wire captures and real broker evidence. The TASK108 legacy
+runner reports all steps successful. No unexpected safety regression required
+broader reruns. Pinned Sleet remains unchanged and non-reciprocal WS Close is not
+replaced by a fabricated response.
+
+Focused verifier tests: 9 PASS; selector tests: 40 PASS. Unchanged TASK109–114 unit
+suites pass (5/12/10/12/10/12 tests). Five mutations of actual deadline case records
+reject the original two-second overrun, harness timeout, missing exercised stall,
+cleanup failure and shortened legacy budget. `git diff --check` passes.
+
+### Disposable TASK115 integration
+
+Detached `/home/zboll/git/ams-gra-codegen-oms-task116-integration` combines TASK116
+production source from `0b5e5f2` with PR203 application source at `6b8bdf0` and one
+call to `Set_Absolute_Deadline (Wire, Deadline)` immediately before Open. It builds
+the authentic production UCI2.6 client independently. Two stalled-TLS trials with
+one-second requested application duration exit in **0.351854 s / 0.352432 s**,
+both fail closed with exit 1 and no reconnect. No changes are pushed to PR203.
+This removes the specific timeout overrun only; it does not qualify all TASK115
+requirements or alter transport exception classification.
+
+### Hosted delivery
+
+PR204 is open and non-draft with auto-merge disabled. Hosted smoke passed on
+qualified implementation `865bb82`:
+https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42554158044 .
+The later receipt/document-only commit is checked on its own exact hosted HEAD;
+that final status is reported in PR204 and the final delivery report, not inferred
+from this earlier successful run. No rebase/amend/force-push/self-approval occurs.
