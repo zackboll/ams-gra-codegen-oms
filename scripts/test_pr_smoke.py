@@ -41,6 +41,16 @@ class Routing(unittest.TestCase):
         for path in ("scripts/task109_other.py", "scripts/task1090/new.py", "scripts/task109-other/new.py"):
             self.assert_execution([path], list(smoke.BACKENDS))
 
+    def test_task115_ada_only_and_boundaries(self):
+        for path in ("scripts/task115/build.py", "scripts/task115/qualify.py",
+                     "scripts/task115/verify.py", "scripts/task115/test_qualification.py",
+                     "examples/ada-uci-client/src/ada_uci_client.adb",
+                     "examples/ada-uci-client/contracts/uci26-service.yaml"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task115_other.py", "scripts/task1150/new.py",
+                     "examples/ada-uci-client-other/src/main.adb"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_task112_ada_only_and_boundaries(self):
         for path in ("scripts/task112/qualify.py", "scripts/task112/recovery.py",
                      "scripts/task112/test_recovery.py", "scripts/task112/nested/new.py",
