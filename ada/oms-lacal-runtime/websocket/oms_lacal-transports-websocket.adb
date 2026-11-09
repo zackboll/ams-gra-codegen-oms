@@ -27,6 +27,34 @@ package body OMS_LACAL.Transports.WebSocket is
    package F renames AHT.Websocket.Frames;
    CRLF : constant String := ASCII.CR & ASCII.LF;
 
+   procedure Set_Absolute_Deadline
+     (Self : in out Client; Deadline : Ada.Real_Time.Time) is
+   begin
+      Self.Absolute_Deadline := Deadline;
+      Self.Has_Deadline := True;
+   end Set_Absolute_Deadline;
+
+   function Bound (Self : Client; Operation : Ada.Real_Time.Time)
+                   return Ada.Real_Time.Time is
+     (if Self.Has_Deadline and then Self.Absolute_Deadline < Operation
+      then Self.Absolute_Deadline else Operation);
+
+   function Remaining (Deadline : Ada.Real_Time.Time) return Duration is
+      Now : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
+   begin
+      if Now >= Deadline then
+         raise Transport_Error with "operation deadline";
+      end if;
+      return Ada.Real_Time.To_Duration (Deadline - Now);
+   end Remaining;
+
+   procedure Check_Caller (Self : Client) is
+   begin
+      if Self.Has_Deadline and then Ada.Real_Time.Clock >= Self.Absolute_Deadline then
+         raise Transport_Error with "caller deadline";
+      end if;
+   end Check_Caller;
+
    function Ready (Self : Client; Write : Boolean; Wait : Duration) return Boolean is
       R, W : Socket_Set_Type;
       Status : Selector_Status;
@@ -58,22 +86,27 @@ package body OMS_LACAL.Transports.WebSocket is
 
    procedure Write_All (Self : in out Client; Data : AHT.Bytes.Byte_Array) is
       Deadline : constant Ada.Real_Time.Time :=
-        Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
+         Bound (Self, Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2));
       Pos : Positive := Data'First;
       Wire : Stream_Element_Array (1 .. Stream_Element_Offset (Data'Length));
       Last : Stream_Element_Offset;
    begin
+      Check_Caller (Self);
       if Self.TLS /= null then
          --  Send is explicitly allowed to block. Drain queued controls before
          --  this publication, and fail closed on any uncertain/incomplete write.
-         Self.TLS.Set_Write_Deadline (2.0);
+         --  One compound budget for queued controls AND the new frame. AHT's
+         --  setter stores an absolute bound; do not reset it between writes.
+         Self.TLS.Set_Write_Deadline (Remaining (Deadline));
          if not Self.Output.Is_Empty then
             Self.TLS.Write (Self.Output.To_Array
               (Self.Output_Pos, Self.Output.Length));
             Self.Output.Clear;
             Self.Output_Pos := 1;
          end if;
+         Check_Caller (Self);
          Self.TLS.Write (Data);
+         Check_Caller (Self);
          return;
       end if;
       for I in Data'Range loop
@@ -83,7 +116,7 @@ package body OMS_LACAL.Transports.WebSocket is
          if Ada.Real_Time.Clock >= Deadline then
             raise Transport_Error with "write deadline";
          end if;
-         if Ready (Self, True, 0.01) then
+         if Ready (Self, True, Duration'Min (0.01, Remaining (Deadline))) then
             begin
                Send_Socket (Self.Socket, Wire (Stream_Element_Offset (Pos) .. Wire'Last), Last);
                if Last < Stream_Element_Offset (Pos) then
@@ -96,6 +129,7 @@ package body OMS_LACAL.Transports.WebSocket is
             end;
          end if;
       end loop;
+      Check_Caller (Self);
    exception
       when others => Drop (Self); raise;
    end Write_All;
@@ -140,6 +174,7 @@ package body OMS_LACAL.Transports.WebSocket is
    is
       Header : F.Frame_Header := (Op => Op, Masked => True, others => <>);
    begin
+      Check_Caller (Self);
       --  Plaintext keeps its all-or-error send policy; TLS retains one bounded
       --  frame and progresses it on subsequent Poll calls without waiting.
       AHT.Random.Fill (Header.Mask_Key);
@@ -190,8 +225,9 @@ package body OMS_LACAL.Transports.WebSocket is
       TLS_One : AHT.Bytes.Byte_Array (1 .. 1);
       TLS_Last : Natural;
       Deadline : Ada.Real_Time.Time :=
-        Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
+         Bound (Self, Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2));
    begin
+      Check_Caller (Self);
       if Self.Socket /= No_Socket or else Self.TLS /= null then
          raise Transport_Error with "already open; close before reopening";
       end if;
@@ -223,11 +259,27 @@ package body OMS_LACAL.Transports.WebSocket is
       if Port = 0 then raise Transport_Error with "zero port"; end if;
       if Secure then
          Self.TLS := new AHT.Transport.TLS.TLS_Transport;
-         Self.TLS.Connect
-           (Host => URL (URL'First + Prefix .. Colon - 1),
-            Port => AHT.URL.Port_Number (Port), CA_Path => CA_Path, CA_PEM => CA_PEM,
-            Resolve_Timeout => 2.0, Connect_Timeout => 2.0, Handshake_Deadline => 2.0);
-         Deadline := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
+         declare
+            --  AHT's three durations are not a cumulative timeout. Reserve
+            --  rounding slack and divide the remaining budget, never grant it
+            --  three times. HS_Bound starts at AHT Connect entry in both pinned
+            --  bodies, making the actual bound at least as conservative.
+            Budget : Duration := 2.0;
+         begin
+            if Self.Has_Deadline then
+               Budget := Duration'Min
+                 (2.0, (Remaining (Self.Absolute_Deadline) - 0.002) / 3);
+               if Budget <= 0.0 then
+                  raise Transport_Error with "insufficient setup deadline";
+               end if;
+            end if;
+            Self.TLS.Connect
+              (Host => URL (URL'First + Prefix .. Colon - 1),
+               Port => AHT.URL.Port_Number (Port), CA_Path => CA_Path, CA_PEM => CA_PEM,
+               Resolve_Timeout => Budget, Connect_Timeout => Budget, Handshake_Deadline => Budget);
+         end;
+         Check_Caller (Self);
+         Deadline := Bound (Self, Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2));
       else
          if CA_Path /= "" or else CA_PEM /= "" then
             raise Transport_Error with "CA configuration requires wss://";
@@ -235,11 +287,13 @@ package body OMS_LACAL.Transports.WebSocket is
          Create_Socket (Self.Socket);
          Set_Close_On_Exec (Self.Socket, True, Exec_OK);
          if not Exec_OK then raise Transport_Error with "close-on-exec failed"; end if;
-         Connect_Socket (Self.Socket, (Family_Inet, Inet_Addr ("127.0.0.1"), Port), 2.0,
+         Connect_Socket (Self.Socket, (Family_Inet, Inet_Addr ("127.0.0.1"), Port),
+                         (if Self.Has_Deadline then Remaining (Deadline) else 2.0),
                          Status => Status);
          if Status /= Completed then raise Transport_Error with "connect deadline"; end if;
          Control_Socket (Self.Socket, Nonblocking);
       end if;
+      Check_Caller (Self);
       AHT.Random.Fill (Nonce);
       declare
          Key : constant String := AHT.Bytes.Base64_Encode (Nonce);
@@ -254,11 +308,11 @@ package body OMS_LACAL.Transports.WebSocket is
             if Ada.Real_Time.Clock >= Deadline then raise Transport_Error with "upgrade deadline"; end if;
             if Secure then
                Self.TLS.Set_Read_Deadline
-                 (Ada.Real_Time.To_Duration (Deadline - Ada.Real_Time.Clock));
+                 (Remaining (Deadline));
                Self.TLS.Read (TLS_One, TLS_Last);
                if TLS_Last = 0 then raise Transport_Error with "EOF in upgrade"; end if;
                Append (Response, Character'Val (TLS_One (1)));
-            elsif Ready (Self, False, 0.01) then
+            elsif Ready (Self, False, Duration'Min (0.01, Remaining (Deadline))) then
                Receive_Socket (Self.Socket, One, Last);
                if Last = 0 then raise Transport_Error with "EOF in upgrade"; end if;
                Append (Response, Character'Val (One (1)));
@@ -321,6 +375,7 @@ package body OMS_LACAL.Transports.WebSocket is
             then raise Transport_Error with "invalid upgrade response"; end if;
          end;
       end;
+      Check_Caller (Self);
       Self.Upgraded := True;
    exception
       when E : others =>
@@ -476,10 +531,14 @@ package body OMS_LACAL.Transports.WebSocket is
 
    overriding procedure Close (Self : in out Client) is
       Deadline : constant Ada.Real_Time.Time :=
-        Ada.Real_Time.Clock + Ada.Real_Time.Milliseconds (250);
+         Bound (Self, Ada.Real_Time.Clock + Ada.Real_Time.Milliseconds (250));
       Status : Receive_Status;
       Message : Unbounded_String;
    begin
+      if Self.Has_Deadline and then Ada.Real_Time.Clock >= Self.Absolute_Deadline then
+         Drop (Self);
+         return;
+      end if;
       if Self.Upgraded then
          if not Self.Peer_Closing then
             begin Send_Control (Self, AHT.Websocket.Close_Op, [16#03#, 16#E8#]);
@@ -491,7 +550,9 @@ package body OMS_LACAL.Transports.WebSocket is
          end if;
          while Self.Upgraded and then Ada.Real_Time.Clock < Deadline loop
             Poll (Self, Status, Message);
-            if Self.Upgraded then delay 0.001; end if;
+            if Self.Upgraded and then Ada.Real_Time.Clock < Deadline then
+               delay until Bound (Self, Ada.Real_Time.Clock + Ada.Real_Time.Milliseconds (1));
+            end if;
          end loop;
       end if;
       Drop (Self);
