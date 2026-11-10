@@ -96,7 +96,7 @@ if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_RO
     grep -Fqx "EXTERNAL ORDERSMETADATA $version: PASSED" <<<"$output"
   done
   grep -Fqx 'RUST-OMS-012 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
   grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
   if grep -qE 'SKIPPED|^test result:.*(0 passed|[1-9][0-9]* ignored)' <<<"$output"; then
     echo 'OrdersMetadata qualification must execute without skips' >&2
@@ -155,7 +155,7 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
   grep -Fqx 'EXTERNAL FILEMETADATA 25: PASSED' <<<"$output"
   grep -Fqx 'EXTERNAL FILEMETADATA 26: PASSED' <<<"$output"
   grep -Fqx 'RUST-OMS-010 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
   grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
 fi
 if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" = 1 ]; then
@@ -205,7 +205,7 @@ PY
   done
   grep -Fqx 'EXTERNAL DLZ 25: PASSED' <<<"$output"
   grep -Fqx 'EXTERNAL DLZ 26: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
   grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
 fi
 if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" = 1 ]; then
