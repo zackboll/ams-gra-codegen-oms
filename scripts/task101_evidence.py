@@ -24,6 +24,7 @@ BROKER_ERRORS = {
     'wrong-topic': ('Illegal-State', 'not authorized to publish to topic forbidden'),
     'unknown-sid': ('Illegal-State', 'unknown subscription id 987'),
     'duplicate-invalid-last': ('Invalid-Message', 'TypeMismatch'),
+    'broker-rejected-invalid-time': ('Invalid-Message', 'TimeOfIntercept'),
 }
 
 
@@ -118,7 +119,7 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         prefix = f'campaign/{cell}/sleet/'
         evidence = doc(prefix + 'result.json')
         if evidence != dict(completed=True, release=release, revision=REV, tree=TREE, handlers=11,
-                            witness_handlers=1, decode_rejected=1, published=10, broker_rejected=10,
+                            witness_handlers=1, decode_rejected=0, published=10, broker_rejected=11,
                             consumer_exit=0, server_exit=0, cleanup=True):
             raise ValueError('Task101 real-Sleet handler/count/cleanup mismatch')
         if text(prefix + 'sleet-source.txt').splitlines() != [REV, TREE]:
@@ -128,9 +129,9 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         if text(prefix + 'consumer.exit').strip() != '0' or text(prefix + 'server.exit').strip() != '0':
             raise ValueError('Task101 consumer/server failed')
         output = text(prefix + 'consumer.stdout').splitlines()
-        for marker in ['TASK101_ADA_REAL_DLZ_COMPLETE handlers= 11 rejected= 1',
+        for marker in ['TASK101_ADA_REAL_DLZ_COMPLETE handlers= 11 rejected= 0',
                        'TASK101_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1',
-                       'TASK101_CLEANUP_COMPLETE', 'TASK101_DECODE_RECOVERY_COMPLETE',
+                       'TASK101_CLEANUP_COMPLETE', 'TASK101_BROKER_REJECTION_RECOVERY_COMPLETE',
                        'TASK101_UNKNOWN_BINDING_SID_REJECTED', 'TASK101_UPGRADE_OWP_COMPLETE',
                        'TASK101_INFO_VALIDATED', 'TASK101_SUB_ACCEPTED DLZ task098-dlz']:
             if output.count(marker) != 1:
@@ -138,18 +139,24 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         if (sum(s.startswith('TASK101_TYPED_HANDLER ') for s in output) != 11
                 or sum(s.startswith('TASK101_WITNESS_HANDLER ') for s in output) != 1
                 or sum(s.startswith('TASK101_PUBLISHED ') for s in output) != 10
-                or output.count('TASK101_EVENT DECODE_ERROR invalid named Time') != 1):
+                or sum(s.startswith('TASK101_WIRE_RECEIVED ') for s in output) != 12
+                or any('DECODE_ERROR' in s or 'not-a-timeZ' in s for s in output)):
             raise ValueError('Task101 actual handler/codec/publication count mismatch')
         wire = doc(prefix + 'wire.json')
         rejections = [item for item in wire if item.get('response', '').startswith('-ERR Invalid-Message')
                       or item.get('label') in ('wrong-topic', 'unknown-sid')]
-        if len(rejections) != 10:
+        if len(rejections) != 11:
             raise ValueError('Task101 broker rejection observations absent')
         for label, (code, detail) in BROKER_ERRORS.items():
             matches = [item for item in wire if item.get('label') == label]
             if len(matches) != 1 or not matches[0]['response'].startswith('-ERR ' + code) or detail not in matches[0]['response']:
                 raise ValueError('Task101 expected broker error absent: ' + label)
-        for label in ('broker-accepted-codec-invalid-time', 'duplicate-valid-last-recovery'):
+        malformed = next(item for item in wire if item.get('label') == 'broker-rejected-invalid-time')
+        if 'lexicalRepresentation' not in malformed['response']:
+            raise ValueError('Task101 malformed time lexical rejection absent')
+        if sum(item == dict(label='no-malformed-msg', detail='observer timeout') for item in wire) != 1:
+            raise ValueError('Task101 no malformed MSG observation absent')
+        for label in ('negative-observer-sub', 'negative-observer-unsub', 'duplicate-valid-last-recovery'):
             matches = [item for item in wire if item.get('label') == label]
             if len(matches) != 1 or matches[0]['response'] != '+OK':
                 raise ValueError('Task101 broker/codec stage separation absent')
@@ -158,5 +165,5 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         server = text(prefix + 'server.stdout')
         if not all(marker in server for marker in ('schema loaded', 'route PUB message', 'shutdown complete')):
             raise ValueError('Task101 schema/routing/cleanup evidence absent')
-    return dict(compiler=version, cells=12, releases=['25', '26'], handlers=132, codec_rejected=12,
+    return dict(compiler=version, cells=12, releases=['25', '26'], handlers=132, codec_rejected=0,
                 sha=sha, tree=tree, run_id=str(run_id), run_attempt=str(attempt))

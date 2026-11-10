@@ -63,7 +63,7 @@ Both roots and their SecurityMarkings includes were checksum-verified, unchanged
 The final PR receipt records exact OMS commit/tree and per-language results.
 Raw local evidence is retained at `/home/zboll/sleet-gitlab-update-evidence`.
 
-Confirmed compatibility blocker (not a CI #206 attribution): the candidate
+Confirmed upstream defect (not a CI #206 attribution): the candidate
 rejects the existing valid `24:00:00.000Z` xs:time in
 `DLZ.MessageData.DLZ_Data.TimeToRelease` with `FacetViolation`,
 `lexicalRepresentation`. Existing DLZ fixtures and public codec acceptance are
@@ -111,18 +111,24 @@ tests), not interoperability passes.
 
 Additional candidate findings:
 
-* Leading/trailing XML whitespace around authentic Log hexBinary (` \t0080ff\r\n`)
+* Confirmed upstream defect: missing XML-whitespace normalization for hexBinary.
+  Leading/trailing XML whitespace around authentic Log hexBinary (` \t0080ff\r\n`)
   is rejected lexically in both releases. Ada still requires valid acceptance;
   the test was not changed to accept rejection. Malformed hex never reaches
   the decoder; its exact wire-count verifier now expects only valid messages.
-* Python PY009's existing valid leap-second dateTime
-  `2000-02-29T23:59:60+14:00` is rejected, normal and optimized. It remains a
-  compatibility failure, not a reason to narrow OMS's public dateTime carrier.
-* Ada's existing DLZ campaign also encounters a superseded expectation that
-  `not-a-timeZ` is broker-forwarded; the newer source correctly rejects it.
-  That temporal qualification still needs boundary reconciliation independently
-  of the valid midnight/leap-second acceptance blockers. No successful full
-  Ada DLZ qualification is claimed.
+* Second-60 rejection is incompatibility with OMS's documented XSD 1.0 lexical
+  profile, requiring upstream profile reconciliation, not the same defect claim
+  as hour-24 rejection. Python PY009's existing
+  `2000-02-29T23:59:60+14:00` is rejected, normal and optimized; the existing DLZ
+  `23:59:60Z` fixture is also preserved. Neither failing input nor OMS's public
+  Time/dateTime acceptance is narrowed to accommodate the candidate.
+* The standalone Rust and Ada DLZ qualifications now require `not-a-timeZ`
+  rejection by the broker with no routed malformed MSG, typed delivery or
+  fabricated subscription-decoder error. They require valid recovery on the
+  original subscriptions/session, followed by normal unsubscribe and cleanup.
+  Independent generated codec and mock-transport negatives retain decoder
+  rejection coverage. Full campaign execution remains limited by earlier valid
+  midnight/second-60 rejection; corrected assertions not reached are not passes.
 
 The C++ complete source-rebuild PR198 matrix finished with `failures=0` and
 `unavailable configurations=0`. Disposable integration identity:
@@ -138,6 +144,16 @@ unchanged-source successful `cpp-amti-final` run, not reported as compatibility.
 An Ada recovery run invalidated by source changes was likewise discarded and
 rerun cleanly. Such invalidated/partial attempts remain in local evidence.
 
-Remaining Rust multi-family, OrdersMetadata and lifecycle reruns are reported
-individually in the PR receipt, never inferred from the hexBinary success.
+The PR #208 correction restores valid publication after every rejected Rust Log
+document: independent raw MSG equality, typed payload and exact binary bytes on
+the original subscription. Invalid-topic PUB remains client-side `InvalidInput`;
+unauthorized-topic PUB and SUB remain broker-side errors. No production runtime
+changes are needed. The OrdersMetadata runner-control fixture stubs the added
+`rustc --version` diagnostic; the actual runner still reports its compiler and
+fingerprints the broker, and injected exit 23/diagnostic must survive unchanged.
+
+New correction evidence is recorded separately under
+`/home/zboll/sleet-gitlab-update-evidence/correction-208`; historical execution
+receipts are unchanged. Completed and incomplete correction runs are reported in
+the new correction receipt, never inferred from earlier hexBinary success.
 PR #206 is still independent and open; the original worktree is untouched.

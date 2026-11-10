@@ -347,8 +347,8 @@ mod support {
         denied.assert_cleanup();
         denied_server.shutdown();
         drop(denied_server);
-        // Malformed hex is broker-rejected; independent temporal decoder
-        // rejection retains contextual downstream error coverage.
+        // Malformed hex and time are broker-rejected, never routed decoder
+        // failures. Independent codec/mock-OWP tests retain decoder negatives.
         for (topic, name, body, field, diagnostic) in [
             (LOG, "Log", &log, "Data", "Data"),
             (DLZ, "DLZ", &dlz, "TimeOfIntercept", "TimeOfIntercept"),
@@ -388,55 +388,58 @@ mod support {
             let document = json!({name: malformed});
             let publication =
                 executor.block_on(raw_publish(&mut decoder_publisher, topic, &document));
-            if name == "Log" {
-                let error = publication.expect_err("broker rejects malformed hex");
-                assert!(matches!(error, ClientError::Server { .. }), "{error}");
-                assert!(error.to_string().contains("Data"), "{error}");
-                assert!(
-                    executor
-                        .block_on(async {
-                            tokio::time::timeout(QUIET, decoder_publisher.recv()).await
-                        })
-                        .is_err()
-                );
-                decoder.finish(true);
-                assert_eq!(decoder.output.matches("RECEIVED ").count(), 1);
-                assert!(!decoder.output.contains("SubscriptionDecodeError"));
-                decoder.assert_cleanup();
-                drop(decoder_publisher);
-                server.shutdown();
-                continue;
-            }
-            publication.unwrap();
+            let error = publication.expect_err("broker rejects malformed lexical value");
+            assert!(matches!(error, ClientError::Server { .. }), "{error}");
+            assert!(error.to_string().contains(diagnostic), "{error}");
+            assert!(
+                error.to_string().contains("lexicalRepresentation"),
+                "{error}"
+            );
+            assert!(
+                executor
+                    .block_on(async { tokio::time::timeout(QUIET, decoder_publisher.recv()).await })
+                    .is_err(),
+                "no routed malformed MSG"
+            );
+            executor
+                .block_on(raw_publish(
+                    &mut decoder_publisher,
+                    topic,
+                    &json!({name: body}),
+                ))
+                .expect("valid traffic after rejection on the original connection");
             let observed = executor.block_on(async {
                 tokio::time::timeout(WAIT, decoder_publisher.recv())
                     .await
                     .unwrap()
                     .unwrap()
             });
+            assert_eq!(observed.sid, "bad-wire");
             assert_eq!(
                 serde_json::from_str::<Value>(&observed.payload).unwrap(),
-                document
+                json!({name: body})
             );
-            decoder.finish(false);
-            assert!(decoder.output.contains("SubscriptionDecodeError"));
-            let sid = &ids[family];
+            decoder.until(&format!("RECEIVED {name} "));
+            assert_eq!(decoder.subscription_ids(), ids, "original subscriptions");
+            decoder.finish(true);
+            assert!(!decoder.output.contains("SubscriptionDecodeError"));
             assert!(
                 decoder
                     .output
-                    .contains(&format!("sid={sid} message={name}"))
+                    .lines()
+                    .filter(|line| line.starts_with(&format!("RECEIVED {name} ")))
+                    .all(|line| line.ends_with("session=1")),
+                "valid traffic remains on the original session"
             );
-            assert!(decoder.output.contains(diagnostic));
-            assert!(decoder.output.contains("no typed delivery"));
             assert!(!decoder.output.contains("RECONNECT_ATTEMPT"));
             assert_eq!(
                 decoder.output.matches("RECEIVED ").count(),
-                1,
-                "only the valid barrier message has typed delivery"
+                2,
+                "only valid barrier and recovery messages have typed delivery"
             );
             decoder.assert_cleanup();
             eprintln!(
-                "RUST-OMS-007 {VERSION} broker-admitted {name} witnessed; contextual decode error and four-subscription cleanup verified"
+                "RUST-OMS-007 {VERSION} malformed {name}: broker rejected; no invalid delivery, same-session recovery and four-subscription cleanup verified"
             );
             drop(decoder_publisher);
             server.shutdown();

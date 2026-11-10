@@ -927,5 +927,27 @@
       "current_sha256": "b5416b4a22a0150fb2d32ffc7667209b2a8e62ee901bd9714df147f5a8e55bff",
       "review": "Require corrected broker rejection boundary and exact zero downstream hex decoder failures. Historical qualification receipts retain their original identities."
     }
+  },
+  "correction_updates": {
+    "scripts/task101/qualify.py": {
+      "previous_sha256": "e8d235ae6a56ad6250ee5a65a30e4ecf64d7bd57086033c80e058acd5b20a034",
+      "current_sha256": "08c5a937ddb72d74c707005b803af9dcb7856b1fff8d8a5b33a4065263e8eb6a",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    },
+    "scripts/task101/sleet.py": {
+      "previous_sha256": "3fa455086af7e3e25d54f73899c177e7336332cd8f47ef4b03615314e4d3f8de",
+      "current_sha256": "413745e2aafee3412152d1192aba1484c446dbeb6c5c6adce1658169d125456a",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    },
+    "scripts/task101_evidence.py": {
+      "previous_sha256": "c5fa3e5050f7b9cc11b723f133d3f90c033eb81077219073320d24da0f182fd3",
+      "current_sha256": "a71b770116135e53b34c416e51125539963653c9afc2b6b2fd9d138d0cf20f8b",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    },
+    "tests/ada-real-uci-dlz/dlz_consumer.adb": {
+      "previous_sha256": "27afe1dbc3adde6fd9d6974403ee2ddad8e474c673bbda03fcfc7f1b4365f69b",
+      "current_sha256": "ed585f336ec66939a8c991e1c9b84d2a342c26ad8c4426515ed82e83293ff456",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    }
   }
 }

@@ -155,7 +155,7 @@ begin
       Base : constant Model.DLZ_MT := Service_Codec.Decode_DLZ_MT (Ada.Text_IO.Get_Line (Documents));
    begin
       Expected := To_Unbounded_String (Service_Codec.Encode_DLZ_MT (Base));
-      Expected_Reject := To_Unbounded_String ("invalid named Time");
+      Expected_Reject := Null_Unbounded_String;
       SID := Subscriber.Subscribe (Handler'Access);
       Await_Command;
       if not C.Is_Active (Core, SID) then raise Program_Error with "SUB not accepted"; end if;
@@ -169,8 +169,10 @@ begin
       Ada.Text_IO.Put_Line ("TASK101_SUBSCRIBED");
       Ada.Text_IO.Flush;
       Await_Calls (1);
-      if Rejected /= 1 then raise Program_Error with "missing decode rejection before recovery"; end if;
-      Ada.Text_IO.Put_Line ("TASK101_DECODE_RECOVERY_COMPLETE");
+      if Rejected /= 0 or else not C.Is_Active (Core, SID) then
+         raise Program_Error with "broker rejection must not decode or remove original SID";
+      end if;
+      Ada.Text_IO.Put_Line ("TASK101_BROKER_REJECTION_RECOVERY_COMPLETE");
       Sent := Publisher.Publish (Base);
       if not Sent then raise Program_Error with "not sent"; end if;
       Await_Command;

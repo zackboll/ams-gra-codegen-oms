@@ -53,6 +53,7 @@ case "$*" in
 esac
 ''',
                 "rustfmt": "#!/bin/bash\nexit 0\n",
+                "rustc": "#!/bin/bash\necho \"rustc $*\" >> \"$CONTROL_CALLS\"\necho 'rustc controlled version'\n",
                 "cargo": '''#!/bin/bash
 echo "$*" >> "$CONTROL_CALLS"
 if [[ " $* " == *" test "* ]]; then
@@ -93,6 +94,9 @@ fi
         self.assertEqual(calls.count(" test "), 1)
         self.assertIn("--test real_orders_metadata --test real_orders_metadata_consumer", calls)
         self.assertNotIn("rust-uci-client", calls)
+        self.assertIn("rustc --version", calls)
+        self.assertIn("rustc controlled version", result.stdout)
+        self.assertIn("clean=true binary=", result.stdout)
         self.assertIn(f"RUST-OMS-012 real pinned Sleet ({REV}): PASSED", result.stdout)
 
     def test_missing_roots_fail_before_build(self):

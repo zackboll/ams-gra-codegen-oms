@@ -219,6 +219,37 @@ fn pinned_sleet_roundtrip_and_recovery() {
             assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
         });
         assert!(seen.recv_timeout(QUIET).is_err());
+        svc::exchange_publish::publish(&mut runtime, &value).unwrap();
+        assert_eq!(receive_wire(&mut observer), json!({"Log": golden()}));
+        let recovered = seen
+            .recv_timeout(WAIT)
+            .expect("same active subscription recovers");
+        inspect(&recovered);
+        assert_eq!(data(&recovered), Some(&[0x00, 0x80, 0xFF][..]));
+        assert_eq!(ServiceCodec.encode_payload(&recovered).unwrap(), golden());
+        assert!(runtime.try_recv_event().is_none());
+        eprintln!("RUST-OMS-001 {VERSION} {name}: same-subscription recovery PASSED");
+    }
+    for topic in ["invalid topic", "unauthorized-topic"] {
+        let error = executor
+            .block_on(raw_publish(
+                &mut publisher,
+                topic,
+                &json!({"Log": golden()}),
+            ))
+            .unwrap_err();
+        if topic == "invalid topic" {
+            assert!(matches!(error, ClientError::InvalidInput(_)), "{error}");
+        } else {
+            assert!(matches!(error, ClientError::Server { .. }), "{error}");
+        }
+        assert!(error.to_string().contains(topic), "{error}");
+        eprintln!("RUST-OMS-001 {VERSION} topic {topic:?}: {error}");
+        executor.block_on(async {
+            assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
+        });
+        assert!(runtime.recv_event_timeout(QUIET).is_none());
+        assert!(seen.recv_timeout(QUIET).is_err());
     }
     let denied = executor
         .block_on(async {

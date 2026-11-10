@@ -47,9 +47,15 @@ class DeepPack(unittest.TestCase):
         updates = report.get('qualification_updates', {})
         dependency_updates = report.get('dependency_updates', {})
         current_inputs = dict(run.INVENTORY['qualification_sha256'])
+        for path, update in report.get('correction_updates', {}).items():
+            self.assertEqual(current_inputs[path], update['current_sha256'])
+            self.assertEqual(run.sha(run.ROOT / path), update['current_sha256'])
+            self.assertTrue(update['review'])
+            current_inputs[path] = update['previous_sha256']
         for path, update in dependency_updates.items():
             self.assertEqual(current_inputs[path], update['current_sha256'])
-            self.assertEqual(hashlib.sha256((run.ROOT / path).read_bytes()).hexdigest(),
+            self.assertEqual(report.get('correction_updates', {}).get(path, {}).get(
+                                 'previous_sha256', run.sha(run.ROOT / path)),
                              update['current_sha256'])
             self.assertTrue(update['review'])
             current_inputs[path] = update['previous_sha256']

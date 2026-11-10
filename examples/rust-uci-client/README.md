@@ -353,11 +353,14 @@ including fifth-subscription registration failure, explicitly clean up earlier
 handles and close/join the runtime, preserving setup and cleanup errors.
 
 Malformed Survivability, invalid DLZ Time and mismatched header versions fail
-before INIT. Pinned Sleet admits `not-a-timeZ` in DLZ TimeOfIntercept; admission
-is not successful decoding. The generated decoder rejects it with a contextual
-`SubscriptionDecodeError` carrying the original DLZ SID, global message identity
-and TimeOfIntercept path. The application fails fast, removes all handlers and
-closes; it does not deliver an invalid typed value. DLZ output reports checked
+before INIT. The selected GitLab Sleet candidate rejects `not-a-timeZ` in DLZ
+TimeOfIntercept before routing: no malformed MSG, typed delivery or fabricated
+`SubscriptionDecodeError` is expected. The qualification requires valid traffic
+on the original session afterward, no reconnect, and normal cleanup. Independent
+codec/mock-OWP tests retain contextual decoder rejection coverage. The full
+standalone campaign currently stops earlier at the candidate's rejection of
+valid midnight Time; later temporal recovery assertions are not claimed passed.
+DLZ output reports checked
 lexical Time and representative numeric bits, not operational calculations.
 
 **Non-verbose OWP caveat:** successful operations mean frames were written, not
