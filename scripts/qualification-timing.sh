@@ -7,7 +7,9 @@ qualification_stage() {
   printf 'QUALIFICATION_STAGE start label=%q utc=%s command=' "$label" "$(date -u +%FT%TZ)" >&3
   printf '%q ' "$@" >&3
   printf '\n' >&3
-  "$@" 2>&1 | tee /dev/fd/3 || status=$?
+  # Do not open /dev/fd/3 with tee: on a redirected regular-file log that
+  # reopens/truncates the file. Inherit the descriptor via cat instead.
+  "$@" 2>&1 | tee >(cat >&3) || status=$?
   printf 'QUALIFICATION_STAGE end label=%q elapsed_seconds=%s exit=%s\n' \
     "$label" "$((SECONDS - start))" "$status" >&3
   return "$status"
