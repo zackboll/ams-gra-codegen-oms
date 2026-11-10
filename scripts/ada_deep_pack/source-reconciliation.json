@@ -921,6 +921,11 @@
       "previous_sha256": "5056c82418f88a71dc9de45634e06dab3d55a600ed018a56e418449bdff5a461",
       "current_sha256": "ff895893cca3f407d9255f0e5b962452768acd83d81eeb124508277231410137",
       "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102/qualify.py": {
+      "previous_sha256": "f3c94a655fcbfd49ff48205de7269f491941e53091a6d7726e03e290600e5e0d",
+      "current_sha256": "b5416b4a22a0150fb2d32ffc7667209b2a8e62ee901bd9714df147f5a8e55bff",
+      "review": "Require corrected broker rejection boundary and exact zero downstream hex decoder failures. Historical qualification receipts retain their original identities."
     }
   }
 }
