@@ -83,3 +83,61 @@ Its original branch is unchanged. The existing source-rebuild driver runs both
 UCI releases under g++ and clang++ strict, ASan+UBSan and TSan configurations,
 using this exact GitLab candidate, not the superseded GitHub correction.
 This is integration evidence only, not approval or a merge of PR #198.
+
+## Recorded qualification results
+
+Evidence receipts retain the execution commit/tree; later configuration-only
+and documentation commits are not retroactively substituted into earlier runs.
+
+| Qualification | UCI 2.5 | UCI 2.6 |
+|---|---|---|
+| Rust authentic FileMetadata + independent Cargo consumer | PASS | PASS |
+| Rust standalone 32-octet hash/broker policy/cleanup boundary | PASS | PASS |
+| Rust real Log and RDMA | PASS | PASS |
+| Rust synthetic codec, mock OWP, generated decoder negatives | PASS (40 tests across 11 binaries; release-independent) | same suite |
+| Python registered Sleet (12 per policy), authentic Log/RDMA included | PASS normal/optimized | PASS normal/optimized |
+| Python registered fast (43 per policy), owned Sleet (12) | PASS | PASS |
+| Ada recovery GNAT 14/16, OpenSSL/mbedTLS | PASS all four configurations | PASS all four configurations |
+| Ada authentic Log | FAIL valid XML whitespace around hexBinary | FAIL same valid lexical input |
+| C++ authentic Log, GCC/Clang strict + GCC ASan/UBSan | PASS | PASS |
+| C++ PositionReport and AMTI, both compilers strict/ASan+UBSan/TSan | PASS all six configurations | PASS all six configurations |
+| Disposable PR198 authentic FileMetadata, all six configurations | PASS | PASS |
+
+Rust runtime 20 unit tests + doctest, candidate client/types 12 + 56 tests,
+workspace runtime/facade all-target release Clippy, standalone Clippy, formatting,
+runner controls, and current Ada verifier adversaries pass. The optional
+UID-ownership fixtures are explicitly unexecuted (four skips in 43 verifier
+tests), not interoperability passes.
+
+Additional candidate findings:
+
+* Leading/trailing XML whitespace around authentic Log hexBinary (` \t0080ff\r\n`)
+  is rejected lexically in both releases. Ada still requires valid acceptance;
+  the test was not changed to accept rejection. Malformed hex never reaches
+  the decoder; its exact wire-count verifier now expects only valid messages.
+* Python PY009's existing valid leap-second dateTime
+  `2000-02-29T23:59:60+14:00` is rejected, normal and optimized. It remains a
+  compatibility failure, not a reason to narrow OMS's public dateTime carrier.
+* Ada's existing DLZ campaign also encounters a superseded expectation that
+  `not-a-timeZ` is broker-forwarded; the newer source correctly rejects it.
+  That temporal qualification still needs boundary reconciliation independently
+  of the valid midnight/leap-second acceptance blockers. No successful full
+  Ada DLZ qualification is claimed.
+
+The C++ complete source-rebuild PR198 matrix finished with `failures=0` and
+`unavailable configurations=0`. Disposable integration identity:
+commit `2078668ba96674e06eb30b012e7806fac5ef926e`, tree
+`1fc9d5c88aaf6c18890f28e507f24d7d2d752645`. Its rebuilt broker digest equals
+the main candidate broker digest above. All 24 authentic transport executions
+(two tests per release/configuration), codec consumers, boundary consumers and
+five mutation controls were independently counted in its transcript.
+
+A C++ AMTI run started while its shell file was being edited encountered a
+shell parser error after all transport cells. It is superseded by the complete,
+unchanged-source successful `cpp-amti-final` run, not reported as compatibility.
+An Ada recovery run invalidated by source changes was likewise discarded and
+rerun cleanly. Such invalidated/partial attempts remain in local evidence.
+
+Remaining Rust multi-family, OrdersMetadata and lifecycle reruns are reported
+individually in the PR receipt, never inferred from the hexBinary success.
+PR #206 is still independent and open; the original worktree is untouched.
