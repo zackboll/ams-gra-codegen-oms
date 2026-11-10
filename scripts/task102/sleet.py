@@ -133,7 +133,9 @@ def execute(checkout, consumer, schema, release, directory):
                     assert data == data.upper() and bytes.fromhex(data) == bytes.fromhex(expected['MessageData']['Data'])
             received = [json.loads(line.removeprefix('TASK102_WIRE_RECEIVED '))
                         for line in output.splitlines() if line.startswith('TASK102_WIRE_RECEIVED ')]
-            assert len(received) == 11 and all(set(doc) == {'Log'} for doc in received)
+            # Malformed hex never reaches this subscriber with corrected Sleet:
+            # recovery + six authored publications + unsubscribe witness.
+            assert len(received) == 8 and all(set(doc) == {'Log'} for doc in received)
             assert [doc['Log'] for doc in received[:3]] == [doc for _, doc in cases.decoder_invalid(release)]
             assert received[3]['Log'] == positives[0][1]
             assert [doc['Log'] for doc in received[4:10]] == [expected for _, _, expected in positives]
