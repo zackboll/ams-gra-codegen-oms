@@ -52,6 +52,18 @@ if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AM
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
 
+# build.rs watches every required-family variable. They all enforce the SAME
+# two-root admission and generate the SAME complete service inventory. Keeping
+# them stable avoids regenerating every authentic model between release tests;
+# Cargo still authenticates changed source, roots, contracts and dependencies.
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_LOG=1 AMS_GRA_REQUIRE_REAL_UCI_RDMA=1
+  export AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1 AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY=1
+  export AMS_GRA_REQUIRE_REAL_UCI_DLZ=1 AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1
+  export AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1
+  export CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3
+fi
+
 if [ $# -ge 1 ]; then
   CHECKOUT="$1"
 else
@@ -102,6 +114,7 @@ if [ "${AMS_GRA_RUST_ORDERS_METADATA_ONLY:-}" = 1 ]; then
   echo "RUST-OMS-012 real pinned Sleet ($SLEET_REV): PASSED"
   exit 0
 fi
+bash "$ROOT/scripts/check-rust-task-workers.sh"
 # Four-message standalone acceptance uses this same unmodified broker build
 # and independent Task092/093, Task104/105 and Task101 fixtures.
 # The existing main-only real-sleet job supplies both roots; no new runner lane.
@@ -110,6 +123,8 @@ if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ "${AMS_GRA_RUST_DLZ_ONLY
   cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
   rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/reconnect.rs"
   rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/wss.rs"
+  rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/task_workers.rs" \
+    "$ROOT/tests/rust-task-workers.rs"
   for release in 2.5 2.6; do
     export AMS_GRA_UCI_RELEASE="$release"
     if [ "$release" = 2.5 ]; then
