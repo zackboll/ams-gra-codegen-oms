@@ -22,8 +22,8 @@ class NatoSpecialWordsSleetTests(unittest.IsolatedAsyncioTestCase):
         checkout = Path(binary).resolve().parents[2]
         identity = subprocess.check_output(
             ['git', '-C', str(checkout), 'rev-parse', 'HEAD', 'HEAD^{tree}'], text=True).splitlines()
-        self.assertEqual(identity, ['e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b',
-                                    '7e705f4eb5f658957bd414b4abc8207311f3c1e4'])
+        self.assertEqual(identity, ['94796daf55ebd1134dce0925e6a204a05ad3423b',
+                                    '47da595b9078cac1a9351e8290d1ae7f3976367f'])
         self.assertEqual(subprocess.check_output(
             ['git', '-C', str(checkout), 'status', '--porcelain']), b'')
         with TemporaryDirectory(prefix='py011-broker-') as temp:

@@ -146,6 +146,7 @@ async fn task070_typed_error_classification() {
         RuntimeError::WorkerSpawn(IoError::from(ErrorKind::ConnectionRefused)),
         RuntimeError::WorkerPanicked,
         ClientError::UnexpectedServerOp("unsupported".to_owned()).into(),
+        ClientError::Handshake("missing OWP subprotocol".to_owned()).into(),
         ClientError::Transport(WsError::Http(Box::new(
             tokio_tungstenite::tungstenite::http::Response::builder()
                 .status(403)

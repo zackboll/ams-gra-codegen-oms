@@ -6,7 +6,7 @@
 #   1. pinned UCI roots via the repository's fetch scripts (or
 #      AMS_GRA_UCI_2_{5,6}_ROOT), root + SecurityMarkings SHA-256 checked
 #      against scripts/task102/admission.py;
-#   2. Sleet at the existing pin (e38f61d8, tree 7e705f4e), clean, built with
+#   2. Sleet at the existing pin (94796daf, tree 47da595b), clean, built with
 #      its own toolchain file, --locked (or an existing checkout, argument 2);
 #   3. numerical qualification: the unchanged Task 096 exact oracle regenerates
 #      the frozen corpus (hashes checked); the synthetic Float64 fixture's
@@ -39,9 +39,9 @@ scratch="$(realpath -m -- "${1:-$(mktemp -d)}")"
 mkdir -p "$scratch"
 cd "$repo"
 
-SLEET_REPO=https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet
-SLEET_REV=e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b
-SLEET_TREE=7e705f4eb5f658957bd414b4abc8207311f3c1e4
+SLEET_REPO=https://gitlab.com/zackboll/sleet.git
+SLEET_REV=94796daf55ebd1134dce0925e6a204a05ad3423b
+SLEET_TREE=47da595b9078cac1a9351e8290d1ae7f3976367f
 ROOT_25=ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27
 MARK_25=4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b
 ROOT_26=af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b
@@ -90,9 +90,11 @@ git -C "$checkout" checkout --quiet --detach "$SLEET_REV"
 [[ "$(git -C "$checkout" rev-parse HEAD)" == "$SLEET_REV" ]]
 [[ "$(git -C "$checkout" rev-parse 'HEAD^{tree}')" == "$SLEET_TREE" ]]
 [[ -z "$(git -C "$checkout" status --porcelain)" ]] || { echo "Sleet checkout is modified" >&2; exit 1; }
-(cd "$checkout" && cargo build --release --locked -p sleet)
+(cd "$checkout" && CARGO_TARGET_DIR="$checkout/target" cargo build --release --locked -p sleet)
 sleet_bin="$checkout/target/release/sleet"
 echo "Sleet $SLEET_REV (tree $SLEET_TREE) clean; built with $(cd "$checkout" && rustc --version)"
+[[ -z "$(git -C "$checkout" status --porcelain)" ]]
+sha256sum "$sleet_bin"
 
 # ---- toolchains ---------------------------------------------------------------------
 cli="${AMS_GRA_CLI:-}"

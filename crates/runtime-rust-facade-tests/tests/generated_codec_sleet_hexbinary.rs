@@ -1,23 +1,16 @@
 //! Task 052: GENERATED xs:hexBinary typed value -> GENERATED hex codec ->
 //! runtime-rust -> pinned sleet-client -> the UNMODIFIED pinned Sleet server
-//! (open-arsenal/ams-gra-hello-world-sk-infra-sleet @ e38f61d8) -> GENERATED
+//! (GitLab reviewed candidate @ 94796daf) -> GENERATED
 //! decoder -> typed byte values.
 //!
 //! A NEW test beside the Task 049/050/051 real-Sleet tests. Needs
 //! `AMS_GRA_SLEET_BIN` (see `scripts/run-real-sleet-test.sh`); without it the
 //! test is a stated skip.
 //!
-//! Sleet loads `codec-hexbinary.xsd` and validates each PUB document before
-//! routing it. Pinned Sleet maps every XSD primitive it does not special-case
-//! (including `xs:hexBinary`) to its generic JSON-string check
-//! (`sleet/src/validator.rs::SimpleValueKind::from_primitive`), so it checks
-//! only that each Binary value is a JSON string, not hexBinary lexical
-//! syntax. The second part of this test RECORDS that: an invalid hexBinary
-//! string is routed by Sleet and rejected by the GENERATED decoder, which is
-//! the authority for hexBinary lexical validity. The codec is never loosened
-//! to match Sleet.
+//! Sleet must reject malformed hexBinary before routing. Independent codec
+//! and mock-transport tests retain downstream generated-decoder rejection coverage.
 
-use ams_gra_oms_runtime_rust::{MessageDecodeError, RuntimeConfig, RuntimeEvent, SleetRuntime};
+use ams_gra_oms_runtime_rust::{RuntimeConfig, RuntimeEvent, SleetRuntime};
 use ams_gra_oms_runtime_rust_facade_tests::codec_hexbinary::model as m;
 use ams_gra_oms_runtime_rust_facade_tests::codec_hexbinary::service_api::function_blob as blob;
 use ams_gra_oms_runtime_rust_facade_tests::codec_hexbinary::service_codec::ServiceCodec;
@@ -209,35 +202,26 @@ fn task052_hex_binary_generated_codec_round_trips_through_real_sleet() {
         publish.as_ref().err()
     );
     eprintln!("REAL SLEET HEXBINARY PROBE: events = {events:?}");
-    // Observed with pinned e38f61d8: Sleet validates hexBinary only as a
-    // JSON string, so it ROUTES "0G"; the GENERATED decoder then rejects it
-    // and no typed handler runs.
-    assert!(publish.is_ok(), "Sleet accepted the PUB");
-    let decode_errors: Vec<String> = events
-        .iter()
-        .filter_map(|event| match event {
-            RuntimeEvent::SubscriptionDecodeError {
-                error: MessageDecodeError::Codec(error),
-                ..
-            } => Some(error.message().to_owned()),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(
-        decode_errors,
-        [format!(
-            "BlobPayload.Data: {PROBE_INVALID_HEX:?} is not hexBinary: only hexadecimal \
-             digits [0-9A-Fa-f] are allowed"
-        )],
-        "pinned Sleet outcome changed; re-run the probe and update the Task 052 record"
-    );
+    assert!(publish.is_ok(), "non-verbose PUB frame written");
+    assert_eq!(events.len(), 1, "one broker error, no decoder error");
+    match &events[0] {
+        RuntimeEvent::ServerError {
+            details: Some(details),
+            ..
+        } => {
+            assert!(details.contains("FacetViolation"), "{details}");
+            assert!(details.contains("Data"), "{details}");
+        }
+        other => panic!("malformed hexadecimal must fail at broker: {other:?}"),
+    }
     assert!(probe_seen.recv_timeout(Duration::from_millis(200)).is_err());
-    eprintln!(
-        "REAL SLEET HEXBINARY PROBE: pinned Sleet routed {PROBE_INVALID_HEX:?} (validates \
-         hexBinary only as a JSON string); the GENERATED decoder rejected it"
-    );
-    let _ = probe_subscription.unsubscribe();
-    let _ = probe.close();
+    blob::exchange_output_blob::publish(&mut probe, &sample()).expect("recovery publish");
+    assert_eq!(probe_seen.recv_timeout(WAIT).unwrap(), sample().id.get());
+    assert!(probe.try_recv_event().is_none());
+    probe_subscription
+        .unsubscribe()
+        .expect("unsubscribe after recovery");
+    probe.close().expect("close after recovery");
     let _ = std::fs::remove_dir_all(&dir);
     eprintln!("REAL SLEET GENERATED HEXBINARY CODEC: PASSED");
 }

@@ -9,8 +9,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "scripts/run-real-sleet-test.sh"
-REV = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
-TREE = "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+REV = "94796daf55ebd1134dce0925e6a204a05ad3423b"
+TREE = "47da595b9078cac1a9351e8290d1ae7f3976367f"
 
 
 def transcript():
@@ -66,6 +66,10 @@ fi
                 path.write_text(script)
                 path.chmod(0o755)
             (directory / "output").write_text(transcript() if output is None else output)
+            # The real runner fingerprints the built broker; provide the
+            # controlled build artifact instead of weakening that check.
+            (directory / "target/release").mkdir(parents=True)
+            (directory / "target/release/sleet").write_bytes(b"controlled broker")
             environment = {key: value for key, value in os.environ.items()
                            if not key.startswith("AMS_GRA_")}
             environment.update(PATH=f"{tools}:{os.environ['PATH']}",

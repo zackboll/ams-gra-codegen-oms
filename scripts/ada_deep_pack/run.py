@@ -18,8 +18,8 @@ from ada_ci_pack.run import execute, monitor, sha, STOP, write
 
 ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = json.loads(Path(__file__).with_name("inventory.json").read_text())
-REV = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
-TREE = "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+REV = "94796daf55ebd1134dce0925e6a204a05ad3423b"
+TREE = "47da595b9078cac1a9351e8290d1ae7f3976367f"
 
 
 def git(*args, cwd=ROOT):
@@ -192,7 +192,7 @@ def prepare(root, names, compiler, source):
     # Compiler distributions are immutable; mutable Alire configuration is copied.
     freeze(setup / "cache/toolchains")
     sleet = shared / "sleet"
-    run("sleet-clone", ["git", "clone", "--quiet", "https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet", sleet])
+    run("sleet-clone", ["git", "clone", "--quiet", "https://gitlab.com/zackboll/sleet.git", sleet])
     run("sleet-checkout", ["git", "checkout", "--quiet", "--detach", REV], sleet)
     if git("rev-parse", "HEAD", "HEAD^{tree}", cwd=sleet).splitlines() != [REV, TREE] or git("status", "--porcelain", cwd=sleet):
         raise RuntimeError("wrong/dirty pinned Sleet source")

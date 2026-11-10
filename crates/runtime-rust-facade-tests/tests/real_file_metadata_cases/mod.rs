@@ -1,6 +1,4 @@
-use ams_gra_oms_runtime_rust::{
-    MessageDecodeError, OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetRuntime,
-};
+use ams_gra_oms_runtime_rust::{OmsJsonCodec, RuntimeConfig, SleetRuntime};
 use generated::{model as m, service_api::function_f as svc, service_codec::ServiceCodec};
 use serde_json::{Value, json};
 use sleet_client::{CalClient, ClientError, InitOptions};
@@ -89,7 +87,7 @@ fn inspect(value: &m::FileMetadataMT, expected: &Value) {
     assert_eq!(ServiceCodec.encode_payload(value).unwrap(), *expected);
 }
 
-fn negatives() -> Vec<(String, Value, String, bool)> {
+fn negatives() -> Vec<(String, Value, String)> {
     document(NEGATIVE)
         .as_array()
         .unwrap()
@@ -101,7 +99,6 @@ fn negatives() -> Vec<(String, Value, String, bool)> {
                 case["name"].as_str().unwrap().to_owned(),
                 body,
                 case["diagnostic"].as_str().unwrap().to_owned(),
-                case["boundary"] == "decoder",
             )
         })
         .collect()
@@ -141,7 +138,7 @@ fn checked_model_and_codec() {
         body["MessageData"]["FileName"] = json!(name);
         inspect(&decode(&body), &body);
     }
-    for (name, body, _, _) in negatives() {
+    for (name, body, _) in negatives() {
         let result: Result<m::FileMetadataMT, _> = ServiceCodec.decode_payload(&body);
         let error = result.expect_err(&name);
         let member = if name.contains("hash") || name.contains("hex") {
@@ -276,31 +273,19 @@ fn pinned_sleet_interoperability() {
     assert_eq!(receive_wire(&mut observer), json!({MESSAGE: maximum}));
     inspect(&seen.recv_timeout(WAIT).unwrap().1, &maximum);
 
-    // Sleet's existing hexBinary length-facet defect counts lexical characters,
-    // not decoded bytes. A valid 32-byte hash is locally accepted, broker rejected.
+    // Authentic SHA-256 is 32 octets, encoded as 64 hexadecimal characters.
     let hashed = document(HASH);
     let mut checked_hash = decode(&hashed);
     checked_hash.messagedata.sha_2_hash = Some(m::SHA2256HashType::new(BYTES.to_vec()).unwrap());
-    // Production runtime is deliberately non-verbose: a successful write is
-    // not broker acceptance. Rejection arrives asynchronously as ServerError.
+    // A successful write alone is not acceptance: witness both the raw MSG
+    // and the independently inspected typed callback on this subscription.
     svc::exchange_publish::publish(&mut runtime, &checked_hash).unwrap();
-    let error = match runtime
-        .recv_event_timeout(WAIT)
-        .expect("asynchronous broker rejection")
-    {
-        RuntimeEvent::ServerError {
-            details: Some(details),
-            ..
-        } => details,
-        other => panic!("wrong boundary for valid hash: {other:?}"),
-    };
-    assert!(error.contains("FacetViolation"), "{error}");
-    executor.block_on(async {
-        assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
-    });
-    assert!(seen.recv_timeout(QUIET).is_err());
+    assert_eq!(receive_wire(&mut observer), json!({MESSAGE: hashed}));
+    inspect(&seen.recv_timeout(WAIT).unwrap().1, &hashed);
     assert!(runtime.recv_event_timeout(QUIET).is_none());
-    eprintln!("RUST-OMS-010 {VERSION} valid 32-byte hash: broker rejected before routing: {error}");
+    eprintln!(
+        "RUST-OMS-010 {VERSION} valid 32-byte hash: broker accepted; exact typed bytes: PASSED"
+    );
     svc::exchange_publish::publish(&mut runtime, &decode(&normal)).unwrap();
     assert_eq!(receive_wire(&mut observer), json!({MESSAGE: normal}));
     inspect(&seen.recv_timeout(WAIT).unwrap().1, &normal);
@@ -319,47 +304,19 @@ fn pinned_sleet_interoperability() {
     ] {
         let mut body = normal.clone();
         body["MessageData"].as_object_mut().unwrap().remove(member);
-        cases.push((
-            format!("missing-{member}"),
-            body,
-            "Missing".to_owned(),
-            false,
-        ));
+        cases.push((format!("missing-{member}"), body, "Missing".to_owned()));
     }
-    for (name, body, diagnostic, decoder) in cases {
+    for (name, body, diagnostic) in cases {
         let wire = json!({MESSAGE: body});
         let result = executor.block_on(raw_publish(&mut publisher, TOPIC, &wire));
-        if decoder {
-            result.expect("pinned broker admits lexical length 32");
-            assert_eq!(receive_wire(&mut observer), wire);
-            match runtime
-                .recv_event_timeout(WAIT)
-                .expect("subscription rejection")
-            {
-                RuntimeEvent::SubscriptionDecodeError {
-                    sid,
-                    message_name,
-                    error: MessageDecodeError::Codec(error),
-                } => {
-                    assert_eq!(sid, subscription.id());
-                    assert_eq!(message_name, MESSAGE);
-                    assert!(error.message().contains(&diagnostic), "{error}");
-                    eprintln!(
-                        "RUST-OMS-010 {VERSION} {name}: routed MSG; generated decoder rejected: {error}"
-                    );
-                }
-                other => panic!("wrong error boundary: {other:?}"),
-            }
-        } else {
-            let error = result.expect_err("broker rejects before routing");
-            assert!(matches!(error, ClientError::Server { .. }), "{error}");
-            assert!(error.to_string().contains(&diagnostic), "{name}: {error}");
-            executor.block_on(async {
-                assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
-            });
-            assert!(runtime.recv_event_timeout(QUIET).is_none());
-            eprintln!("RUST-OMS-010 {VERSION} {name}: broker rejected: {error}");
-        }
+        let error = result.expect_err("broker rejects before routing");
+        assert!(matches!(error, ClientError::Server { .. }), "{error}");
+        assert!(error.to_string().contains(&diagnostic), "{name}: {error}");
+        executor.block_on(async {
+            assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
+        });
+        assert!(runtime.recv_event_timeout(QUIET).is_none());
+        eprintln!("RUST-OMS-010 {VERSION} {name}: broker rejected: {error}");
         assert!(
             seen.recv_timeout(QUIET).is_err(),
             "no invalid typed callback"

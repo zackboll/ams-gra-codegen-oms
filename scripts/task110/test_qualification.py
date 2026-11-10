@@ -72,10 +72,10 @@ def synthetic_cell():
 class QualificationTests(unittest.TestCase):
     def test_independent_release_corpus(self):
         plan = cases.corpus()
-        self.assertEqual(len(plan), 62)
-        self.assertEqual(cases.expected_counts(), dict(log=17, rdma=19, survivability=19))
-        self.assertEqual(cases.expected_errors(), 5)
-        self.assertEqual(cases.expected_witnesses(), 61)
+        self.assertEqual(len(plan), 50)
+        self.assertEqual(cases.expected_counts(), dict(log=14, rdma=16, survivability=16))
+        self.assertEqual(cases.expected_errors(), 2)
+        self.assertEqual(cases.expected_witnesses(), 49)
         for item in plan:
             if 'document' in item:
                 self.assertEqual(item['document']['MessageHeader']['SchemaVersion'], '002.6.0')

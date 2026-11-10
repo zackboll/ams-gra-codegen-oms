@@ -347,9 +347,8 @@ mod support {
         denied.assert_cleanup();
         denied_server.shutdown();
         drop(denied_server);
-        // Pinned Sleet admits malformed hexBinary; the generated decoder does
-        // not. Independently witness that frame, then require the application's
-        // SubscriptionDecodeError with no corresponding typed delivery.
+        // Malformed hex is broker-rejected; independent temporal decoder
+        // rejection retains contextual downstream error coverage.
         for (topic, name, body, field, diagnostic) in [
             (LOG, "Log", &log, "Data", "Data"),
             (DLZ, "DLZ", &dlz, "TimeOfIntercept", "TimeOfIntercept"),
@@ -387,9 +386,28 @@ mod support {
                 malformed["MessageData"]["DLZ_Data"][field] = json!("not-a-timeZ");
             }
             let document = json!({name: malformed});
-            executor
-                .block_on(raw_publish(&mut decoder_publisher, topic, &document))
-                .unwrap();
+            let publication =
+                executor.block_on(raw_publish(&mut decoder_publisher, topic, &document));
+            if name == "Log" {
+                let error = publication.expect_err("broker rejects malformed hex");
+                assert!(matches!(error, ClientError::Server { .. }), "{error}");
+                assert!(error.to_string().contains("Data"), "{error}");
+                assert!(
+                    executor
+                        .block_on(async {
+                            tokio::time::timeout(QUIET, decoder_publisher.recv()).await
+                        })
+                        .is_err()
+                );
+                decoder.finish(true);
+                assert_eq!(decoder.output.matches("RECEIVED ").count(), 1);
+                assert!(!decoder.output.contains("SubscriptionDecodeError"));
+                decoder.assert_cleanup();
+                drop(decoder_publisher);
+                server.shutdown();
+                continue;
+            }
+            publication.unwrap();
             let observed = executor.block_on(async {
                 tokio::time::timeout(WAIT, decoder_publisher.recv())
                     .await
@@ -624,8 +642,29 @@ fn standalone_real_sleet() {
         "pinned Sleet binary required"
     );
     support::accept();
+}
+
+#[test]
+#[ignore = "requires unmodified pinned Sleet"]
+fn standalone_reconnection() {
     support::reconnection();
+}
+
+#[test]
+#[ignore = "requires unmodified pinned Sleet"]
+fn standalone_wss() {
     support::wss();
+}
+
+#[test]
+#[ignore = "requires unmodified pinned Sleet"]
+fn standalone_file_metadata_boundaries() {
+    support::file_metadata_boundaries();
+}
+
+#[test]
+#[ignore = "requires unmodified pinned Sleet"]
+fn standalone_file_metadata() {
     support::file_metadata_acceptance();
 }
 

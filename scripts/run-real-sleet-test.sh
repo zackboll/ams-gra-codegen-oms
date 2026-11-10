@@ -10,9 +10,9 @@
 # Usage: scripts/run-real-sleet-test.sh [existing-sleet-checkout]
 set -euo pipefail
 
-SLEET_REPO="https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet"
-SLEET_REV="e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
-SLEET_TREE="7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+SLEET_REPO="https://gitlab.com/zackboll/sleet.git"
+SLEET_REV="94796daf55ebd1134dce0925e6a204a05ad3423b"
+SLEET_TREE="47da595b9078cac1a9351e8290d1ae7f3976367f"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # RUST-OMS-001: explicit qualification may not silently compile no-UCI stubs.
@@ -53,12 +53,13 @@ if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AM
 fi
 
 if [ $# -ge 1 ]; then
-  CHECKOUT="$1"
+  CHECKOUT="$(realpath "$1")"
 else
   CHECKOUT="$(mktemp -d)/sleet"
   git clone --quiet "$SLEET_REPO" "$CHECKOUT"
+  git -C "$CHECKOUT" checkout --quiet --detach "$SLEET_REV"
 fi
-git -C "$CHECKOUT" checkout --quiet --detach "$SLEET_REV"
+# Never silently replace a caller's broker with a different revision.
 test "$(git -C "$CHECKOUT" rev-parse HEAD)" = "$SLEET_REV"
 test "$(git -C "$CHECKOUT" rev-parse 'HEAD^{tree}')" = "$SLEET_TREE"
 # Unmodified: no tracked or untracked changes in the checkout.
@@ -68,11 +69,15 @@ test -z "$(git -C "$CHECKOUT" status --porcelain)"
 # at the exported path even when qualification uses an external Cargo target.
 (cd "$CHECKOUT" && CARGO_TARGET_DIR="$CHECKOUT/target" cargo build --release --locked -p sleet)
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
+test -z "$(git -C "$CHECKOUT" status --porcelain)"
+printf 'Sleet source=%s commit=%s tree=%s clean=true binary=%s\n' \
+  "$SLEET_REPO" "$SLEET_REV" "$SLEET_TREE" "$AMS_GRA_SLEET_BIN"
+(cd "$CHECKOUT" && rustc --version && sha256sum "$AMS_GRA_SLEET_BIN")
 
 cd "$ROOT"
 # RUST-OMS-012 reuses the single pinned checkout/build above. Both the focused
 # mode and the ordinary main-only runner require actual execution evidence.
-if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
   PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/scripts/test_rust_orders_metadata_runner.py" \
     OrdersRunner.test_consumer_uses_repository_locked_dependencies -v
   cargo +1.95.0 fmt --all -- --check
@@ -91,7 +96,7 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
     grep -Fqx "EXTERNAL ORDERSMETADATA $version: PASSED" <<<"$output"
   done
   grep -Fqx 'RUST-OMS-012 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
   grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
   if grep -qE 'SKIPPED|^test result:.*(0 passed|[1-9][0-9]* ignored)' <<<"$output"; then
     echo 'OrdersMetadata qualification must execute without skips' >&2
@@ -128,7 +133,7 @@ if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ "${AMS_GRA_RUST_DLZ_ONLY
     grep -Fqx "RUST-OMS-007 002.${release#2.}.0 standalone four-message typed/external/OWP/error/unsubscribe/process cleanup: PASSED" <<<"$output"
     grep -Fqx "RUST-OMS-008 002.${release#2.}.0 bounded reconnection and terminal controls: PASSED" <<<"$output"
     grep -Fqx "RUST-OMS-009 002.${release#2.}.0 verified WSS interoperability, TLS negatives, recovery and cleanup: PASSED" <<<"$output"
-    grep -qE '^test result: ok\. 2 passed; 0 failed; 0 ignored;' <<<"$output"
+    grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
   done
 fi
 if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
@@ -150,7 +155,7 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
   grep -Fqx 'EXTERNAL FILEMETADATA 25: PASSED' <<<"$output"
   grep -Fqx 'EXTERNAL FILEMETADATA 26: PASSED' <<<"$output"
   grep -Fqx 'RUST-OMS-010 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
   grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
 fi
 if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" = 1 ]; then
@@ -200,7 +205,7 @@ PY
   done
   grep -Fqx 'EXTERNAL DLZ 25: PASSED' <<<"$output"
   grep -Fqx 'EXTERNAL DLZ 26: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
   grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
 fi
 if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" = 1 ]; then
@@ -354,13 +359,12 @@ run_one generated_codec_sleet task050_generated_codec_round_trips_through_real_s
 # outcome (see docs/task-051-member-qname-provenance.md).
 run_one generated_codec_sleet_non_oam task051_non_oam_generated_codec_probe_against_real_sleet \
   'SLEET NON-OAM PROBE: RECORDED'
-# Task 052: generated xs:hexBinary codec (synthetic OAM fixture); also records
-# that pinned Sleet validates hexBinary only as a JSON string.
+# Task 052: generated xs:hexBinary codec and broker lexical rejection.
 run_one generated_codec_sleet_hexbinary task052_hex_binary_generated_codec_round_trips_through_real_sleet \
   'REAL SLEET GENERATED HEXBINARY CODEC: PASSED'
 # Task 053: generated constrained named Binary carriers (synthetic OAM fixture
-# constrained-binary-sleet.xsd); records that pinned Sleet counts hexBinary
-# length facets in CHARACTERS, not octets (see docs/task-053-*).
+# constrained-binary-sleet.xsd); require length facets in octets, exact/ranged
+# acceptance, broker rejection and same-subscription recovery.
 run_one generated_codec_sleet_constrained_binary task053_constrained_binary_generated_codec_round_trips_through_real_sleet \
   'REAL SLEET GENERATED CONSTRAINED BINARY CODEC: PASSED'
 # Task071 reuses this same pinned checkout/build; no second server build.

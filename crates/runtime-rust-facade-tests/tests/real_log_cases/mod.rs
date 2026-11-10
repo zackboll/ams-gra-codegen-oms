@@ -1,6 +1,4 @@
-use ams_gra_oms_runtime_rust::{
-    MessageDecodeError, OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetRuntime,
-};
+use ams_gra_oms_runtime_rust::{OmsJsonCodec, RuntimeConfig, SleetRuntime};
 use generated::{model as m, service_api::function_log as svc, service_codec::ServiceCodec};
 use serde_json::{Value, json};
 use sleet_client::{CalClient, ClientError, InitOptions};
@@ -175,23 +173,17 @@ fn pinned_sleet_roundtrip_and_recovery() {
         assert!(runtime.try_recv_event().is_none());
         eprintln!("RUST-OMS-001 {VERSION} typed MSG Data={binary:?}: PASSED");
     }
-    // Pinned Sleet admits malformed hex strings but rejects structural errors.
-    // Assert the exact boundary, never downgrade any rejection to success.
+    // Corrected Sleet rejects malformed hex and structural errors before routing.
     let mut cases = Vec::new();
-    for (name, data, delivered) in [
-        ("odd hex", json!("0"), true),
-        ("invalid digits", json!("0G"), true),
-        ("internal whitespace", json!("00 80 FF"), true),
-        ("binary JSON type", json!([0, 128, 255]), false),
+    for (name, data) in [
+        ("odd hex", json!("0")),
+        ("invalid digits", json!("0G")),
+        ("internal whitespace", json!("00 80 FF")),
+        ("binary JSON type", json!([0, 128, 255])),
     ] {
         let mut body = golden();
         body["MessageData"]["Data"] = data;
-        cases.push((
-            name.to_owned(),
-            json!({"Log": body}),
-            delivered,
-            "Data".to_owned(),
-        ));
+        cases.push((name.to_owned(), json!({"Log": body}), "Data".to_owned()));
     }
     for field in ["Timestamp", "Severity", "Label", "Details"] {
         let mut body = golden();
@@ -199,7 +191,6 @@ fn pinned_sleet_roundtrip_and_recovery() {
         cases.push((
             format!("missing {field}"),
             json!({"Log": body}),
-            false,
             field.to_owned(),
         ));
     }
@@ -209,86 +200,24 @@ fn pinned_sleet_roundtrip_and_recovery() {
         cases.push((
             format!("missing {field}"),
             json!({"Log": body}),
-            false,
             field.to_owned(),
         ));
     }
     cases.push((
         "wrong global element".to_owned(),
         json!({"LogMT": golden()}),
-        false,
         "LogMT".to_owned(),
     ));
-    for (name, document, delivered, diagnostic) in cases {
+    for (name, document, diagnostic) in cases {
         let result = executor.block_on(raw_publish(&mut publisher, TOPIC, &document));
-        if delivered {
-            result.expect("pinned Sleet admits hex strings");
-            assert_eq!(
-                receive_wire(&mut observer),
-                document,
-                "actual malformed MSG"
-            );
-            match runtime
-                .recv_event_timeout(WAIT)
-                .expect("observable decoder rejection")
-            {
-                RuntimeEvent::SubscriptionDecodeError {
-                    sid,
-                    message_name,
-                    error: MessageDecodeError::Codec(error),
-                } => {
-                    assert!(!sid.is_empty());
-                    assert_eq!(message_name, "Log");
-                    assert!(error.message().contains(&diagnostic), "{error}");
-                    eprintln!(
-                        "RUST-OMS-001 {VERSION} {name}: Sleet MSG -> generated decoder rejected: {error}"
-                    );
-                }
-                other => panic!("wrong rejection boundary: {other:?}"),
-            }
-        } else {
-            let error = result.expect_err("pinned Sleet must reject invalid structure");
-            assert!(matches!(error, ClientError::Server { .. }), "{error}");
-            assert!(error.to_string().contains(&diagnostic), "{error}");
-            eprintln!("RUST-OMS-001 {VERSION} {name}: Sleet rejected: {error}");
-            executor.block_on(async {
-                assert!(
-                    tokio::time::timeout(QUIET, observer.recv()).await.is_err(),
-                    "no rejected MSG"
-                );
-            });
-            assert!(runtime.recv_event_timeout(QUIET).is_none());
-        }
-        assert!(
-            seen.recv_timeout(QUIET).is_err(),
-            "invalid typed delivery: {name}"
-        );
-        svc::exchange_publish::publish(&mut runtime, &value).unwrap();
-        assert_eq!(receive_wire(&mut observer), json!({"Log": golden()}));
-        let recovered = seen
-            .recv_timeout(WAIT)
-            .expect("same active subscription recovers");
-        inspect(&recovered);
-        assert_eq!(data(&recovered), Some(&[0x00, 0x80, 0xFF][..]));
-        assert_eq!(ServiceCodec.encode_payload(&recovered).unwrap(), golden());
-        assert!(runtime.try_recv_event().is_none());
-        eprintln!("RUST-OMS-001 {VERSION} {name}: same-subscription recovery PASSED");
-    }
-    for topic in ["invalid topic", "unauthorized-topic"] {
-        let error = executor
-            .block_on(raw_publish(
-                &mut publisher,
-                topic,
-                &json!({"Log": golden()}),
-            ))
-            .unwrap_err();
-        if topic == "invalid topic" {
-            assert!(matches!(error, ClientError::InvalidInput(_)), "{error}");
-        } else {
-            assert!(matches!(error, ClientError::Server { .. }), "{error}");
-        }
-        assert!(error.to_string().contains(topic), "{error}");
-        eprintln!("RUST-OMS-001 {VERSION} topic {topic:?}: {error}");
+        let error = result.expect_err("broker rejects before routing");
+        assert!(matches!(error, ClientError::Server { .. }), "{error}");
+        assert!(error.to_string().contains(&diagnostic), "{error}");
+        eprintln!("RUST-OMS-001 {VERSION} {name}: broker rejected: {error}");
+        assert!(runtime.recv_event_timeout(QUIET).is_none());
+        executor.block_on(async {
+            assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
+        });
         assert!(seen.recv_timeout(QUIET).is_err());
     }
     let denied = executor

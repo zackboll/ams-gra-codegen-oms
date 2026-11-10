@@ -1,6 +1,6 @@
 //! Task 050: GENERATED typed value -> GENERATED `ServiceCodec` -> runtime-rust
 //! -> pinned sleet-client -> the UNMODIFIED pinned Sleet server
-//! (open-arsenal/ams-gra-hello-world-sk-infra-sleet @ e38f61d8) -> GENERATED
+//! (GitLab reviewed Sleet candidate @ 94796daf) -> GENERATED
 //! `ServiceCodec` -> typed handler.
 //!
 //! This is a NEW test beside Task 049's `real_sleet.rs`, which keeps proving

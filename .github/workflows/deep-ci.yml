@@ -1045,7 +1045,7 @@ jobs:
           grep -qE '^test result: ok\. 1 passed' <<<"$output"
       # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real
       # PositionReport / SubsystemStream round trips through Sleet.
-      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)
+      - name: Rust LA-CAL runtime against real pinned Sleet (94796daf)
         env:
           PY006_PYTHONS: python3.11 python3.13
         run: |

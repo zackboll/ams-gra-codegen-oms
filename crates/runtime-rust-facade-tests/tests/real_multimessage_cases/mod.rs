@@ -263,28 +263,39 @@ fn single_connection_interleaving_isolation_and_unsubscribe() {
         if bad_log {
             body["MessageData"]["Data"] = json!("0G");
         } else {
-            body["MessageHeader"]["Timestamp"] = json!("not-a-dateZ");
+            body["MessageHeader"]["Timestamp"] = json!("2023-02-29T00:00:00Z");
         }
         let document = json!({message: body});
-        executor
-            .block_on(raw_publish(&mut publisher, topic, &document))
-            .expect("Sleet admits this decoder-negative PUB");
-        wire(&executor, &mut observer, witness, &document);
-        match runtime
-            .recv_event_timeout(WAIT)
-            .expect("observable decoder rejection")
-        {
-            RuntimeEvent::SubscriptionDecodeError {
-                sid: actual,
-                message_name,
-                error: MessageDecodeError::Codec(error),
-            } => {
-                assert_eq!(&actual, sid);
-                assert_eq!(message_name, message);
-                assert!(error.to_string().contains(diagnostic), "{error}");
-                eprintln!("RUST-OMS-003 {VERSION} decode rejection {message}/{actual}: {error}");
+        let publication = executor.block_on(raw_publish(&mut publisher, topic, &document));
+        if bad_log {
+            let error = publication.expect_err("broker rejects malformed hex before delivery");
+            assert!(matches!(error, ClientError::Server { .. }), "{error}");
+            assert!(error.to_string().contains(diagnostic), "{error}");
+            executor.block_on(async {
+                assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
+            });
+            assert!(runtime.recv_event_timeout(QUIET).is_none());
+        } else {
+            publication.expect("broker admits this independent timestamp decoder negative");
+            wire(&executor, &mut observer, witness, &document);
+            match runtime
+                .recv_event_timeout(WAIT)
+                .expect("observable decoder rejection")
+            {
+                RuntimeEvent::SubscriptionDecodeError {
+                    sid: actual,
+                    message_name,
+                    error: MessageDecodeError::Codec(error),
+                } => {
+                    assert_eq!(&actual, sid);
+                    assert_eq!(message_name, message);
+                    assert!(error.to_string().contains(diagnostic), "{error}");
+                    eprintln!(
+                        "RUST-OMS-003 {VERSION} decode rejection {message}/{actual}: {error}"
+                    );
+                }
+                other => panic!("wrong decoder failure identity/boundary: {other:?}"),
             }
-            other => panic!("wrong decoder failure identity/boundary: {other:?}"),
         }
         quiet(&logs, &rdmas);
         // Unaffected family FIRST, then failed family, using the original SIDs.

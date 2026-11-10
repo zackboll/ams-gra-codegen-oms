@@ -286,8 +286,7 @@ fn metadata_negatives() {
             matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
         );
     }
-    // Valid 32 octets remain accepted locally. Pinned Sleet's character-count
-    // defect rejects the 64 hex digits asynchronously, with no callback/MSG.
+    // A valid 32-octet hash must traverse the broker and typed subscriber.
     let (mut server, url) = start_sleet_with_topics(&FIVE_TOPICS);
     connect(&url).close().unwrap();
     let executor = tokio::runtime::Builder::new_current_thread()
@@ -312,25 +311,20 @@ fn metadata_negatives() {
             "8",
         ],
     );
-    app.finish(false);
-    for expected in [
-        "VALIDATED FileMetadata",
-        "PUBLISHED FileMetadata: frame written; broker acceptance not acknowledged",
-        "ServerError",
-        "length 64 != 32",
-        "cannot attribute",
-        "CLOSED runtime; worker joined",
-    ] {
-        assert!(app.output.contains(expected), "{}", app.output);
-    }
-    assert!(
-        !app.output.contains("RECEIVED FileMetadata") && !app.output.contains("RECONNECT_ATTEMPT")
+    app.until("sha-2-hash-present=true");
+    let observed = executor.block_on(async {
+        tokio::time::timeout(WAIT, observer.recv())
+            .await
+            .unwrap()
+            .unwrap()
+    });
+    assert_eq!(observed.sid, "metadata-wire");
+    assert_eq!(
+        serde_json::from_str::<Value>(&observed.payload).unwrap(),
+        json!({"FileMetadata":hash})
     );
-    assert!(
-        executor
-            .block_on(async { tokio::time::timeout(QUIET, observer.recv()).await })
-            .is_err()
-    );
+    app.finish(true);
+    assert!(!app.output.contains("ServerError") && !app.output.contains("RECONNECT_ATTEMPT"));
     drop(observer);
     server.shutdown();
     // Only the fifth topic is unauthorized; the earlier four remain supported.
@@ -375,14 +369,17 @@ fn metadata_negatives() {
     server.shutdown();
     std::fs::remove_dir_all(directory).unwrap();
     eprintln!(
-        "RUST-OMS-011 {VERSION} preconnect validation/optional-hash broker rejection/fifth-topic terminal policy: PASSED"
+        "RUST-OMS-011 {VERSION} preconnect validation/32-octet hash delivery/fifth-topic terminal policy: PASSED"
     );
+}
+
+pub fn file_metadata_boundaries() {
+    metadata_negatives();
 }
 
 pub fn file_metadata_acceptance() {
     five_positive(false);
     five_positive(true);
-    metadata_negatives();
     five_budget();
 }
 
