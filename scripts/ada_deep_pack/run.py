@@ -149,12 +149,19 @@ def worker(name, directory, shared, compiler, source, cpu):
     deadline = started + INVENTORY["suites"][name]["timeout_seconds"]
     env = dict(os.environ, HOME=str(directory / "evidence/setup/home"),
                PATH=str(directory / "wrappers") + os.pathsep + str(directory / "venv/bin") + os.pathsep + os.environ["PATH"],
-               ADA_DEEP_REAL_ALR=shutil.which("alr"), ADA_DEEP_ALR_TRACE=str(directory / "alr.jsonl"),
+               ADA_DEEP_ALR_TRACE=str(directory / "alr.jsonl"),
                TMPDIR=str(directory / "tmp"), PYTHONDONTWRITEBYTECODE="1",
                GIT_OPTIONAL_LOCKS="0",
                AMS_GRA_ADA_BUILD_JOBS="1", CARGO_BUILD_JOBS="1", RAYON_NUM_THREADS="1",
                OMP_NUM_THREADS="1", GITHUB_WORKSPACE=str(ROOT))
     try:
+        # Git-only regressions run without Alire. Never pass which()'s None to
+        # subprocess, or inherit a stale wrapper target. Production main still
+        # requires the exact Alire installation before preparing any workers.
+        env.pop("ADA_DEEP_REAL_ALR", None)
+        alr = shutil.which("alr")
+        if alr is not None:
+            env["ADA_DEEP_REAL_ALR"] = alr
         env = worker_git_env(env, source)
         for index, step in enumerate(INVENTORY["suites"][name]["steps"]):
             command = render(step["run"], name, directory, shared, compiler)

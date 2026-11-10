@@ -596,6 +596,7 @@ jobs:
           # defaults and fixtures remain immutable, including their NOT READY oracle.
           python3 scripts/test-py009-uci.py
           cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles
+          cargo build --locked --release -p ams-gra-codegen-oms --example python_unicode_profiles
           python3 scripts/test-py010-uci.py
           python3 scripts/test-py016-uci.py
           python3 scripts/test-py017-uci.py
