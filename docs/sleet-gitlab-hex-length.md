@@ -155,5 +155,13 @@ fingerprints the broker, and injected exit 23/diagnostic must survive unchanged.
 New correction evidence is recorded separately under
 `/home/zboll/sleet-gitlab-update-evidence/correction-208`; historical execution
 receipts are unchanged. Completed and incomplete correction runs are reported in
-the new correction receipt, never inferred from earlier hexBinary success.
+the [new correction receipt](sleet-gitlab-hex-length-correction-208.md), never
+inferred from earlier hexBinary success. Restored Log (both releases), 20
+independent codec/mock tests, two authentic DLZ codec tests and the runner controls
+pass. Focused OrdersMetadata now has a completed failing result: 3 passed, 2
+failed, zero ignored, because both broker tests still expect malformed
+`not-a-dateZ` admission. That separate downstream expectation gap is not an
+upstream defect. Its independent Cargo consumer passes separately, including
+both releases, all-target check and Clippy. Full OrdersMetadata cleanup and the
+full main-only qualification remain unfinished.
 PR #206 is still independent and open; the original worktree is untouched.
