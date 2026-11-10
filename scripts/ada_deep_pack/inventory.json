@@ -608,6 +608,6 @@
   "source_reconciliation": "scripts/ada_deep_pack/source-reconciliation.json",
   "infrastructure_sha256": {
     "scripts/pinned_download.py": "6dd3ade12913fac9b9dab790c9a896983cf7f2aaa2194ee963548afad52d6d22",
-    "scripts/task_alire.py": "6b25075fc47af790d3a70cb1ffd92e1a8c7a9cb5ecaf61f03ef2b1208c4cafbc"
+    "scripts/task_alire.py": "66974c835d140ea67d8828535e0073d55792f1340cb1f4eb97067b9afdc4a128"
   }
 }

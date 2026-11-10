@@ -1,8 +1,11 @@
 """Task-owned Alire configuration and unchanged qualification contracts."""
 from pathlib import Path
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from task_alire import configure
 from workflow_text import blocks
@@ -71,6 +74,60 @@ class TaskAlire(unittest.TestCase):
         self.assertLess(job.index(build), job.index('scripts/run-owned-python.py uci'))
         for token in ('python3.11 python3.13', '-O scripts/run-owned-python.py uci'):
             self.assertIn(token, job)
+
+    def test_packed_control_requires_exact_inherited_private_settings_and_hook(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            env = dict(ADA_DEEP_REAL_ALR='/verified/alr', AMS_GRA_ADA_BUILD_JOBS='1',
+                       HOME=str(root / 'setup/home'))
+            hook = f'python3 {ROOT / "scripts/pinned_download.py"} ${{URL}} ${{DEST}}'
+            for values, error in [
+                ([str(root / 'setup/cache'), 'false', hook], None),
+                (['/shared/cache'], 'cache.dir'),
+                ([str(root / 'setup/cache'), 'true'], 'dependencies.shared'),
+                ([str(root / 'setup/cache'), 'false', 'curl ${URL} -o ${DEST}'], 'download hook'),
+            ]:
+                checked = Mock(side_effect=[(v + '\n').encode() for v in values])
+                with patch.dict(os.environ, env), self.subTest(values=values):
+                    if error:
+                        with self.assertRaisesRegex(RuntimeError, error):
+                            configure(root, checked, ROOT)
+                    else:
+                        self.assertEqual(configure(root, checked, ROOT), ['alr', '-n'])
+                self.assertFalse((root / 'alire-settings').exists())
+
+    @unittest.skipUnless(shutil.which('alr'), 'live Alire unavailable')
+    def test_actual_task102_style_wrapper_does_not_receive_duplicate_settings(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            setup = root / 'setup'
+            (setup / 'home').mkdir(parents=True)
+            settings = setup / 'settings'
+            settings.mkdir()
+            real = shutil.which('alr')
+            for key, value in [('cache.dir', str(setup / 'cache')), ('dependencies.shared', 'false'),
+                               ('origins.archive.download_cmd',
+                                f'python3 {ROOT / "scripts/pinned_download.py"} ${{URL}} ${{DEST}}')]:
+                subprocess.run([real, '-s', str(settings), '-n', 'settings', '--global', '--set', key, value],
+                               check=True, capture_output=True)
+            wrapper = root / 'bin'
+            wrapper.mkdir()
+            (wrapper / 'alr').write_text(f'#!/bin/sh\nexec {real} -s {settings} "$@"\n')
+            (wrapper / 'alr').chmod(0o755)
+            env = dict(HOME=str(setup / 'home'), ADA_DEEP_REAL_ALR=real, AMS_GRA_ADA_BUILD_JOBS='1',
+                       PATH=str(wrapper) + os.pathsep + os.environ['PATH'])
+
+            def checked(command, cwd, log):
+                result = subprocess.check_output(command, cwd=cwd)
+                log.write_bytes(result)
+                return result
+
+            with patch.dict(os.environ, env):
+                alr = configure(root, checked, ROOT)
+                self.assertEqual(alr, ['alr', '-n'])
+                output = subprocess.check_output(alr + ['version'], text=True)
+                self.assertIn(str(settings), output)
+                self.assertIn(str(setup / 'cache/toolchains'), output)
 
 
 if __name__ == '__main__':

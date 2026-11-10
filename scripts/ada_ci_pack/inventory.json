@@ -462,7 +462,7 @@
     "scripts/perf009_portable.py": "ab7cf8847c9349cdbd26fdf1d3b6d7b1dc8b1af4d7afa206bdd0b986da4d3984",
     "scripts/perf009_evidence.py": "7cbd3df9541aa8eaa358080a0dada6e182b575d1440088cda6e0e48ce03f8178",
     "scripts/perf009_equivalence.py": "5e2a3b0f68e3185be82946195c96835e1f94e73a6ba32c7dd80390847127446f",
-    "scripts/task_alire.py": "6b25075fc47af790d3a70cb1ffd92e1a8c7a9cb5ecaf61f03ef2b1208c4cafbc"
+    "scripts/task_alire.py": "66974c835d140ea67d8828535e0073d55792f1340cb1f4eb97067b9afdc4a128"
   },
   "production_portable_reuse": {
     "authority_commit": "06f33bdda655b37f578a81bbca99ef7567407926",
