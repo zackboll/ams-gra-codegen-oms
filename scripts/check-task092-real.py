@@ -9,6 +9,8 @@ import shutil
 import sys
 import tomllib
 
+from task_alire import configure
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("integration", ROOT / "scripts/check-task091r.py")
@@ -29,6 +31,7 @@ def main():
     scratch.mkdir(parents=True, exist_ok=False)
     if checked(["alr", "--version"], ROOT, scratch / "alire.log").strip() != b"alr 2.1.1":
         raise RuntimeError("wrong Alire")
+    alr = configure(scratch, checked, ROOT)
     roots = {"25": args.uci25.resolve(), "26": args.uci26.resolve()}
     expected = {"25": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
                 "26": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"}
@@ -73,14 +76,14 @@ def main():
             f'for Main use ("{source.name}");\n'
             'package Compiler is for Default_Switches ("Ada") use '
             '("-gnat2022", "-gnato", "-O0"); end Compiler; end Consumer;\n')
-        checked(["alr", "-n", "settings", "--set", "dependencies.shared", "false"],
+        checked(alr + ["settings", "--set", "dependencies.shared", "false"],
                 consumer, evidence / "isolation.log")
-        checked(["alr", "-n", *(["--force"] if args.compiler == "14" else []),
+        checked(alr + [*(["--force"] if args.compiler == "14" else []),
                  "toolchain", "--select", "--local", f"{compiler}={banner}", "gprbuild=26.0.1"],
                 consumer, evidence / "toolchain.log")
         golden = fixtures / f"task092-real-{stem}{version}.json"
         for policy in ["normal", "Check", "Ignore"]:
-            command = ["alr", "-n", "build", "--", "-f"]
+            command = alr + ["build", "--", "-f"]
             if policy != "normal":
                 adc = evidence / f"{policy}.adc"
                 adc.write_text(f"pragma Assertion_Policy ({policy});\n")
@@ -90,7 +93,7 @@ def main():
             integration.datetime.guard.validate_solution(tomllib.loads(lock.read_text()), compiler)
             shutil.copy2(lock, evidence / f"{policy}-alire.lock")
             for tool, identity in [("gnat", f"GNAT {banner}"), ("gprbuild", "26.0.0")]:
-                if identity.encode() not in checked(["alr", "-n", "exec", "--", tool, "--version"],
+                if identity.encode() not in checked(alr + ["exec", "--", tool, "--version"],
                                                     consumer, evidence / f"{policy}-{tool}.log"):
                     raise RuntimeError("wrong tool identity")
             output = checked([str(consumer / "bin" / source.stem), str(golden)],

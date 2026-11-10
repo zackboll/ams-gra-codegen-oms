@@ -214,13 +214,13 @@
     "scripts/check-task090r.py": "ad55efe1afc3a14627e67c182c2d209960dbe028759341b8e8111270ca17b30b",
     "scripts/check-task091.py": "0a3cf3807efdd95ebaed13a6e7c46ab91b24a1746e8035f5e604f3cb172dd84b",
     "scripts/check-task091r.py": "7ec0ad60b022f62c0de0cb6f57002615da4c8442c4f091c4f907f9cf3809eb2f",
-    "scripts/check-task092-real.py": "cd5d1e44fab3763a33b93fce9951834c82651bed0496dc1b9e73b22857ddbdef",
+    "scripts/check-task092-real.py": "111cb0ff0238d5e1d4b81e0544777021233ec93fed0d0c408ea2202911dfb339",
     "scripts/check-task092.py": "a41aa6e83df6c07d56792507348bc0d4f95af972f2b782c0ee90af52e62d9cc2",
     "scripts/check-task093-combined.py": "ed76b5242d7817e03cbf0b5b2a198a0564ca724a83b6cb3ed0c843dcc7fec675",
     "scripts/check-task093-helper-demand.py": "bf5639eec33e9e2a28c9e3dbcb252c32fdd05ba8df39dfafe76daf8b937e55ea",
     "scripts/check-task093-log.py": "f50fbdda553e3a8ffb8d5aa916978c7802b716202e9e5aa58f0c14a1d066df30",
     "scripts/check-task093-mixed.py": "5f63a9e9d32aeac116b42da7d4400c6865aef3fb7186b1b5f0a5bdba72c9bd06",
-    "scripts/check-task093-real.py": "39d592cd893189b04260859052372d7ba330a09d32181982bdb8c53d84645f34",
+    "scripts/check-task093-real.py": "d5ab3c1e47180c06d97fb4b2a30f9e715e90a591ee50c6a14af45ce747e98558",
     "scripts/check-task093.py": "4f2607cba92eb02119e98a11b2adffa4602a625d43cff4c606f1fd295339505f",
     "scripts/check-task094.py": "13a576ca61caa2adee5f826f2208527664c13e4b2b716a477d34aa21e3c0d978",
     "scripts/test-task087a-wrapper.py": "3830f7c89d7886e8d3d38ad52aee16af7bad4be991b2ae03b6e6e141f54c5b60",
@@ -461,7 +461,8 @@
     "scripts/perf009_provider.py": "de070252e7a596382fe3dc4727f44ec3d97dad40034a550b5bd4c5e96ab381bb",
     "scripts/perf009_portable.py": "ab7cf8847c9349cdbd26fdf1d3b6d7b1dc8b1af4d7afa206bdd0b986da4d3984",
     "scripts/perf009_evidence.py": "7cbd3df9541aa8eaa358080a0dada6e182b575d1440088cda6e0e48ce03f8178",
-    "scripts/perf009_equivalence.py": "5e2a3b0f68e3185be82946195c96835e1f94e73a6ba32c7dd80390847127446f"
+    "scripts/perf009_equivalence.py": "5e2a3b0f68e3185be82946195c96835e1f94e73a6ba32c7dd80390847127446f",
+    "scripts/task_alire.py": "6b25075fc47af790d3a70cb1ffd92e1a8c7a9cb5ecaf61f03ef2b1208c4cafbc"
   },
   "production_portable_reuse": {
     "authority_commit": "06f33bdda655b37f578a81bbca99ef7567407926",

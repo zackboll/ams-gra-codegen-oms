@@ -17,6 +17,23 @@ class DeepPack(unittest.TestCase):
     def tearDown(self):
         run.STOP.clear()
 
+    def test_production_rejects_missing_or_wrong_alire_before_preparation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            scratch = Path(temporary)
+            (scratch / 'platform.txt').write_text('test platform\n')
+            argv = ['run.py', '--pack', 'a', '--compiler', '16', '--workers', '4',
+                    '--expected-sha', 'test', '--scratch', str(scratch)]
+            for failure in (FileNotFoundError('alr'), None):
+                with self.subTest(failure=failure), \
+                        patch.object(run.sys, 'argv', argv), \
+                        patch.object(run, 'identity', return_value={}), \
+                        patch.object(run.subprocess, 'check_output', side_effect=failure,
+                                     return_value='alr 2.1.2\n'), \
+                        patch.object(run, 'prepare') as prepare:
+                    with self.assertRaises((FileNotFoundError, RuntimeError)):
+                        run.main()
+                    prepare.assert_not_called()
+
     def test_four_runner_allocations_and_exact_original_campaigns(self):
         self.assertEqual([len(run.INVENTORY['packs'][p]) for p in ('a', 'b')], [4, 3])
         self.assertEqual(sorted(s['task'] for s in run.INVENTORY['suites'].values()), list(range(100, 107)))
@@ -112,10 +129,15 @@ class DeepPack(unittest.TestCase):
                         new = "grep -qE '^test result: ok\\. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in [0-9.]+s$' <<<\"$output\""
                         self.assertEqual(body.count(old), 1)
                         body = body.replace(old, new)
+                    if name == 'real-uci-regressions':
+                        old = '          cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles\n'
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, old + '          cargo build --locked --release -p ams-gra-codegen-oms --example python_unicode_profiles\n')
                     self.assertEqual(current[name], body)
 
     def test_transport_helper_is_source_bound(self):
-        self.assertEqual(set(run.INVENTORY['infrastructure_sha256']), {'scripts/pinned_download.py'})
+        self.assertEqual(set(run.INVENTORY['infrastructure_sha256']),
+                         {'scripts/pinned_download.py', 'scripts/task_alire.py'})
         for path, digest in run.INVENTORY['infrastructure_sha256'].items():
             self.assertEqual(run.sha(run.ROOT / path), digest)
 
@@ -346,6 +368,14 @@ class WorkerGitTrust(unittest.TestCase):
             run.worker_git_env(self.worker_env, self.source)
 
     def test_original_identity_commands_in_actual_worker_environment_all_cells(self):
+        with patch.object(run.shutil, 'which', return_value='/verified/alr'):
+            self.identity_commands_all_cells('/verified/alr')
+
+    def test_original_identity_commands_without_alire_all_cells(self):
+        with patch.object(run.shutil, 'which', return_value=None):
+            self.identity_commands_all_cells(None)
+
+    def identity_commands_all_cells(self, alr):
         real_execute = run.execute
         for pack in ('a', 'b'):
             for compiler in ('14', '16'):
@@ -356,6 +386,9 @@ class WorkerGitTrust(unittest.TestCase):
                         seen = []
 
                         def execute(command, env, cwd, stem, timeout, cpu):
+                            self.assertTrue(all(isinstance(value, str) for value in env.values()))
+                            self.assertEqual(env.get('ADA_DEEP_REAL_ALR'), alr)
+                            self.assertEqual('ADA_DEEP_REAL_ALR' in env, alr is not None)
                             if 'integration-identity.json' in command[-1]:
                                 seen.append(env)
                                 self.assertEqual(self.git('status', '--porcelain', env=env).returncode, 0)
@@ -366,7 +399,8 @@ class WorkerGitTrust(unittest.TestCase):
                             return dict(command=command, exit=0, reason=None)
 
                         env = dict(self.worker_env, GITHUB_SHA=self.source['sha'],
-                                   GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1')
+                                   GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1',
+                                   ADA_DEEP_REAL_ALR='/stale/inherited/alr')
                         with patch.dict(os.environ, env, clear=True), \
                                 patch.object(run, 'execute', side_effect=execute), \
                                 patch.object(run, 'verify_suite', return_value={'test_only': True}), \
@@ -390,6 +424,7 @@ class WorkerGitTrust(unittest.TestCase):
         directory = self.root / 'failed-worker'
         directory.mkdir()
         with patch.dict(os.environ, self.worker_env, clear=True), \
+                patch.object(run.shutil, 'which', return_value=None), \
                 patch.object(run, 'execute') as execute, patch('builtins.print'):
             result = run.worker(run.INVENTORY['packs']['a'][0], directory, self.root / 'shared',
                                 '14', dict(self.source, sha='0' * 40), 0)
