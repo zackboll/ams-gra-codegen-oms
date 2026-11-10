@@ -136,9 +136,9 @@ def execute(checkout, consumer, schema, release, directory):
             # Malformed hex never reaches this subscriber with corrected Sleet:
             # recovery + six authored publications + unsubscribe witness.
             assert len(received) == 8 and all(set(doc) == {'Log'} for doc in received)
-            assert [doc['Log'] for doc in received[:3]] == [doc for _, doc in cases.decoder_invalid(release)]
-            assert received[3]['Log'] == positives[0][1]
-            assert [doc['Log'] for doc in received[4:10]] == [expected for _, _, expected in positives]
+            assert received[0]['Log'] == positives[0][1]
+            assert [doc['Log'] for doc in received[1:7]] == [expected for _, _, expected in positives]
+            assert received[7]['Log'] == positives[0][1]
             # Publish lexical variants independently, without canonicalizing via
             # the Ada encoder first. Observe broker admission and wire spelling.
             with connect(url, subprotocols=['owp']) as lexical:
