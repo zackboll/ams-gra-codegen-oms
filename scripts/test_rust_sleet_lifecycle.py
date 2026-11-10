@@ -19,7 +19,9 @@ class RustSleetLifecycle(unittest.TestCase):
         before = subprocess.check_output(['git', 'show',
             '01694bae47c3277e7482aed96255e2f1d6c3d059:' + path], cwd=ROOT, text=True)
         after = (ROOT / path).read_text()
-        # Every original command remains in order: only setup/controls added.
+        # Every original command remains in order; timing wrappers are transparent.
+        after = re.sub(r'qualification_stage "[^"\n]+" ', '', after)
+        after = after.replace('qualification_stage py005 ', '')
         index = 0
         for line in before.splitlines():
             if not line.strip():

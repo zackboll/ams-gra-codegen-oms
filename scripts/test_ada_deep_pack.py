@@ -133,6 +133,27 @@ class DeepPack(unittest.TestCase):
                         old = '          cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles\n'
                         self.assertEqual(body.count(old), 1)
                         body = body.replace(old, old + '          cargo build --locked --release -p ams-gra-codegen-oms --example python_unicode_profiles\n')
+                    if name == 'msrv-real-uci':
+                        # CI-MAIN-REPAIR-007: optimize production build-script
+                        # computation and expose live timing, not test semantics.
+                        body = ("    env:\n"
+                                "      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n") + body
+                        old = '          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets\n'
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, '          source scripts/qualification-timing.sh\n' +
+                                            old.replace('check --locked', 'check -vv --locked'))
+                    if name == 'real-sleet':
+                        # Keep admission stable from the FIRST codec command.
+                        old = "          echo 'AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1' >> \"$GITHUB_ENV\"\n"
+                        self.assertEqual(body.count(old), 1)
+                        additions = ''.join(
+                            f"          echo 'AMS_GRA_REQUIRE_REAL_UCI_{family}=1' >> \"$GITHUB_ENV\"\n"
+                            for family in ('SURVIVABILITY', 'DLZ', 'FILE_METADATA', 'ORDERS_METADATA'))
+                        body = body.replace(old, old + additions)
+                        old = ('      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n'
+                               '        run: |\n          set -euo pipefail\n')
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, old + '          source scripts/qualification-timing.sh\n')
                     self.assertEqual(current[name], body)
 
     def test_transport_helper_is_source_bound(self):
