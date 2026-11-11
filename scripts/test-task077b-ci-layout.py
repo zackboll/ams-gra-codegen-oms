@@ -84,26 +84,58 @@ class MutationOwnership(unittest.TestCase):
         self.assertEqual(positives, 2)
         self.assertEqual(negatives, 94)
 
+    def test_optimization_environment_is_owner_scoped(self):
+        original = (ROOT / '.github/workflows/deep-ci.yml').read_text()
+        expected = "    env:\n      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n"
+        self.assertEqual(layout.OPTIMIZATION_JOBS, ('real-sleet', 'msrv-real-uci'))
+        self.assertEqual(layout.OPTIMIZATION_ENV, expected)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / 'deep.yml'
+            path.write_text(original)
+            self.assertEqual(layout.check(path), [])
+            for job in layout.SOURCE_JOBS:
+                with self.subTest(job=job):
+                    match = re.search(r'^  ' + re.escape(job) + r':\n.*?(?=^  [\w-]+:|\Z)',
+                                      original, re.M | re.S)
+                    body = match[0]
+                    if job in ('real-sleet', 'msrv-real-uci'):
+                        header = body.split('    steps:\n', 1)[0]
+                        environments = re.findall(r'^    env:\n.*?(?=^    \S|\Z)',
+                                                  header, re.M | re.S)
+                        self.assertEqual(len(environments), 1)
+                        changed = body.replace(environments[0], expected, 1)
+                    else:
+                        changed = body.replace('    runs-on:', expected + '    runs-on:', 1)
+                        self.assertNotEqual(changed, body)
+                    path.write_text(original[:match.start()] + changed + original[match.end():])
+                    if job in ('real-sleet', 'msrv-real-uci'):
+                        self.assertEqual(layout.check(path), [])
+                    else:
+                        self.assertIn('Task077B mandatory source identity: ' + job,
+                                      layout.check(path))
+
     def test_job_environment_mutation_preserves_steps(self):
         original = (ROOT / '.github/workflows/deep-ci.yml').read_text()
-        body = re.search(r'^  real-sleet:\n.*?(?=^  [\w-]+:|\Z)',
-                         original, re.M | re.S)[0]
-        header, steps = body.split('    steps:\n', 1)
-        self.assertIn('        env:\n', steps)
-        self.assertEqual(len(re.findall(r'^    env:\n', header, re.M)), 1)
-        for spelling in ('{} :', '{}   :', "'{}':", '"{}":', "'{}' :", '"{}"   :'):
-            with self.subTest(spelling=spelling):
-                changed = layout.mutate_job_environment(body, spelling)
-                changed_header, changed_steps = changed.split('    steps:\n', 1)
-                self.assertEqual(changed_steps, steps)
-                self.assertEqual(changed_header, header.replace(
-                    '\n    env:\n', '\n    ' + spelling.format('env')
-                    + '\n      GITHUB_SHA: main\n', 1))
-        for invalid_header in (header.replace('    env:\n', '    other:\n'),
-                               header + '    env:\n      EXTRA: value\n',
-                               header.replace('    env:\n', '     env:\n')):
-            with self.assertRaisesRegex(AssertionError, 'job environment'):
-                layout.mutate_job_environment(invalid_header + '    steps:\n' + steps, '{} :')
+        for job in ('real-sleet', 'msrv-real-uci'):
+            body = re.search(r'^  ' + re.escape(job) + r':\n.*?(?=^  [\w-]+:|\Z)',
+                             original, re.M | re.S)[0]
+            header, steps = body.split('    steps:\n', 1)
+            if job == 'real-sleet':
+                self.assertIn('        env:\n', steps)
+            self.assertEqual(len(re.findall(r'^    env:\n', header, re.M)), 1)
+            for spelling in ('{} :', '{}   :', "'{}':", '"{}":', "'{}' :", '"{}"   :'):
+                with self.subTest(job=job, spelling=spelling):
+                    changed = layout.mutate_job_environment(body, spelling)
+                    changed_header, changed_steps = changed.split('    steps:\n', 1)
+                    self.assertEqual(changed_steps, steps)
+                    self.assertEqual(changed_header, header.replace(
+                        '\n    env:\n', '\n    ' + spelling.format('env')
+                        + '\n      GITHUB_SHA: main\n', 1))
+            for invalid_header in (header.replace('    env:\n', '    other:\n'),
+                                   header + '    env:\n      EXTRA: value\n',
+                                   header.replace('    env:\n', '     env:\n')):
+                with self.subTest(job=job), self.assertRaisesRegex(AssertionError, 'job environment'):
+                    layout.mutate_job_environment(invalid_header + '    steps:\n' + steps, '{} :')
 
     def test_protected_block_key_spellings(self):
         for key in ('if', 'continue-on-error', 'env', 'defaults', 'needs'):
@@ -206,11 +238,12 @@ class MutationOwnership(unittest.TestCase):
                     layout.self_test(str(path))
                 # Every primary shard now receives the same source/setup
                 # mutations as each independent regression runner.
-                # 373 inherited negatives + 876 equivalent-key negatives;
+                # 373 inherited negatives + 876 equivalent-key negatives
+                # + nine MSRV optimization-environment negatives;
                 # the original and five semantics-preserving controls.
-                self.assertEqual(len(observed), 1255)
+                self.assertEqual(len(observed), 1264)
                 self.assertEqual(outcomes.count(0), 6)
-                self.assertEqual(sum(code != 0 for code in outcomes), 1249)
+                self.assertEqual(sum(code != 0 for code in outcomes), 1258)
                 self.assertEqual(observed.count(text), 1)  # Healthy case only.
 
     def test_source_gate_executes_fail_closed(self):
