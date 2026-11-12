@@ -109,7 +109,7 @@ fn captured_texts(path: &std::path::Path) -> Vec<String> {
 }
 
 pub fn tls_failure_worker_probe(url: &str) {
-    let before = workers();
+    let before = application_workers(std::process::id());
     let error = SleetRuntime::connect(
         RuntimeConfig::new(url, TOPIC, VERSION)
             .with_connect_timeout(Duration::from_secs(2))
@@ -119,7 +119,7 @@ pub fn tls_failure_worker_probe(url: &str) {
     .err()
     .expect("TLS must fail");
     assert_eq!(
-        workers(),
+        application_workers(std::process::id()),
         before,
         "failed connect must join before returning"
     );

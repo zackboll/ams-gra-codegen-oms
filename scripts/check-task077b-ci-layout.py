@@ -77,7 +77,8 @@ GATES = [(name, next((job for job, tasks in PRIMARY_SHARDS.items()
           if owner == 'real-uci' else owner, digest) for name, owner, digest in GATES]
 SOURCE_JOBS = QUALIFICATION_JOBS + ('msrv-real-uci', 'real-sleet',
                                   'ada-repeated-choice-real-uci', 'ada-hexbinary-real')
-SLEET_ENV = "    env:\n      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n"
+OPTIMIZATION_JOBS = ('real-sleet', 'msrv-real-uci')
+OPTIMIZATION_ENV = "    env:\n      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n"
 CHECKOUT = '''uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}'''
@@ -152,11 +153,11 @@ def check(path):
                 sum(run_command(step + '\n') == SOURCE_COMMAND for step in steps) == 1,
                 'source identity gate before qualification: ' + job)
         header = body.split('    steps:', 1)[0]
-        if job == 'real-sleet':
+        if job in OPTIMIZATION_JOBS:
             environments = re.findall(r'^    env:\n.*?(?=^    \S|\Z)', header, re.M | re.S)
-            require([block.rstrip() + '\n' for block in environments] == [SLEET_ENV],
+            require([block.rstrip() + '\n' for block in environments] == [OPTIMIZATION_ENV],
                     'mandatory source identity: ' + job)
-            header = header.replace(SLEET_ENV, '', 1)
+            header = header.replace(OPTIMIZATION_ENV, '', 1)
         require(not has_key(header, 'if', 'continue-on-error', 'env', 'defaults'),
                 'mandatory source identity: ' + job)
         require(not has_key(header, 'needs'), 'independent job: ' + job)
@@ -371,7 +372,7 @@ def self_test(path):
                                ('env', '\n      GITHUB_SHA: main'),
                                ('defaults', '\n      run:\n        working-directory: /tmp')):
                 field = spelling.format(key) + value
-                if job == 'real-sleet' and key == 'env':
+                if job in OPTIMIZATION_JOBS and key == 'env':
                     changed = job_mutation(job, lambda b: mutate_job_environment(b, spelling))
                 else:
                     changed = job_mutation(job, lambda b: replace_once(
@@ -409,22 +410,23 @@ def self_test(path):
                 'enabled hard gate: real-sleet')
     # Exercise the exact job-local optimization allowlist, not a general env
     # exemption. Comments are immaterial to the validator's block grammar.
-    sleet_env = ('    env:\n'
-                 '      # build.rs invokes production generation repeatedly on authentic UCI.\n'
-                 "      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n")
-    for label, replacement in (
-            ('missing', ''),
-            ('wrong value', SLEET_ENV.replace("'3'", "'0'")),
-            ('wrong key', SLEET_ENV.replace('CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL', 'PYTHONOPTIMIZE')),
-            ('extra optimization', SLEET_ENV + "      PYTHONOPTIMIZE: '1'\n"),
-            ('source override', SLEET_ENV + "      GITHUB_SHA: main\n"),
-            ('separated source override', SLEET_ENV + "\n      GITHUB_SHA: main\n"),
-            ('duplicate', SLEET_ENV + SLEET_ENV),
-            ('flow mapping', "    env: {CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'}\n"),
-            ('expression', SLEET_ENV.replace("'3'", '${{ vars.OPT_LEVEL }}'))):
-        add('real-sleet environment ' + label, job_mutation('real-sleet',
-            lambda b: replace_once(b, sleet_env, replacement)),
-            'mandatory source identity: real-sleet')
+    for job in OPTIMIZATION_JOBS:
+        header = job_match(job)[0].split('    steps:\n', 1)[0]
+        environments = re.findall(r'^    env:\n.*?(?=^    \S|\Z)', header, re.M | re.S)
+        assert len(environments) == 1, job
+        for label, replacement in (
+                ('missing', ''),
+                ('wrong value', OPTIMIZATION_ENV.replace("'3'", "'0'")),
+                ('wrong key', OPTIMIZATION_ENV.replace('CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL', 'PYTHONOPTIMIZE')),
+                ('extra optimization', OPTIMIZATION_ENV + "      PYTHONOPTIMIZE: '1'\n"),
+                ('source override', OPTIMIZATION_ENV + "      GITHUB_SHA: main\n"),
+                ('separated source override', OPTIMIZATION_ENV + "\n      GITHUB_SHA: main\n"),
+                ('duplicate', OPTIMIZATION_ENV + OPTIMIZATION_ENV),
+                ('flow mapping', "    env: {CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'}\n"),
+                ('expression', OPTIMIZATION_ENV.replace("'3'", '${{ vars.OPT_LEVEL }}'))):
+            add(job + ' environment ' + label, job_mutation(job,
+                lambda b: replace_once(b, environments[0], replacement)),
+                'mandatory source identity: ' + job)
     for release in ('2.5', '2.6'):
         line = command_line('real-sleet', f'scripts/fetch-pinned-uci-{release}.sh "$')
         for label, replacement in (('missing', ''), ('duplicate', line + line)):

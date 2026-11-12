@@ -596,6 +596,7 @@ jobs:
           # defaults and fixtures remain immutable, including their NOT READY oracle.
           python3 scripts/test-py009-uci.py
           cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles
+          cargo build --locked --release -p ams-gra-codegen-oms --example python_unicode_profiles
           python3 scripts/test-py010-uci.py
           python3 scripts/test-py016-uci.py
           python3 scripts/test-py017-uci.py
@@ -904,6 +905,8 @@ jobs:
   # PositionReport and SubsystemStream codecs (build.rs generates them only
   # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.
   msrv-real-uci:
+    env:
+      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'
     concurrency:
       group: ${{ 'oms-main-slot-6' }}
       queue: max
@@ -938,7 +941,8 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
-          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
+          source scripts/qualification-timing.sh
+          cargo +1.95.0 check -vv --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
 
   # Tasks 049-053: the generated facade and codecs against the UNMODIFIED
   # Sleet server at the exact pinned revision (built by the script from a fresh
@@ -1014,9 +1018,14 @@ jobs:
           echo 'AMS_GRA_REQUIRE_REAL_UCI_LOG=1' >> "$GITHUB_ENV"
           echo 'AMS_GRA_REQUIRE_REAL_UCI_RDMA=1' >> "$GITHUB_ENV"
           echo 'AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1' >> "$GITHUB_ENV"
+          echo 'AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY=1' >> "$GITHUB_ENV"
+          echo 'AMS_GRA_REQUIRE_REAL_UCI_DLZ=1' >> "$GITHUB_ENV"
+          echo 'AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1' >> "$GITHUB_ENV"
+          echo 'AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1' >> "$GITHUB_ENV"
       - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)
         run: |
           set -euo pipefail
+          source scripts/qualification-timing.sh
           # Task 050: the REAL UCI 2.5 PositionReport codec.
           output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \
             --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)"

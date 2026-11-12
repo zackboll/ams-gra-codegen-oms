@@ -38,6 +38,10 @@ const FLAGS: [&str; 4] = [
 const WAIT: Duration = Duration::from_secs(10);
 const QUIET: Duration = Duration::from_millis(200);
 
+#[path = "support/task_workers.rs"]
+mod task_workers;
+use task_workers::application_workers;
+
 // Reuse existing isolated broker configuration, external CalClient and Linux
 // socket/worker witnesses. This imports source helpers, never the facade crate.
 #[allow(dead_code)]
@@ -669,6 +673,7 @@ fn standalone_file_metadata_boundaries() {
 #[ignore = "requires unmodified pinned Sleet"]
 fn standalone_file_metadata() {
     support::file_metadata_acceptance();
+    support::repeated_runtime_joins();
 }
 
 // A fresh process gets isolated native trust without mutating the test runner's

@@ -325,7 +325,7 @@
     "qualification/ada/uci/ci004-dlz-codec/service.yaml": "9f28a7edfd096a770f5e11848d01bb2afd500383b175cb2cc840ccf91dcbb4b5",
     "qualification/ada/uci/ci004-dlz-codec/time_consumer.adb": "7fbe6955caf3b92910faafde7a969fe43d6af10b18fa1c765deddcb8a9c55c65",
     "scripts/check-task087a.py": "b1b531319589f6ee08b8e06c3d911c535b4e163b2073bdcef2e37b0cba3c2542",
-    "scripts/check-task092-real.py": "cd5d1e44fab3763a33b93fce9951834c82651bed0496dc1b9e73b22857ddbdef",
+    "scripts/check-task092-real.py": "111cb0ff0238d5e1d4b81e0544777021233ec93fed0d0c408ea2202911dfb339",
     "scripts/fetch-pinned-uci-2.5.sh": "639b5bbcef1f97fdb9e69ba0f06923d87357ce8ffd92618003302002e05f604c",
     "scripts/fetch-pinned-uci-2.6.sh": "b91e860b27a65f2b6fb8b5d6a8079caed4a91ff4b5b5257433e08fcffdad9e9f",
     "scripts/owned_ada_evidence.py": "90999e8f254e22d1db7ef99314d536bdab36afb2638e5814cdd960eb6f75dcc2",
@@ -607,6 +607,7 @@
   },
   "source_reconciliation": "scripts/ada_deep_pack/source-reconciliation.json",
   "infrastructure_sha256": {
-    "scripts/pinned_download.py": "6dd3ade12913fac9b9dab790c9a896983cf7f2aaa2194ee963548afad52d6d22"
+    "scripts/pinned_download.py": "6dd3ade12913fac9b9dab790c9a896983cf7f2aaa2194ee963548afad52d6d22",
+    "scripts/task_alire.py": "66974c835d140ea67d8828535e0073d55792f1340cb1f4eb97067b9afdc4a128"
   }
 }
