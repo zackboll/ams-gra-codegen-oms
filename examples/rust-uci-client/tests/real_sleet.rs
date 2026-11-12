@@ -673,6 +673,11 @@ fn standalone_file_metadata_boundaries() {
 #[ignore = "requires unmodified pinned Sleet"]
 fn standalone_file_metadata() {
     support::file_metadata_acceptance();
+}
+
+#[test]
+#[ignore = "requires unmodified pinned Sleet"]
+fn standalone_runtime_joins() {
     support::repeated_runtime_joins();
 }
 

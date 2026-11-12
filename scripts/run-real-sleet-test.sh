@@ -151,7 +151,7 @@ if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ "${AMS_GRA_RUST_DLZ_ONLY
     grep -Fqx "RUST-OMS-007 002.${release#2.}.0 standalone four-message typed/external/OWP/error/unsubscribe/process cleanup: PASSED" <<<"$output"
     grep -Fqx "RUST-OMS-008 002.${release#2.}.0 bounded reconnection and terminal controls: PASSED" <<<"$output"
     grep -Fqx "RUST-OMS-009 002.${release#2.}.0 verified WSS interoperability, TLS negatives, recovery and cleanup: PASSED" <<<"$output"
-    grep -qE '^test result: ok\. 6 passed; 0 failed; 0 ignored;' <<<"$output"
+    grep -qE '^test result: ok\. 7 passed; 0 failed; 0 ignored;' <<<"$output"
   done
 fi
 if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then

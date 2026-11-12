@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Adversarial controls for the actual OrdersMetadata real-Sleet runner path."""
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -39,7 +40,8 @@ class OrdersRunner(unittest.TestCase):
         self.assertNotIn("ams-gra-oms-runtime-rust-facade-tests",
                          {package["name"] for package in consumer["package"]})
 
-    def execute(self, output=None, missing=(), status=0):
+    def execute(self, output=None, missing=(), status=0, revision=REV, tree=TREE,
+                dirty="", artifact=True):
         with tempfile.TemporaryDirectory(prefix="orders-runner-control-") as scratch:
             directory = Path(scratch)
             tools = directory / "bin"
@@ -48,8 +50,9 @@ class OrdersRunner(unittest.TestCase):
             scripts = {
                 "git": f'''#!/bin/bash
 case "$*" in
-  *"rev-parse HEAD") echo {REV};;
-  *"rev-parse HEAD^{{tree}}") echo {TREE};;
+  *"rev-parse HEAD") echo {revision};;
+  *"rev-parse HEAD^{{tree}}") echo {tree};;
+  *"status --porcelain") printf '%s' '{dirty}';;
 esac
 ''',
                 "rustfmt": "#!/bin/bash\nexit 0\n",
@@ -70,7 +73,8 @@ fi
             # The real runner fingerprints the built broker; provide the
             # controlled build artifact instead of weakening that check.
             (directory / "target/release").mkdir(parents=True)
-            (directory / "target/release/sleet").write_bytes(b"controlled broker")
+            if artifact:
+                (directory / "target/release/sleet").write_bytes(b"controlled broker")
             environment = {key: value for key, value in os.environ.items()
                            if not key.startswith("AMS_GRA_")}
             environment.update(PATH=f"{tools}:{os.environ['PATH']}",
@@ -97,7 +101,23 @@ fi
         self.assertIn("rustc --version", calls)
         self.assertIn("rustc controlled version", result.stdout)
         self.assertIn("clean=true binary=", result.stdout)
+        self.assertIn(hashlib.sha256(b"controlled broker").hexdigest(), result.stdout)
+        self.assertIn("build -vv --release --locked -p sleet", calls)
         self.assertIn(f"RUST-OMS-012 real pinned Sleet ({REV}): PASSED", result.stdout)
+
+    def test_wrong_source_identity_fails_before_build(self):
+        for identity in [dict(revision="0" * 40), dict(tree="0" * 40),
+                         dict(dirty=" M sleet/src/main.rs"), dict(dirty="?? injected.rs")]:
+            with self.subTest(identity=identity):
+                result, calls = self.execute(**identity)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(calls, "")
+
+    def test_missing_broker_artifact_fails_before_tests(self):
+        result, calls = self.execute(artifact=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("build -vv --release --locked -p sleet", calls)
+        self.assertNotIn(" test ", calls)
 
     def test_missing_roots_fail_before_build(self):
         for missing in [("5",), ("6",), ("5", "6")]:

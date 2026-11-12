@@ -466,14 +466,17 @@ class Execution(unittest.TestCase):
                 self.assertIn("tests/fixtures/service-generate/codec-structured-ascii.xsd", joined)
                 self.assertIn("tests/cpp-codec/structured_ascii_consumer.cpp", joined)
                 # Offline: the C++ smoke never fetches or reads authentic UCI
-                # schemas and never starts Sleet.
+                # schemas and never starts Sleet. Inspect repository-relative
+                # paths: a checkout directory named "sleet" (or "amti") is not
+                # an invocation of that campaign.
+                relative_commands = joined.replace(str(smoke.ROOT) + os.sep, "")
                 for forbidden in ("fetch-pinned-uci", "UCI_MessageDefinitions", "check-cpp-oms-002-real-log",
                                   "check-cpp-oms-003", "check-cpp-oms-004", "real_log_sleet",
                                   "real_position_report", "position_report", "sleet", "Sleet",
                                   "check-cpp-oms-005", "amti", "AMTI", "bounded_ascii_mutations",
                                   "check-cpp-oms-006", "structured_ascii_mutations", "structured_ascii_rows",
                                   "FileMetadata", "file_metadata"):
-                    self.assertNotIn(forbidden, joined)
+                    self.assertNotIn(forbidden, relative_commands)
                 self.assertNotIn("-fsanitize", joined)
                 self.assertNotIn("clang", joined)
                 self.assertNotIn("gnat", joined)
