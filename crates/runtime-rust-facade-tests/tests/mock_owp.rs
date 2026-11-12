@@ -20,7 +20,7 @@ use std::time::Duration;
 fn connect(peer: &MockPeer, schema: &str) -> SleetRuntime<TestCodec> {
     let runtime = SleetRuntime::connect(RuntimeConfig::new(&peer.url, "svc-1", schema), TestCodec)
         .expect("connect");
-    assert_eq!(peer.offered_protocol().as_deref(), Some("owp"));
+    assert_eq!(peer.offered_protocol().as_deref(), Some("owp, OWP"));
     let init = peer.next_text();
     let body: Value =
         serde_json::from_str(init.strip_prefix("INIT ").expect("INIT frame")).expect("INIT JSON");

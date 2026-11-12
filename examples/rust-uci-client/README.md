@@ -90,16 +90,18 @@ FileMetadataID, checked FileName, CreationSource, Timestamp, optional-hash prese
 and owning session epoch, not the full metadata body. This application never reads,
 transfers or hashes the described file.
 
-**Pinned-Sleet optional-hash limitation:** an authentic `SHA_2_Hash` is 32 octets,
-represented by 64 hex characters. The generated model correctly accepts it;
-pinned Sleet incorrectly counts hex characters for its length facet and rejects
-that publication. Do not truncate the value or weaken the carrier. **Hash-free
-FileMetadata is the qualified positive interoperability path.** Local codec
+**Candidate Sleet qualification:** an authentic `SHA_2_Hash` is 32 octets,
+represented by 64 hex characters. The reviewed GitLab candidate accepts the
+complete value; 16-, 31-, and 33-octet hashes and malformed hex must be rejected
+before delivery. Do not truncate the value or weaken the carrier. Local codec
 acceptance (`VALIDATED`) and transport write (`PUBLISHED ... frame written`) are
-not broker acceptance or delivery acknowledgements. The asynchronous `ServerError`
-is retained, reported and terminal; rejected values produce no typed callback.
-Non-verbose OWP cannot attribute an error to a particular operation. Only an
-independent actual OWP `MSG` witness establishes observed delivery.
+not broker acceptance or delivery acknowledgements. Only an independent actual
+OWP `MSG` witness establishes observed delivery. Asynchronous `ServerError`
+remains distinct, reported and terminal; non-verbose OWP cannot attribute it to
+a particular operation. The full five-message recovery qualification remains
+blocked by the candidate's rejection of valid DLZ `24:00:00.000Z` traffic.
+See [dependency qualification](../../docs/sleet-gitlab-hex-length.md) for the
+upstream-acceptance and canonical-pin merge gates.
 
 Recovery uses the existing single process-wide attempt budget and unchanged
 execution deadline. All five subscriptions must be restored before the deadline
@@ -182,8 +184,8 @@ directory, adjust `CLIENT_BIN` accordingly.
 ## Start unmodified pinned Sleet
 
 ```bash
-git clone https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet "$CLIENT_SCRATCH/sleet"
-git -C "$CLIENT_SCRATCH/sleet" checkout --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b
+git clone https://gitlab.com/zackboll/sleet.git "$CLIENT_SCRATCH/sleet"
+git -C "$CLIENT_SCRATCH/sleet" checkout --detach 94796daf55ebd1134dce0925e6a204a05ad3423b
 test -z "$(git -C "$CLIENT_SCRATCH/sleet" status --porcelain)"
 (cd "$CLIENT_SCRATCH/sleet" && cargo +1.95.0 build --release --locked -p sleet)
 
@@ -351,11 +353,14 @@ including fifth-subscription registration failure, explicitly clean up earlier
 handles and close/join the runtime, preserving setup and cleanup errors.
 
 Malformed Survivability, invalid DLZ Time and mismatched header versions fail
-before INIT. Pinned Sleet admits `not-a-timeZ` in DLZ TimeOfIntercept; admission
-is not successful decoding. The generated decoder rejects it with a contextual
-`SubscriptionDecodeError` carrying the original DLZ SID, global message identity
-and TimeOfIntercept path. The application fails fast, removes all handlers and
-closes; it does not deliver an invalid typed value. DLZ output reports checked
+before INIT. The selected GitLab Sleet candidate rejects `not-a-timeZ` in DLZ
+TimeOfIntercept before routing: no malformed MSG, typed delivery or fabricated
+`SubscriptionDecodeError` is expected. The qualification requires valid traffic
+on the original session afterward, no reconnect, and normal cleanup. Independent
+codec/mock-OWP tests retain contextual decoder rejection coverage. The full
+standalone campaign currently stops earlier at the candidate's rejection of
+valid midnight Time; later temporal recovery assertions are not claimed passed.
+DLZ output reports checked
 lexical Time and representative numeric bits, not operational calculations.
 
 **Non-verbose OWP caveat:** successful operations mean frames were written, not
@@ -375,7 +380,7 @@ application-owned session recovery; there is no separate TLS connection loop.
 
 The production runtime enables `tokio-tungstenite` 0.29's
 `rustls-tls-native-roots` feature by normal Cargo feature unification with the
-unchanged `sleet-client` revision `e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b`.
+selected `sleet-client` revision `94796daf55ebd1134dce0925e6a204a05ad3423b`.
 An explicit rustls `ring` provider feature is necessary: tokio-tungstenite does
 not select a provider itself. There is no application TLS implementation,
 certificate parser, custom connector or permissive verifier. The CLI's direct

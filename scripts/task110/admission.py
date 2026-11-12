@@ -13,8 +13,8 @@ import xml.etree.ElementTree as ET
 from websockets.sync.client import connect
 
 ROOT = Path(__file__).resolve().parents[2]
-REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 SERVICE = 'task110-multimessage'
 PINS = {
     'UCI_MessageDefinitions_v2_6_0.xsd': 'af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b',

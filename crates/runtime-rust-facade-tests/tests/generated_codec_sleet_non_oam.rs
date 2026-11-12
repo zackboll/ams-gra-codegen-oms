@@ -1,7 +1,7 @@
 //! Task 051 COMPATIBILITY PROBE (not a conformance gate): the qualified
 //! NON-OAM `runtime-test.xsd` with its GENERATED codec against the
-//! UNMODIFIED pinned Sleet (open-arsenal/ams-gra-hello-world-sk-infra-sleet
-//! @ e38f61d8).
+//! UNMODIFIED pinned Sleet (GitLab reviewed Sleet candidate
+//! @ 94796daf).
 //!
 //! OMSC-SPC-013 Rev B section 6.1 requires Clark-notation names outside the
 //! OAM namespace: SUB `{urn:test}MessageA`, document

@@ -34,7 +34,9 @@ pub async fn serve(
             .get("Sec-WebSocket-Protocol")
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
-        let accepted = offered.as_deref() == Some("owp");
+        let accepted = offered
+            .as_deref()
+            .is_some_and(|tokens| tokens.split(',').any(|token| token.trim() == "owp"));
         let _ = protocol.send(offered);
         if !accepted {
             let rejection: ErrorResponse = http::Response::builder()

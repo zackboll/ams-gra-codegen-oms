@@ -19,8 +19,8 @@ from websockets.sync.client import connect
 sys.dont_write_bytecode = True
 import cases
 
-REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 
 
 def execute(checkout, consumer, schema, release, directory):
@@ -117,12 +117,21 @@ def execute(checkout, consumer, schema, release, directory):
                     '"TimeOfIntercept": 123456, "TimeOfIntercept": "12:34:56.5000Z"')
                 # Use this as the good recovery message, proving documented
                 # last-value-wins agreement through the actual Ada handler.
-                # Sleet validates the .+Z facet, not the complete xs:time
-                # lexical space. The actual Ada handler path must reject this
-                # broker-accepted document, then recover on the same SID.
+                # The selected broker rejects malformed xs:time before routing.
+                # No decoder event may be fabricated for an undelivered MSG.
                 invalid = copy.deepcopy(positives[0][1])
                 invalid['MessageData']['DLZ_Data']['TimeOfIntercept'] = 'not-a-timeZ'
-                exchange(client, 'broker-accepted-codec-invalid-time', 'PUB task098-dlz ' + json.dumps({'DLZ': invalid}), '+OK')
+                exchange(client, 'negative-observer-sub', 'SUB negative-wire DLZ task098-dlz', '+OK')
+                exchange(client, 'broker-rejected-invalid-time', 'PUB task098-dlz ' + json.dumps({'DLZ': invalid}),
+                         '-ERR Invalid-Message', 'TimeOfIntercept')
+                assert 'lexicalRepresentation' in transcript[-1]['response']
+                try:
+                    routed = client.recv(timeout=0.2)
+                except TimeoutError:
+                    transcript.append(dict(label='no-malformed-msg', detail='observer timeout'))
+                else:
+                    raise ValueError(f'malformed time routed: {routed}')
+                exchange(client, 'negative-observer-unsub', 'UNSUB negative-wire', '+OK')
                 exchange(client, 'duplicate-valid-last-recovery', 'PUB task098-dlz ' + duplicate, '+OK')
             child.wait(timeout=30)
             reader.join(timeout=5)
@@ -131,7 +140,10 @@ def execute(checkout, consumer, schema, release, directory):
             (directory / 'consumer.exit').write_text(str(child.returncode) + '\n')
             output = (directory / 'consumer.stdout').read_text()
             assert child.returncode == 0, output
-            assert 'TASK101_ADA_REAL_DLZ_COMPLETE handlers= 11 rejected= 1' in output
+            assert 'TASK101_ADA_REAL_DLZ_COMPLETE handlers= 11 rejected= 0' in output
+            assert 'TASK101_BROKER_REJECTION_RECOVERY_COMPLETE' in output
+            assert 'not-a-timeZ' not in output and 'DECODE_ERROR' not in output
+            assert output.count('TASK101_WIRE_RECEIVED ') == 12
             assert 'TASK101_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1' in output
             assert 'TASK101_CLEANUP_COMPLETE' in output
             published = [line.removeprefix('TASK101_PUBLISHED ') for line in output.splitlines() if line.startswith('TASK101_PUBLISHED ')]
@@ -171,10 +183,10 @@ def execute(checkout, consumer, schema, release, directory):
     assert 'route PUB message' in log and 'message_name=DLZ' in log
     assert 'shutdown complete' in log
     result = dict(completed=True, release=release, revision=REV, tree=TREE, handlers=11,
-                  witness_handlers=1, decode_rejected=1, published=10, broker_rejected=10,
+                  witness_handlers=1, decode_rejected=0, published=10, broker_rejected=11,
                   consumer_exit=0, server_exit=0, cleanup=True)
     (directory / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
-    print('TASK101_REAL_SLEET_CELL_COMPLETE', release, 'handlers=11 decode_rejected=1 witness=1', flush=True)
+    print('TASK101_REAL_SLEET_CELL_COMPLETE', release, 'handlers=11 decode_rejected=0 witness=1', flush=True)
 
 
 if __name__ == '__main__':

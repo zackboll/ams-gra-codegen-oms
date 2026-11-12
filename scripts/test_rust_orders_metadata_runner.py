@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Adversarial controls for the actual OrdersMetadata real-Sleet runner path."""
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -9,8 +10,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "scripts/run-real-sleet-test.sh"
-REV = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
-TREE = "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+REV = "94796daf55ebd1134dce0925e6a204a05ad3423b"
+TREE = "47da595b9078cac1a9351e8290d1ae7f3976367f"
 
 
 def transcript():
@@ -39,7 +40,8 @@ class OrdersRunner(unittest.TestCase):
         self.assertNotIn("ams-gra-oms-runtime-rust-facade-tests",
                          {package["name"] for package in consumer["package"]})
 
-    def execute(self, output=None, missing=(), status=0):
+    def execute(self, output=None, missing=(), status=0, revision=REV, tree=TREE,
+                dirty="", artifact=True):
         with tempfile.TemporaryDirectory(prefix="orders-runner-control-") as scratch:
             directory = Path(scratch)
             tools = directory / "bin"
@@ -48,11 +50,13 @@ class OrdersRunner(unittest.TestCase):
             scripts = {
                 "git": f'''#!/bin/bash
 case "$*" in
-  *"rev-parse HEAD") echo {REV};;
-  *"rev-parse HEAD^{{tree}}") echo {TREE};;
+  *"rev-parse HEAD") echo {revision};;
+  *"rev-parse HEAD^{{tree}}") echo {tree};;
+  *"status --porcelain") printf '%s' '{dirty}';;
 esac
 ''',
                 "rustfmt": "#!/bin/bash\nexit 0\n",
+                "rustc": "#!/bin/bash\necho \"rustc $*\" >> \"$CONTROL_CALLS\"\necho 'rustc controlled version'\n",
                 "cargo": '''#!/bin/bash
 echo "$*" >> "$CONTROL_CALLS"
 if [[ " $* " == *" test "* ]]; then
@@ -66,6 +70,11 @@ fi
                 path.write_text(script)
                 path.chmod(0o755)
             (directory / "output").write_text(transcript() if output is None else output)
+            # The real runner fingerprints the built broker; provide the
+            # controlled build artifact instead of weakening that check.
+            (directory / "target/release").mkdir(parents=True)
+            if artifact:
+                (directory / "target/release/sleet").write_bytes(b"controlled broker")
             environment = {key: value for key, value in os.environ.items()
                            if not key.startswith("AMS_GRA_")}
             environment.update(PATH=f"{tools}:{os.environ['PATH']}",
@@ -89,7 +98,26 @@ fi
         self.assertEqual(calls.count(" test "), 1)
         self.assertIn("--test real_orders_metadata --test real_orders_metadata_consumer", calls)
         self.assertNotIn("rust-uci-client", calls)
+        self.assertIn("rustc --version", calls)
+        self.assertIn("rustc controlled version", result.stdout)
+        self.assertIn("clean=true binary=", result.stdout)
+        self.assertIn(hashlib.sha256(b"controlled broker").hexdigest(), result.stdout)
+        self.assertIn("build -vv --release --locked -p sleet", calls)
         self.assertIn(f"RUST-OMS-012 real pinned Sleet ({REV}): PASSED", result.stdout)
+
+    def test_wrong_source_identity_fails_before_build(self):
+        for identity in [dict(revision="0" * 40), dict(tree="0" * 40),
+                         dict(dirty=" M sleet/src/main.rs"), dict(dirty="?? injected.rs")]:
+            with self.subTest(identity=identity):
+                result, calls = self.execute(**identity)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(calls, "")
+
+    def test_missing_broker_artifact_fails_before_tests(self):
+        result, calls = self.execute(artifact=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("build -vv --release --locked -p sleet", calls)
+        self.assertNotIn(" test ", calls)
 
     def test_missing_roots_fail_before_build(self):
         for missing in [("5",), ("6",), ("5", "6")]:

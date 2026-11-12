@@ -41,7 +41,7 @@ def main():
     a = p.parse_args()
     assert a.scratch.is_absolute() and a.scratch.is_dir()
     assert a.binary.is_file(), 'missing broker binary'
-    revision = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
+    revision = '94796daf55ebd1134dce0925e6a204a05ad3423b'
     assert subprocess.check_output(['git','-C',str(a.sleet_checkout),'rev-parse','HEAD'],text=True).strip()==revision
     assert not subprocess.check_output(['git','-C',str(a.sleet_checkout),'status','--porcelain'],text=True).strip(), 'modified broker checkout'
     assert len(a.uci)==2 and len(set(a.uci))==2, 'both verified releases required'

@@ -6,7 +6,7 @@
 //! ```text
 //! generated service_api  --PublishAdapter / SubscribeAdapter-->  SleetRuntime
 //!   --OmsJsonCodec<P> (payload body)-->  global-element envelope (this crate)
-//!   --sleet-client @ e38f61d8 (OWP over WebSocket)-->  Sleet / any CAL server
+//!   --sleet-client @ 94796daf (OWP over WebSocket)-->  Sleet / any CAL server
 //! ```
 //!
 //! # Layering

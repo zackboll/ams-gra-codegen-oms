@@ -9,14 +9,15 @@ from pathlib import Path
 JOB = 'ada-real-uci-log-sleet'
 PINS = {'25': 'ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27',
         '26': 'af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b'}
-REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 INCLUDES = {'25': '4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b',
             '26': 'ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88'}
 ROOT = Path(__file__).resolve().parents[1]
 BROKER_ERRORS = {
     **{kind + '-data': ('Invalid-Message', 'TypeMismatch') for kind in ('null', 'number', 'array', 'object')},
     'array-data': ('Invalid-Message', 'OccurrenceMismatch'),
+    **{label: ('Invalid-Message', 'FacetViolation') for label in ('odd-hex', 'invalid-digit', 'internal-space')},
     'choice-two-arms': ('Invalid-Message', 'ChoiceViolation'),
     'missing-header': ('Invalid-Message', 'MissingRequiredMember'),
     'wrong-global': ('Invalid-Message', 'UnknownGlobalElement'),
@@ -100,13 +101,13 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         constrained = f'campaign/{release}-constrained-broker/'
         if doc(constrained + 'result.json') != dict(
                 scope='unchanged extracted authentic Binary declarations; synthetic envelope, NOT Log',
-                ada_accepts_octets=32, broker_accepts_octets=16, broker_rejects_octets=[32, 31, 33],
+                ada_accepts_octets=32, broker_accepts_octets=32, broker_rejects_octets=[16, 31, 33],
                 server_exit=0, cleanup=True):
             raise ValueError('Task102 separate constrained binary observation absent')
         constrained_wire = doc(constrained + 'wire.json')
         for octets in (32, 16, 31, 33):
             entries = [item for item in constrained_wire if item.get('label') == f'hash-{octets}-octets']
-            if len(entries) != 1 or not entries[0]['response'].startswith('+OK' if octets == 16 else '-ERR Invalid-Message'):
+            if len(entries) != 1 or not entries[0]['response'].startswith('+OK' if octets == 32 else '-ERR Invalid-Message'):
                 raise ValueError('Task102 broker constrained length stage mismatch')
             value = json.loads(entries[0]['command'].removeprefix('PUB task102-constrained '))
             if value != {'BinaryNotice': {'Data': '0080FF', 'SHA_2_Hash': '0080FF' + '00' * (octets - 3)}}:
@@ -185,7 +186,7 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         prefix = f'campaign/{cell}/sleet/'
         evidence = doc(prefix + 'result.json')
         if evidence != dict(completed=True, release=release, revision=REV, tree=TREE, handlers=7,
-                            witness_handlers=1, decode_rejected=3, published=6, broker_rejected=10,
+                            witness_handlers=1, decode_rejected=0, published=6, broker_rejected=13,
                             consumer_exit=0, server_exit=0, cleanup=True):
             raise ValueError('Task102 real-Sleet handler/count/cleanup mismatch')
         if text(prefix + 'sleet-source.txt').splitlines() != [REV, TREE]:
@@ -195,7 +196,7 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         if text(prefix + 'consumer.exit').strip() != '0' or text(prefix + 'server.exit').strip() != '0':
             raise ValueError('Task102 consumer/server failed')
         output = text(prefix + 'consumer.stdout').splitlines()
-        for marker in ['TASK102_ADA_REAL_LOG_COMPLETE handlers= 7 rejected= 3',
+        for marker in ['TASK102_ADA_REAL_LOG_COMPLETE handlers= 7 rejected= 0',
                        'TASK102_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1',
                        'TASK102_CLEANUP_COMPLETE', 'TASK102_DECODE_RECOVERY_COMPLETE',
                        'TASK102_UNKNOWN_BINDING_SID_REJECTED', 'TASK102_UPGRADE_OWP_COMPLETE',
@@ -205,7 +206,7 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         if (sum(s.startswith('TASK102_TYPED_HANDLER ') for s in output) != 7
                 or sum(s.startswith('TASK102_WITNESS_HANDLER ') for s in output) != 1
                 or sum(s.startswith('TASK102_PUBLISHED ') for s in output) != 6
-                or sum(s.startswith('TASK102_EVENT DECODE_ERROR ') for s in output) != 3):
+                or sum(s.startswith('TASK102_EVENT DECODE_ERROR ') for s in output) != 0):
             raise ValueError('Task102 actual handler/codec/publication count mismatch')
         published = [json.loads(s.removeprefix('TASK102_PUBLISHED ')) for s in output if s.startswith('TASK102_PUBLISHED ')]
         positive = cases.positives(release)
@@ -217,14 +218,14 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         if received != expected_wire:
             raise ValueError('Task102 broker delivery wire identity/value/order mismatch')
         errors = [s.removeprefix('TASK102_EVENT DECODE_ERROR ') for s in output if s.startswith('TASK102_EVENT DECODE_ERROR ')]
-        if errors != ['odd hexBinary digit count', 'invalid hexBinary digit', 'odd hexBinary digit count']:
+        if errors != []:
             raise ValueError('Task102 decoder rejection diagnostic/stage mismatch')
         wire = doc(prefix + 'wire.json')
         for label, (code, detail) in BROKER_ERRORS.items():
             matches = [item for item in wire if item.get('label') == label]
             if len(matches) != 1 or not matches[0]['response'].startswith('-ERR ' + code) or detail not in matches[0]['response']:
                 raise ValueError('Task102 expected broker error absent: ' + label)
-        for label in ('odd-hex', 'invalid-digit', 'internal-space', 'same-subscription-recovery'):
+        for label in ('same-subscription-recovery',):
             matches = [item for item in wire if item.get('label') == label]
             if len(matches) != 1 or matches[0]['response'] != '+OK':
                 raise ValueError('Task102 broker/codec stage separation absent')
@@ -244,5 +245,5 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         server = text(prefix + 'server.stdout')
         if not all(marker in server for marker in ('schema loaded', 'route PUB message', 'shutdown complete')):
             raise ValueError('Task102 schema/routing/cleanup evidence absent')
-    return dict(compiler=version, cells=12, releases=['25', '26'], handlers=84, codec_rejected=36,
+    return dict(compiler=version, cells=12, releases=['25', '26'], handlers=84, codec_rejected=0,
                 sha=sha, tree=tree, run_id=str(run_id), run_attempt=str(attempt))

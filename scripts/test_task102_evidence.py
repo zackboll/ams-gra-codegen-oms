@@ -83,8 +83,8 @@ def bundle(compiler='14'):
         put(prefix + 'wire.json', [dict(receive='MSG 1 ' + json.dumps({'Log': cases.golden(release)}))])
         prefix = f'campaign/{release}-constrained-broker/'
         put(prefix + 'result.json', dict(scope='unchanged extracted authentic Binary declarations; synthetic envelope, NOT Log',
-            ada_accepts_octets=32, broker_accepts_octets=16, broker_rejects_octets=[32, 31, 33], server_exit=0, cleanup=True))
-        put(prefix + 'wire.json', [dict(label=f'hash-{n}-octets', response='+OK' if n == 16 else '-ERR Invalid-Message FacetViolation',
+            ada_accepts_octets=32, broker_accepts_octets=32, broker_rejects_octets=[16, 31, 33], server_exit=0, cleanup=True))
+        put(prefix + 'wire.json', [dict(label=f'hash-{n}-octets', response='+OK' if n == 32 else '-ERR Invalid-Message FacetViolation',
             command='PUB task102-constrained ' + json.dumps({'BinaryNotice': {'Data': '0080FF', 'SHA_2_Hash': '0080FF' + '00' * (n - 3)}})) for n in (32, 16, 31, 33)])
         put(prefix + 'server.exit', '0\n')
         put(prefix + 'server.stdout', 'shutdown complete\n')
@@ -108,7 +108,7 @@ def bundle(compiler='14'):
     for release, policy, optimization in expected:
         prefix = f'campaign/uci{release}-{policy}-O{optimization}/sleet/'
         put(prefix + 'result.json', dict(completed=True, release=release, revision=evidence.REV, tree=evidence.TREE,
-            handlers=7, witness_handlers=1, decode_rejected=3, published=6, broker_rejected=10,
+            handlers=7, witness_handlers=1, decode_rejected=0, published=6, broker_rejected=13,
             consumer_exit=0, server_exit=0, cleanup=True))
         put(prefix + 'sleet-source.txt', evidence.REV + '\n' + evidence.TREE + '\n')
         put(prefix + 'sleet-binary.sha256', 'd'*64)
@@ -118,13 +118,10 @@ def bundle(compiler='14'):
         received = [{'Log': doc} for _, doc in cases.decoder_invalid(release)]
         received += [{'Log': positive[0][1]}] + [{'Log': expected} for _, _, expected in positive] + [{'Log': positive[0][1]}]
         put(prefix + 'consumer.stdout', '\n'.join([
-            'TASK102_ADA_REAL_LOG_COMPLETE handlers= 7 rejected= 3',
+            'TASK102_ADA_REAL_LOG_COMPLETE handlers= 7 rejected= 0',
             'TASK102_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1', 'TASK102_CLEANUP_COMPLETE',
             'TASK102_DECODE_RECOVERY_COMPLETE', 'TASK102_UNKNOWN_BINDING_SID_REJECTED',
             'TASK102_UPGRADE_OWP_COMPLETE', 'TASK102_INFO_VALIDATED', 'TASK102_SUB_ACCEPTED Log task102-log',
-            'TASK102_EVENT DECODE_ERROR odd hexBinary digit count',
-            'TASK102_EVENT DECODE_ERROR invalid hexBinary digit',
-            'TASK102_EVENT DECODE_ERROR odd hexBinary digit count',
             *['TASK102_TYPED_HANDLER ' + str(n) for n in range(7)], 'TASK102_WITNESS_HANDLER 1',
             *['TASK102_PUBLISHED ' + json.dumps(expected) for _, _, expected in positive],
             *['TASK102_WIRE_RECEIVED ' + json.dumps(doc) for doc in received]]) + '\n')
@@ -310,7 +307,6 @@ class EvidenceTests(unittest.TestCase):
                 ('"Data": "0080FF"', '"Data": "0080FE"'),
                 ('TASK102_WIRE_RECEIVED {"Log":', 'TASK102_WIRE_RECEIVED {"LogMT":'),
                 ('TASK102_PUBLISHED ', 'NOT_A_PUBLICATION '),
-                ('DECODE_ERROR invalid hexBinary digit', 'SERVER_ERROR invalid hexBinary digit'),
                 ('TASK102_CLEANUP_COMPLETE', 'CLEANUP_MISSING'),
                 ('primary_unchanged witness=1', 'primary_changed witness=1')]:
             self.assertIn(before, original)
@@ -336,7 +332,7 @@ class EvidenceTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 self.verify(dict(files, **{path: json.dumps(value).encode()}))
         wire = json.loads(files['campaign/25-constrained-broker/wire.json'])
-        next(item for item in wire if item['label'] == 'hash-32-octets')['response'] = '+OK'
+        next(item for item in wire if item['label'] == 'hash-32-octets')['response'] = '-ERR Invalid-Message FacetViolation'
         with self.assertRaises(ValueError):
             self.verify(dict(files, **{'campaign/25-constrained-broker/wire.json': json.dumps(wire).encode()}))
         for path in ('campaign/25-constrained-broker/extracted-binary.xsd',

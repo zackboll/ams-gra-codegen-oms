@@ -4,8 +4,8 @@ import json
 import hashlib
 import re
 
-SLEET_REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-SLEET_TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+SLEET_REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+SLEET_TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 AHT_SPDX_LICENSE_SHA256 = '074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff'
 UPSTREAM_SOURCES = {
     *(f'deps/aht/src/{name}' for name in (
