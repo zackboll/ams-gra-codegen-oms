@@ -575,7 +575,8 @@ fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> 
 ///   profiles — see [`cpp_codec_admits_string_profile`];
 /// * named `DateTimeZulu` and `Duration` declarations and the direct
 ///   unconstrained `xs:dateTime` / `xs:duration` members;
-/// * unconstrained `xs:hexBinary`, direct or named, from IR provenance;
+/// * unconstrained `xs:hexBinary`, direct or named, from IR provenance, and
+///   (CPP-OMS-007) named length-only restrictions with a checked model carrier;
 /// * (CPP-OMS-004) named Float64 declarations whose effective constraints the
 ///   shared `floating_domain` classifier accepts (unconstrained or bound-only,
 ///   inclusive or exclusive), and direct unconstrained `xs:double` members.
@@ -635,17 +636,11 @@ fn cpp_emission_codec_support(
             }
         }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
-            // Length-constrained named Binary carriers (`create` over octets)
-            // are outside the CPP-OMS-002 Log vertical.
-            match binary_length_domain(PrimitiveKind::Binary, &declaration.constraints) {
-                Ok(None) => {}
-                Ok(Some(_)) | Err(_) => {
-                    return Err(unsupported(
-                        owner,
-                        "length-constrained named hexBinary has no C++ codec mapping".into(),
-                    ));
-                }
-            }
+            // The same classifier chooses the model carrier and the renderer's
+            // construction API. Lexical provenance remains an independent gate:
+            // neither unknown Binary nor base64Binary becomes hexBinary here.
+            binary_length_domain(PrimitiveKind::Binary, &declaration.constraints)
+                .map_err(|reason| unsupported(owner, reason.to_string()))?;
             binary_support(declaration_binary_encoding(schema, declaration), owner)
         }
         // CPP-OMS-004: a named Float64, unconstrained (public explicit
@@ -1556,6 +1551,82 @@ mod tests {
             source: source(),
         });
         schema
+    }
+
+    #[test]
+    fn cpp_oms_007_binary_admission_is_model_backed_and_fails_closed() {
+        let named = |encoding: Option<BinaryLexicalEncoding>, constraints| {
+            let mut schema = record(OAM_NAMESPACE, vec![]);
+            schema.types[0] = TypeDecl {
+                name: QualifiedName::new(OAM_NAMESPACE, "Digest"),
+                is_abstract: false,
+                base_type: encoding.map(TypeRef::binary),
+                kind: TypeKind::Primitive(PrimitiveKind::Binary),
+                constraints,
+                documentation: None,
+                source: source(),
+            };
+            schema
+        };
+        let cpp = |schema: &SchemaIr| {
+            let emissions = plan_type_emissions(schema, GenerationWorld::ClosedSchemaSet)
+                .map_err(|e| e.message)?;
+            emissions.iter().try_for_each(|emission| {
+                cpp_emission_codec_support(schema, emission, GenerationWorld::ClosedSchemaSet)
+                    .map_err(|e| e.to_string())
+            })
+        };
+        for constraints in [
+            ConstraintSet::default(),
+            ConstraintSet {
+                length: Some(32),
+                ..Default::default()
+            },
+            ConstraintSet {
+                length: Some(0),
+                ..Default::default()
+            },
+            ConstraintSet {
+                min_length: Some(1),
+                max_length: Some(32),
+                ..Default::default()
+            },
+            ConstraintSet {
+                min_length: Some(0),
+                ..Default::default()
+            },
+            ConstraintSet {
+                max_length: Some(32),
+                ..Default::default()
+            },
+        ] {
+            assert!(
+                cpp(&named(
+                    Some(BinaryLexicalEncoding::HexBinary),
+                    constraints.clone()
+                ))
+                .is_ok()
+            );
+            assert!(
+                cpp(&named(
+                    Some(BinaryLexicalEncoding::Base64Binary),
+                    constraints.clone()
+                ))
+                .is_err()
+            );
+            assert!(cpp(&named(None, constraints)).is_err());
+        }
+        let mut pattern = ConstraintSet::default();
+        pattern
+            .lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[A-F]+")],
+            });
+        assert!(cpp(&named(Some(BinaryLexicalEncoding::HexBinary), pattern)).is_err());
+        let mut direct = field("Data", TypeRef::binary(BinaryLexicalEncoding::HexBinary));
+        direct.constraints.length = Some(32);
+        assert!(cpp(&record(OAM_NAMESPACE, vec![direct])).is_err());
     }
 
     fn check(schema: &SchemaIr) -> Result<(), ServiceCodecError> {
