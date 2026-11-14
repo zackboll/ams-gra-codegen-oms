@@ -1,0 +1,72 @@
+[
+  {
+    "cell": "16-openssl-26",
+    "source": [
+      "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+      "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3"
+    ],
+    "clean": true,
+    "six_cases": "PASS",
+    "eleven_controls": "PASS",
+    "stalled_tls_seconds": 0.3359932059975108,
+    "replacement_deadline_seconds": 2.0041918890055967,
+    "task115_acceptance": false,
+    "disposition": "CORRECTIVE_WORK_REQUIRED"
+  },
+  {
+    "cell": "16-mbedtls-26",
+    "source": [
+      "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+      "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3"
+    ],
+    "clean": true,
+    "six_cases": "PASS",
+    "eleven_controls": "PASS",
+    "stalled_tls_seconds": 0.33494662899465766,
+    "replacement_deadline_seconds": 2.0023365870001726,
+    "task115_acceptance": false,
+    "disposition": "CORRECTIVE_WORK_REQUIRED"
+  },
+  {
+    "cell": "14-openssl-26",
+    "source": [
+      "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+      "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3"
+    ],
+    "clean": true,
+    "six_cases": "PASS",
+    "eleven_controls": "PASS",
+    "stalled_tls_seconds": 0.3379648699919926,
+    "replacement_deadline_seconds": 2.004556549989502,
+    "task115_acceptance": false,
+    "disposition": "CORRECTIVE_WORK_REQUIRED"
+  },
+  {
+    "cell": "14-mbedtls-26",
+    "source": [
+      "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+      "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3"
+    ],
+    "clean": true,
+    "six_cases": "PASS",
+    "eleven_controls": "PASS",
+    "stalled_tls_seconds": 0.3359072129969718,
+    "replacement_deadline_seconds": 2.0032005440007197,
+    "task115_acceptance": false,
+    "disposition": "CORRECTIVE_WORK_REQUIRED"
+  },
+  {
+    "cell": "16-openssl-25",
+    "source": [
+      "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+      "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3"
+    ],
+    "clean": true,
+    "six_cases": "PASS",
+    "eleven_controls": "PASS",
+    "stalled_tls_seconds": 0.33636635600123554,
+    "replacement_deadline_seconds": 2.0036005820002174,
+    "task115_acceptance": false,
+    "disposition": "CORRECTIVE_WORK_REQUIRED"
+  }
+]

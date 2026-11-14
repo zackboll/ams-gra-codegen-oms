@@ -1,0 +1,827 @@
+{
+  "verified": true,
+  "source": [
+    "7fa13386fb97cec44ac739d7c017c76ca30dd801",
+    "5c5b6daa04bbdf0e548b02a2c2b97f9b29cd89b3"
+  ],
+  "dirty": false,
+  "compiler": "GNAT 16.1.0",
+  "backend": "openssl",
+  "release": "25",
+  "dependencies": {
+    "aht": [
+      "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "d137b924a7b0fa8b71c1ee8c582749e97294335b"
+    ],
+    "codec": [
+      "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "6198cf7b10346003b91b379b568f26b378654565"
+    ],
+    "sleet": [
+      "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+      "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+    ],
+    "uci25": [
+      "093610b7753944059360d3236770ab446d039556",
+      "f811683ce81a3fcc5c306627cb43c3df5b525b54"
+    ],
+    "uci26": [
+      "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "43a8a74b15d2e20d00d4d8ed8543590dd9789046"
+    ]
+  },
+  "schemas": {
+    "UCI_MessageDefinitions_v2_5_0.xsd": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+    "UCI_SecurityMarkings_v2_5_0.xsd": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+  },
+  "generated": {
+    "service_api.ads": "6073d9b7ba551cd3efaea6684506863e9d375355351e759672c83ba78f488a62",
+    "service_codec.adb": "ef0c13406dd70fbe87d683eb1a357ea3a6723b0a33bff74bfaf311c56a512e8d",
+    "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+    "service_codec.ads": "60bbec5768703bad5bdf276764b9db89837d0d7be918de2d23d793a8259731b1",
+    "programs-oam.ads": "0e4d1e92a632883c5de4db44649313325ea155ae0515866c919b0976f7ead6e3",
+    "programs-oam.adb": "e1f7bc6fe7d2f422e058219cd58bae7ae1496fc722fb64516f5baf02003ee70d"
+  },
+  "executable_sha256": "4941ad410aa46e718653347414d154336696d5451c17e78c74ea88fd73d2dd51",
+  "cases": [
+    {
+      "name": "default",
+      "epochs": 1,
+      "exit": 1,
+      "broker_owners": {
+        "2": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ]
+    },
+    {
+      "name": "recovery",
+      "epochs": 3,
+      "exit": 0,
+      "broker_owners": {
+        "2": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "3": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "4": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        },
+        {
+          "epoch": 2,
+          "fd": 5,
+          "tasks": 1
+        },
+        {
+          "epoch": 3,
+          "fd": 5,
+          "tasks": 1
+        }
+      ]
+    },
+    {
+      "name": "exhausted",
+      "epochs": 2,
+      "exit": 1,
+      "broker_owners": {
+        "2": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ],
+        "3": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        },
+        {
+          "epoch": 2,
+          "fd": 5,
+          "tasks": 1
+        }
+      ]
+    },
+    {
+      "name": "invalid-trust",
+      "epochs": 1,
+      "exit": 1,
+      "broker_owners": {},
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 4,
+          "tasks": 1
+        }
+      ]
+    },
+    {
+      "name": "denied-service",
+      "epochs": 1,
+      "exit": 1,
+      "broker_owners": {},
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ]
+    },
+    {
+      "name": "normal",
+      "epochs": 1,
+      "exit": 0,
+      "broker_owners": {
+        "2": [
+          [
+            "1",
+            "uci.log",
+            "Log"
+          ],
+          [
+            "2",
+            "uci.rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "3",
+            "uci.survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Only unambiguous peer closure is retryable; broad Transport_Error is terminal"
+  ],
+  "controls": [
+    {
+      "completed": true,
+      "name": "tcp-reset",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 1,
+      "mode": "reset",
+      "duration": 4,
+      "exit": 1,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 0.3908317010063911,
+      "application_elapsed": 0.15539669299323577,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "established_tcp_reset_without_close_notify"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "malformed-frame",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 1,
+      "mode": "malformed",
+      "duration": 4,
+      "exit": 1,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 0.39112810799269937,
+      "application_elapsed": 0.15579462199821137,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "injected_hex": "8300",
+          "injected": "malformed_ws_frame",
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "tls-integrity",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 1,
+      "mode": "integrity",
+      "duration": 4,
+      "exit": 1,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 0.3868152729992289,
+      "application_elapsed": 0.15199912099342328,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "injected_hex": "17030300200000000000000000000000000000000000000000000000000000000000000000",
+          "injected": "invalid_tls_record",
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "ws-close-recovery",
+      "budget": 2,
+      "expected_epochs": 2,
+      "usable_epochs": 2,
+      "mode": "ws-close",
+      "duration": 4,
+      "exit": 0,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ],
+        "2": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        },
+        {
+          "epoch": 2,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 4.2373765999946045,
+      "application_elapsed": 4.003077359011513,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "injected_hex": "880203e8",
+          "injected": "valid_ws_close",
+          "shutdown": "client_abortive_tls_eof"
+        },
+        {
+          "epoch": 2,
+          "completed": true,
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "replacement-tls-stall",
+      "budget": 2,
+      "expected_epochs": 2,
+      "usable_epochs": 1,
+      "mode": "replacement-tls-stall",
+      "duration": 4,
+      "exit": 1,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        },
+        {
+          "epoch": 2,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 1.7259550799935823,
+      "application_elapsed": 1.5030578750011045,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "authenticated_close_notify_without_ws_close"
+        },
+        {
+          "epoch": 2,
+          "completed": true,
+          "shutdown": "replacement_tls_stalled"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "replacement-deadline",
+      "budget": 2,
+      "expected_epochs": 2,
+      "usable_epochs": 1,
+      "mode": "replacement-upgrade-stall",
+      "duration": 2,
+      "exit": 1,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        },
+        {
+          "epoch": 2,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 2.242540724997525,
+      "application_elapsed": 2.0036005820002174,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "authenticated_close_notify_without_ws_close"
+        },
+        {
+          "epoch": 2,
+          "completed": true,
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "delay-deadline",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 1,
+      "mode": "eof",
+      "duration": 1,
+      "exit": 1,
+      "callbacks": {
+        "1": [
+          "Log",
+          "RDMA_InitializeSetup",
+          "SurvivabilityRiskLevel"
+        ]
+      },
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 1.2339592130010715,
+      "application_elapsed": 1.0038027489936212,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "authenticated_close_notify_without_ws_close"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "info-deadline",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 0,
+      "mode": "info-stall",
+      "duration": 1,
+      "exit": 1,
+      "callbacks": {},
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 1.237796672998229,
+      "application_elapsed": 1.0035774340067292,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "subscription-deadline",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 0,
+      "mode": "sub-stall",
+      "duration": 1,
+      "exit": 1,
+      "callbacks": {},
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 1.241774917987641,
+      "application_elapsed": 1.0031168569985311,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "invalid-upgrade",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 0,
+      "mode": "invalid-upgrade",
+      "duration": 4,
+      "exit": 1,
+      "callbacks": {},
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 5,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 0.24220936400524806,
+      "application_elapsed": 0.007046408994938247,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "client_abortive_tls_eof"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    },
+    {
+      "completed": true,
+      "name": "wrong-hostname",
+      "budget": 2,
+      "expected_epochs": 1,
+      "usable_epochs": 0,
+      "mode": "eof",
+      "duration": 4,
+      "exit": 1,
+      "callbacks": {},
+      "resources": [
+        {
+          "epoch": 1,
+          "fd": 4,
+          "tasks": 1
+        }
+      ],
+      "elapsed": 0.24055728600069415,
+      "application_elapsed": 0.005696829000953585,
+      "broker_socket_closed": true,
+      "relay": [
+        {
+          "epoch": 1,
+          "completed": true,
+          "shutdown": "tls_rejected"
+        }
+      ],
+      "relay_errors": [],
+      "cleanup": true
+    }
+  ],
+  "disposition": "CORRECTIVE_WORK_REQUIRED",
+  "deadline_probe": {
+    "requested_seconds": 1,
+    "elapsed": 0.33636635600123554,
+    "exit": 1,
+    "allowance_seconds": 0.15,
+    "within_deadline": true,
+    "retry_count": 0,
+    "externally_killed": false,
+    "client_hello_bytes": 1551,
+    "resources": {
+      "epoch": 1,
+      "fd": 4,
+      "tasks": 1
+    }
+  },
+  "task115_acceptance": false,
+  "artifacts_sha256": "92555b0ee21d9e05fba9b3ddbdc1834fcf3d515eb0993a98359cd88d8eccabb3",
+  "input_manifest_sha256": "f180e0fb9ad5d53ac3c7a3592d129243077a9419ec21c11b81fc3ecbaace8a0f",
+  "external_artifacts": "/home/zboll/task115-r1-evidence/accept-16-openssl-25-wss",
+  "ada_policy_tests": {
+    "policy": "POLICY_TESTS_PASS checks= 37\n",
+    "cli": [
+      {
+        "args": [
+          "--help"
+        ],
+        "exit": 0,
+        "stdout": "ada-uci-client (compiled schema 002.5.0)\n  --url wss://HOST:PORT/PATH (required; explicit port)\n  --ca-path PATH | --ca-pem-file FILE (exactly one required)\n  --duration-seconds 1..3600 (default 30)\n  --reconnect-attempts 0..8 (default 0)\n  --reconnect-delay-ms 50..2000 (default 250)\n  --help\n"
+      },
+      {
+        "args": [],
+        "exit": 2,
+        "stdout": "ARGUMENT_ERROR require --url and exactly one explicit CA option\n"
+      },
+      {
+        "args": [
+          "--unknown"
+        ],
+        "exit": 2,
+        "stdout": "ARGUMENT_ERROR unknown option\n"
+      },
+      {
+        "args": [
+          "--url",
+          "ws://localhost:1/",
+          "--ca-path",
+          "missing"
+        ],
+        "exit": 2,
+        "stdout": "ARGUMENT_ERROR require wss://host:port/path\n"
+      },
+      {
+        "args": [
+          "--url",
+          "wss://localhost:1/",
+          "--ca-path",
+          "missing",
+          "--reconnect-attempts",
+          "9"
+        ],
+        "exit": 2,
+        "stdout": "ARGUMENT_ERROR integer out of range\n"
+      }
+    ]
+  },
+  "commands_sha256": "70383604f050b1cae5e53a3d47424151057e55cec9928d77e7f46046fa961fdd",
+  "classification_observations": {
+    "tcp-reset": [
+      "ERROR epoch=1 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "FAILED remaining=2"
+    ],
+    "malformed-frame": [
+      "ERROR epoch=1 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "FAILED remaining=2"
+    ],
+    "tls-integrity": [
+      "ERROR epoch=1 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "FAILED remaining=2"
+    ],
+    "ws-close-recovery": [
+      "LOST epoch=1",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "RECONNECT remaining=1",
+      "FINALIZED epoch=2",
+      "RESOURCES epoch=2 fd=5 tasks=1",
+      "COMPLETE epochs=2"
+    ],
+    "replacement-tls-stall": [
+      "LOST epoch=1",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "RECONNECT remaining=1",
+      "ERROR epoch=2 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=2",
+      "RESOURCES epoch=2 fd=5 tasks=1",
+      "FAILED remaining=1"
+    ],
+    "replacement-deadline": [
+      "LOST epoch=1",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "RECONNECT remaining=1",
+      "ERROR epoch=2 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=2",
+      "RESOURCES epoch=2 fd=5 tasks=1",
+      "FAILED remaining=1"
+    ],
+    "delay-deadline": [
+      "LOST epoch=1",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "RECONNECT remaining=1",
+      "FAILED deadline_during_delay"
+    ],
+    "info-deadline": [
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "FAILED remaining=2"
+    ],
+    "subscription-deadline": [
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "FAILED remaining=2"
+    ],
+    "invalid-upgrade": [
+      "ERROR epoch=1 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=5 tasks=1",
+      "FAILED remaining=2"
+    ],
+    "wrong-hostname": [
+      "ERROR epoch=1 exception=OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR",
+      "FINALIZED epoch=1",
+      "RESOURCES epoch=1 fd=4 tasks=1",
+      "FAILED remaining=2"
+    ]
+  }
+}
