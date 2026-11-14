@@ -10,6 +10,8 @@ import shutil
 import sys
 import tomllib
 
+from task_alire import configure
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("binary", ROOT / "scripts/check-task093.py")
@@ -107,13 +109,14 @@ def main():
         '("-gnat2022", "-gnato", "-O0"); end Compiler;\nend Consumer;\n')
     if checked(["alr", "--version"], scratch, scratch / "alire.log").strip() != b"alr 2.1.1":
         raise RuntimeError("Alire identity differs")
-    checked(["alr", "-n", "settings", "--set", "dependencies.shared", "false"],
+    alr = configure(scratch, checked, consumer)
+    checked(alr + ["settings", "--set", "dependencies.shared", "false"],
             consumer, scratch / "isolation.log")
     options = ["--force"] if args.compiler == "14" else []
-    checked(["alr", "-n", *options, "toolchain", "--select", "--local",
+    checked(alr + [*options, "toolchain", "--select", "--local",
              f"{compiler}={version}", "gprbuild=26.0.1"], consumer, scratch / "toolchain.log")
     for policy in ["normal", "Check", "Ignore"]:
-        command = ["alr", "-n", "build", "--", "-f"]
+        command = alr + ["build", "--", "-f"]
         if policy != "normal":
             adc = scratch / f"{policy}.adc"
             adc.write_text(f"pragma Assertion_Policy ({policy});\n")
@@ -123,7 +126,7 @@ def main():
         binary.duration.guard.validate_solution(tomllib.loads(lock.read_text()), compiler)
         shutil.copy2(lock, scratch / f"{policy}-alire.lock")
         for tool, expected in [("gnat", f"GNAT {version}"), ("gprbuild", "26.0.0")]:
-            identity = checked(["alr", "-n", "exec", "--", tool, "--version"], consumer,
+            identity = checked(alr + ["exec", "--", tool, "--version"], consumer,
                                scratch / f"{policy}-{tool}.log")
             if expected.encode() not in identity:
                 raise RuntimeError(f"{tool} identity differs")

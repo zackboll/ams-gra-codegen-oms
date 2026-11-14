@@ -14,6 +14,9 @@ SLEET_REPO="https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet"
 SLEET_REV="e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
 SLEET_TREE="7e705f4eb5f658957bd414b4abc8207311f3c1e4"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/qualification-timing.sh"
+qualification_start=$SECONDS
+trap 'status=$?; printf "QUALIFICATION_TOTAL elapsed_seconds=%s exit=%s\n" "$((SECONDS - qualification_start))" "$status" >&3' EXIT
 
 # RUST-OMS-001: explicit qualification may not silently compile no-UCI stubs.
 # The focused mode reuses this exact checkout/build, without running unrelated
@@ -44,9 +47,24 @@ fi
 if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}${AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA:-}" ]; then
+if [ "${AMS_GRA_RUST_ORDERS_METADATA_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}${AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA:-}${AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
+fi
+
+# build.rs watches every required-family variable. They all enforce the SAME
+# two-root admission and generate the SAME complete service inventory. Keeping
+# them stable avoids regenerating every authentic model between release tests;
+# Cargo still authenticates changed source, roots, contracts and dependencies.
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_LOG=1 AMS_GRA_REQUIRE_REAL_UCI_RDMA=1
+  export AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1 AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY=1
+  export AMS_GRA_REQUIRE_REAL_UCI_DLZ=1 AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1
+  export AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1
+  export CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3
 fi
 
 if [ $# -ge 1 ]; then
@@ -61,11 +79,45 @@ test "$(git -C "$CHECKOUT" rev-parse 'HEAD^{tree}')" = "$SLEET_TREE"
 # Unmodified: no tracked or untracked changes in the checkout.
 test -z "$(git -C "$CHECKOUT" status --porcelain)"
 
-# Build with Sleet's own pinned toolchain (rust-toolchain.toml).
-(cd "$CHECKOUT" && cargo build --release --locked -p sleet)
+# Build with Sleet's own pinned toolchain (rust-toolchain.toml). Keep its binary
+# at the exported path even when qualification uses an external Cargo target.
+(cd "$CHECKOUT" && CARGO_TARGET_DIR="$CHECKOUT/target" cargo build --release --locked -p sleet)
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 
 cd "$ROOT"
+# RUST-OMS-012 reuses the single pinned checkout/build above. Both the focused
+# mode and the ordinary main-only runner require actual execution evidence.
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  PYTHONDONTWRITEBYTECODE=1 python3 "$ROOT/scripts/test_rust_orders_metadata_runner.py" \
+    OrdersRunner.test_consumer_uses_repository_locked_dependencies -v
+  cargo +1.95.0 fmt --all -- --check
+  rustfmt +1.95.0 --edition 2024 --check "$ROOT/tests/fixtures/rust-oms-012/consumer.rs" \
+    "$ROOT/crates/runtime-rust-facade-tests/tests/real_orders_metadata_cases/mod.rs"
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_orders_metadata --test real_orders_metadata_consumer -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    for marker in 'MODEL CODEC' 'TYPED PUBLISH AND INDEPENDENT RECEIVE' 'PINNED SLEET' 'SUBSCRIPTION REMOVAL AND CLEANUP'; do
+      grep -Fqx "RUST-OMS-012 $version $marker: PASSED" <<<"$output"
+    done
+    grep -Fqx "EXTERNAL ORDERSMETADATA $version: PASSED" <<<"$output"
+  done
+  grep -Fqx 'RUST-OMS-012 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
+  if grep -qE 'SKIPPED|^test result:.*(0 passed|[1-9][0-9]* ignored)' <<<"$output"; then
+    echo 'OrdersMetadata qualification must execute without skips' >&2
+    exit 1
+  fi
+fi
+if [ "${AMS_GRA_RUST_ORDERS_METADATA_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-012 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
+fi
+bash "$ROOT/scripts/check-rust-task-workers.sh"
 # Four-message standalone acceptance uses this same unmodified broker build
 # and independent Task092/093, Task104/105 and Task101 fixtures.
 # The existing main-only real-sleet job supplies both roots; no new runner lane.
@@ -74,6 +126,8 @@ if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ "${AMS_GRA_RUST_DLZ_ONLY
   cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
   rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/reconnect.rs"
   rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/wss.rs"
+  rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/task_workers.rs" \
+    "$ROOT/tests/rust-task-workers.rs"
   for release in 2.5 2.6; do
     export AMS_GRA_UCI_RELEASE="$release"
     if [ "$release" = 2.5 ]; then
@@ -274,7 +328,7 @@ fi
 
 # PY-005 reuses this exact unmodified broker build; no second broker checkout
 # or build. Python package with websockets==17.2 is installed by Deep CI.
-bash "$ROOT/scripts/check-py005-sleet.sh"
+qualification_stage py005 bash "$ROOT/scripts/check-py005-sleet.sh"
 # Bind the existing Python discovery tests to this harness's just-built CLI.
 # Required by the PY-012/PY-013 transport probes as well as source-bound receipts.
 export AMS_GRA_GENERATOR="$ROOT/target/debug/ams-gra-codegen-oms"
@@ -284,11 +338,11 @@ export AMS_GRA_GENERATOR="$ROOT/target/debug/ams-gra-codegen-oms"
 export AMS_GRA_PY016_GENERATION_CACHE
 AMS_GRA_PY016_GENERATION_CACHE="$(mktemp -d "$RUNNER_TEMP/py016-generation.XXXXXXXX")"
 for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py008-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py009-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
+  PYTHON="$interpreter" qualification_stage "py006-$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
+  PYTHON="$interpreter" qualification_stage "py007-$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
+  PYTHON="$interpreter" qualification_stage "py008-$interpreter" bash "$ROOT/scripts/check-py008-sleet.sh"
+  PYTHON="$interpreter" qualification_stage "py009-$interpreter" bash "$ROOT/scripts/check-py009-sleet.sh"
+  PYTHON="$interpreter" qualification_stage "py010-$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
   version="$("$interpreter" -c 'import sys; print(str(sys.version_info.major) + "." + str(sys.version_info.minor))')"
   for runner in registered owned; do
     for policy in normal optimized; do
@@ -298,9 +352,9 @@ for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
       # PY-010 source/broker artifact also retains the full-schema PY-016 traces.
       export AMS_GRA_PY016_FULL_SLEET_EVIDENCE="$RUNNER_TEMP/py010-sleet/py016/$version-$policy/$runner"
       if [ "$runner" = registered ]; then
-        "$interpreter" "${options[@]}" "$ROOT/python/qualification/run.py" sleet
+        qualification_stage "registered-$version-$policy" "$interpreter" "${options[@]}" "$ROOT/python/qualification/run.py" sleet
       else
-        "$interpreter" "${options[@]}" "$ROOT/scripts/run-owned-python.py" sleet
+        qualification_stage "owned-$version-$policy" "$interpreter" "${options[@]}" "$ROOT/scripts/run-owned-python.py" sleet
       fi
     done
   done

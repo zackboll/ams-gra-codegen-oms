@@ -66,7 +66,8 @@ fn main() {
         .canonicalize()
         .expect("fixture directory");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    real_uci_services(&fixtures, &out);
+    let mut session = ams_gra_codegen_oms::ServiceSchemaSession::default();
+    real_uci_services(&fixtures, &out, &mut session);
     for (stem, directory, with_codec) in SERVICES {
         let schema = fixtures.join(format!("{stem}.xsd"));
         let contract = fixtures.join(format!("{stem}.yaml"));
@@ -91,27 +92,33 @@ fn main() {
         if with_codec {
             arguments.push("--with-codec".into());
         }
-        generate(stem, arguments, &mut report);
+        generate(&mut session, stem, arguments, &mut report);
     }
-    real_uci_position_report(&fixtures, &out);
+    real_uci_position_report(&fixtures, &out, &mut session);
 }
 
 /// RUST-OMS-001/002: independently generated release identities, using the
 /// unchanged Task102/103 contracts. Ordinary builds need neither UCI release;
 /// explicit qualification requires BOTH and cannot silently compile skips.
-fn real_uci_services(fixtures: &Path, out: &Path) {
+fn real_uci_services(
+    fixtures: &Path,
+    out: &Path,
+    session: &mut ams_gra_codegen_oms::ServiceSchemaSession,
+) {
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_LOG");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_RDMA");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_DLZ");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA");
+    println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA");
     let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_RDMA").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_DLZ").is_some()
-        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA").is_some();
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA").is_some()
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_ORDERS_METADATA").is_some();
     for (version, root_hash, include_hash) in [
         (
             "5",
@@ -132,6 +139,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             "survivability",
             "dlz",
             "file_metadata",
+            "orders_metadata",
         ] {
             println!("cargo::rustc-check-cfg=cfg(ams_gra_real_uci_{message}2{version})");
         }
@@ -159,6 +167,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             ("survivability", "rust-oms-004"),
             ("dlz", "rust-oms-006"),
             ("file_metadata", "rust-oms-010"),
+            ("orders_metadata", "rust-oms-012"),
         ] {
             let cfg = format!("ams_gra_real_uci_{message}2{version}");
             let contract = fixtures.join(format!("../{task}/uci2{version}-service.yaml"));
@@ -179,7 +188,16 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             check.extend(common.clone());
             check.push("--with-codec".into());
             let mut readiness = Vec::new();
-            generate(message, check, &mut readiness);
+            generate(session, message, check, &mut readiness);
+            if message == "orders_metadata" {
+                // Retain measured counts rather than assuming a closure size.
+                // Fail before generation if either readiness gate is not READY.
+                let report = String::from_utf8_lossy(&readiness);
+                for required in ["status: READY", "codec status: READY"] {
+                    assert!(report.lines().any(|line| line == required), "{report}");
+                }
+                println!("cargo:warning=OrdersMetadata UCI 2.{version}: {report}");
+            }
             if message == "file_metadata" {
                 let report = String::from_utf8_lossy(&readiness);
                 for required in [
@@ -234,10 +252,10 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
                     arguments.push("--with-codec".into());
                 }
                 let mut generation = Vec::new();
-                generate(message, arguments, &mut generation);
-                if message == "file_metadata" {
+                generate(session, message, arguments, &mut generation);
+                if matches!(message, "file_metadata" | "orders_metadata") {
                     std::fs::write(directory.join("generation.txt"), generation)
-                        .expect("FileMetadata generation report");
+                        .expect("authentic metadata generation report");
                 }
             }
             // The codec must reuse the exact model and endpoint surface, with
@@ -287,13 +305,25 @@ fn verify_hash(path: &Path, expected: &str) {
     );
 }
 
-fn generate(label: &str, arguments: Vec<OsString>, report: &mut Vec<u8>) {
-    if let Err(error) = ams_gra_codegen_oms::run(arguments, report) {
+fn generate(
+    session: &mut ams_gra_codegen_oms::ServiceSchemaSession,
+    label: &str,
+    arguments: Vec<OsString>,
+    report: &mut Vec<u8>,
+) {
+    let start = std::time::Instant::now();
+    let operation = arguments[0].to_string_lossy().into_owned();
+    eprintln!("MODEL_STAGE start label={label} operation={operation}");
+    if let Err(error) = session.run(arguments, report) {
         panic!(
             "service-generate {label} failed: {error}\n{}",
             String::from_utf8_lossy(report)
         );
     }
+    eprintln!(
+        "MODEL_STAGE end label={label} operation={operation} elapsed_seconds={:.3}",
+        start.elapsed().as_secs_f64()
+    );
 }
 
 /// Task 050: when `AMS_GRA_UCI_2_5_ROOT` names the pinned UCI 2.5 root,
@@ -301,7 +331,11 @@ fn generate(label: &str, arguments: Vec<OsString>, report: &mut Vec<u8>) {
 /// codec with `--with-codec`, and enable `cfg(ams_gra_real_uci)`. Unset means
 /// the real-UCI tests are compiled out (and say so); a wrong hash is a hard
 /// build failure, never a silent skip.
-fn real_uci_position_report(fixtures: &Path, out: &Path) {
+fn real_uci_position_report(
+    fixtures: &Path,
+    out: &Path,
+    session: &mut ams_gra_codegen_oms::ServiceSchemaSession,
+) {
     let Some(root) = std::env::var_os("AMS_GRA_UCI_2_5_ROOT") else {
         return;
     };
@@ -364,7 +398,7 @@ fn real_uci_position_report(fixtures: &Path, out: &Path) {
             target.into(),
             "--with-codec".into(),
         ];
-        generate(label, arguments, &mut Vec::new());
+        generate(session, label, arguments, &mut Vec::new());
     }
     println!("cargo:rustc-cfg=ams_gra_real_uci");
     // The test hands Sleet the SAME verified root the model was generated from.

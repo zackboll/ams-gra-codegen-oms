@@ -7,6 +7,26 @@
 //! handwritten payload codec for the fixture types; it is evidence for the
 //! `OmsJsonCodec` boundary, not generated codec output.
 
+/// Independently generated authentic UCI 2.5 OrdersMetadata service.
+#[cfg(ams_gra_real_uci_orders_metadata25)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_orders_metadata25 {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_orders_metadata25/service_api.rs"
+    ));
+}
+
+/// Independently generated authentic UCI 2.6 OrdersMetadata service.
+#[cfg(ams_gra_real_uci_orders_metadata26)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_orders_metadata26 {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_orders_metadata26/service_api.rs"
+    ));
+}
+
 /// Three-message UCI 2.5 model, codec and service API.
 #[cfg(ams_gra_real_uci_survivability25)]
 #[allow(clippy::all, clippy::pedantic)]

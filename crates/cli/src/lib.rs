@@ -1,6 +1,8 @@
 //! Command-line orchestration for the OMS/UCI code-generation pipeline.
 pub mod schema_impact;
 mod service_check_batch;
+mod service_schema_session;
+pub use service_schema_session::ServiceSchemaSession;
 pub mod service_impact;
 
 use ams_gra_oms_backend_ada::AdaBackend;
@@ -1769,9 +1771,18 @@ fn service_generate<W: Write>(
     output_dir: &Path,
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+    service_generate_inputs(&inputs, target, output_dir, stdout)
+}
+
+fn service_generate_inputs<W: Write>(
+    inputs: &ServiceInputs,
+    target: GenerationTarget,
+    output_dir: &Path,
+    stdout: &mut W,
+) -> Result<(), CliError> {
     if language_is_python(target) {
-        let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
-        return python_service(&inputs, target, Some(output_dir), stdout);
+        return python_service(inputs, target, Some(output_dir), stdout);
     }
     let GenerationTarget {
         language,
@@ -1780,7 +1791,6 @@ fn service_generate<W: Write>(
         ada_codec_runtime,
     } = target;
     let backend_language = language.backend_language()?;
-    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
     let readiness =
         analyze_service_readiness(&inputs.plan, &inputs.schema, backend_language, world)
             .map_err(|error| CliError::execution(error.to_string()))?;

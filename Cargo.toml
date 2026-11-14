@@ -30,3 +30,8 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = "warn"
+
+# Build scripts execute the production generator on authentic schema sets.
+# Optimize that computation without changing test profiles or assertions.
+[profile.dev.build-override]
+opt-level = 3

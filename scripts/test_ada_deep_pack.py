@@ -1,5 +1,6 @@
 """Deep pack placement, isolation, original inventory and fail-closed controls."""
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -15,6 +16,23 @@ from ada_deep_pack.contracts import check
 class DeepPack(unittest.TestCase):
     def tearDown(self):
         run.STOP.clear()
+
+    def test_production_rejects_missing_or_wrong_alire_before_preparation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            scratch = Path(temporary)
+            (scratch / 'platform.txt').write_text('test platform\n')
+            argv = ['run.py', '--pack', 'a', '--compiler', '16', '--workers', '4',
+                    '--expected-sha', 'test', '--scratch', str(scratch)]
+            for failure in (FileNotFoundError('alr'), None):
+                with self.subTest(failure=failure), \
+                        patch.object(run.sys, 'argv', argv), \
+                        patch.object(run, 'identity', return_value={}), \
+                        patch.object(run.subprocess, 'check_output', side_effect=failure,
+                                     return_value='alr 2.1.2\n'), \
+                        patch.object(run, 'prepare') as prepare:
+                    with self.assertRaises((FileNotFoundError, RuntimeError)):
+                        run.main()
+                    prepare.assert_not_called()
 
     def test_four_runner_allocations_and_exact_original_campaigns(self):
         self.assertEqual([len(run.INVENTORY['packs'][p]) for p in ('a', 'b')], [4, 3])
@@ -43,6 +61,7 @@ class DeepPack(unittest.TestCase):
         self.assertEqual(raw, subprocess.check_output([
             'git', 'show', historical['sha'] + ':scripts/ada_deep_pack/inventory.json'], cwd=run.ROOT))
         previous = json.loads(raw)
+        updates = report.get('qualification_updates', {})
         self.assertEqual(report['qualification_sha256'], run.INVENTORY['qualification_sha256'])
         self.assertEqual(len(previous['qualification_sha256']), 330)
         self.assertEqual(report['reviewed_inputs'], 330)
@@ -68,14 +87,21 @@ class DeepPack(unittest.TestCase):
                     change = report['main_changes'][path]
                     self.assertEqual(change['previous_sha256'], previous['qualification_sha256'][path])
                     self.assertEqual(change['main_sha256'], hashlib.sha256(current_main).hexdigest())
-                    self.assertEqual(change['current_sha256'], digest)
+                    update = updates.get(path)
+                    self.assertEqual(change['current_sha256'], update['previous_sha256'] if update else digest)
+                    if update:
+                        self.assertEqual(update['current_sha256'], digest)
+                        self.assertTrue(update['review'])
+                        incorporated = subprocess.check_output([
+                            'git', 'show', update['source_sha'] + ':' + path], cwd=run.ROOT)
+                        self.assertEqual(hashlib.sha256(incorporated).hexdigest(), digest)
                     self.assertTrue(change['review'])
                 else:
                     retained = report['retained_pack_changes'].get(path)
                     self.assertEqual(digest, retained['current_sha256'] if retained
                                      else previous['qualification_sha256'][path])
                 if hashlib.sha256(current_main).hexdigest() != digest:
-                    self.assertEqual(report['retained_pack_changes'][path]['current_sha256'], digest)
+                    self.assertEqual((updates.get(path) or report['retained_pack_changes'][path])['current_sha256'], digest)
         for key in ('origin_commit', 'origin_tree', 'packs', 'suites'):
             self.assertEqual(run.INVENTORY[key], previous[key])
 
@@ -103,10 +129,36 @@ class DeepPack(unittest.TestCase):
                         new = "grep -qE '^test result: ok\\. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in [0-9.]+s$' <<<\"$output\""
                         self.assertEqual(body.count(old), 1)
                         body = body.replace(old, new)
+                    if name == 'real-uci-regressions':
+                        old = '          cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles\n'
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, old + '          cargo build --locked --release -p ams-gra-codegen-oms --example python_unicode_profiles\n')
+                    if name == 'msrv-real-uci':
+                        # CI-MAIN-REPAIR-007: optimize production build-script
+                        # computation and expose live timing, not test semantics.
+                        body = ("    env:\n"
+                                "      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n") + body
+                        old = '          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets\n'
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, '          source scripts/qualification-timing.sh\n' +
+                                            old.replace('check --locked', 'check -vv --locked'))
+                    if name == 'real-sleet':
+                        # Keep admission stable from the FIRST codec command.
+                        old = "          echo 'AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1' >> \"$GITHUB_ENV\"\n"
+                        self.assertEqual(body.count(old), 1)
+                        additions = ''.join(
+                            f"          echo 'AMS_GRA_REQUIRE_REAL_UCI_{family}=1' >> \"$GITHUB_ENV\"\n"
+                            for family in ('SURVIVABILITY', 'DLZ', 'FILE_METADATA', 'ORDERS_METADATA'))
+                        body = body.replace(old, old + additions)
+                        old = ('      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n'
+                               '        run: |\n          set -euo pipefail\n')
+                        self.assertEqual(body.count(old), 1)
+                        body = body.replace(old, old + '          source scripts/qualification-timing.sh\n')
                     self.assertEqual(current[name], body)
 
     def test_transport_helper_is_source_bound(self):
-        self.assertEqual(set(run.INVENTORY['infrastructure_sha256']), {'scripts/pinned_download.py'})
+        self.assertEqual(set(run.INVENTORY['infrastructure_sha256']),
+                         {'scripts/pinned_download.py', 'scripts/task_alire.py'})
         for path, digest in run.INVENTORY['infrastructure_sha256'].items():
             self.assertEqual(run.sha(run.ROOT / path), digest)
 
@@ -141,6 +193,15 @@ class DeepPack(unittest.TestCase):
             self.assertIn(spec['artifact']['name'], original[name])
             self.assertEqual(spec['timeout_seconds'], 7200)
             self.assertEqual(spec['websockets'], '17.2' if spec['task'] <= 103 else '15.0.1')
+
+    def test_original_suite_command_hashes_are_unchanged(self):
+        historical = json.loads((run.ROOT / 'scripts/ada_deep_pack/inventory-c523158.json').read_text())
+        for name, spec in run.INVENTORY['suites'].items():
+            with self.subTest(suite=name):
+                self.assertEqual(
+                    [hashlib.sha256(s['run'].encode()).hexdigest() for s in spec['steps']],
+                    [hashlib.sha256(s['run'].encode()).hexdigest()
+                     for s in historical['suites'][name]['steps']])
 
     def test_read_only_dependency_tampering_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,22 +253,27 @@ class DeepPack(unittest.TestCase):
             names = run.INVENTORY['packs']['a'][:2]
             for name in names:
                 (root / name).mkdir()
-            with patch.object(run, 'execute', side_effect=RuntimeError('injected failure')):
+            with patch.object(run, 'worker_git_env', side_effect=lambda env, source: env), \
+                    patch.object(run, 'execute', side_effect=RuntimeError('injected failure')):
                 with ThreadPoolExecutor(max_workers=2) as pool:
                     rows = list(pool.map(lambda n: run.worker(n, root / n, root / 'shared', '14', {}, 0), names))
             self.assertEqual([r['exit'] for r in rows], [1, 1])
+            self.assertTrue(all(r['error'] == 'injected failure' for r in rows))
             self.assertTrue(all((root / n / 'completion.json').is_file() for n in names))
 
     def test_zero_exit_without_all_workers_is_not_success(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1'):
             root = Path(tmp)
             source = dict(sha='head', tree='tree', run_id='1', attempt='1')
-            run.write(root / 'summary.json', dict(source=source, pack='a', compiler='14',
-                      runner_slots=1, applicable_suites=run.suites('a', True), workers=[], exit=0))
-            with self.assertRaisesRegex(RuntimeError, 'failed/incomplete'):
-                verify.verify(root, 'head', 'tree', 'a', '14', True)
-            with self.assertRaisesRegex(RuntimeError, 'source/tree'):
-                verify.verify(root, 'other', 'tree', 'a', '14', True)
+            for pack in ('a', 'b'):
+                for compiler in ('14', '16'):
+                    with self.subTest(pack=pack, compiler=compiler):
+                        run.write(root / 'summary.json', dict(source=source, pack=pack, compiler=compiler,
+                                  runner_slots=1, applicable_suites=run.suites(pack, True), workers=[], exit=0))
+                        with self.assertRaisesRegex(RuntimeError, 'failed/incomplete'):
+                            verify.verify(root, 'head', 'tree', pack, compiler, True)
+                        with self.assertRaisesRegex(RuntimeError, 'source/tree'):
+                            verify.verify(root, 'other', 'tree', pack, compiler, True)
 
     def test_deadline_retains_exit_and_log(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -217,6 +283,176 @@ class DeepPack(unittest.TestCase):
             self.assertEqual(json.loads(stem.with_suffix('.json').read_text())['reason'], 'timeout')
             self.assertTrue(stem.with_suffix('.exit').is_file())
             self.assertTrue(stem.with_suffix('.log').is_file())
+
+
+class WorkerGitTrust(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.repository = self.root / 'source'
+        self.other = self.root / 'other'
+        self.job_home = self.root / 'job-home'
+        self.home = self.root / 'worker-home'
+        self.job_home.mkdir()
+        self.home.mkdir()
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+        self.env.update(HOME=str(self.job_home), XDG_CONFIG_HOME=str(self.root / 'xdg'),
+                        GIT_CONFIG_NOSYSTEM='1', PYTHONDONTWRITEBYTECODE='1')
+        for repository in (self.repository, self.other):
+            subprocess.run(['git', 'init', '-q', repository], env=self.env, check=True)
+            subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.com',
+                            'commit', '-q', '--allow-empty', '-m', repository.name],
+                           cwd=repository, env=self.env, check=True)
+        self.source = dict(sha=self.git('rev-parse', 'HEAD').stdout.strip(),
+                           tree=self.git('rev-parse', 'HEAD^{tree}').stdout.strip(),
+                           run_id='1', attempt='1')
+        # Git's test hook works without root. In a mapped user namespace also
+        # create a real ownership mismatch, without changing host-owned files.
+        if os.geteuid() == 0 and os.environ.get('ADA_DEEP_TEST_CHOWN') == '1':
+            for repository in (self.repository, self.other):
+                os.chown(repository, 1, 1)
+                os.chown(repository / '.git', 1, 1)
+        else:
+            self.env['GIT_TEST_ASSUME_DIFFERENT_OWNER'] = '1'
+        self.git('config', '--global', '--add', 'safe.directory', str(self.repository))
+        self.worker_env = dict(self.env, HOME=str(self.home))
+        self.root_patch = patch.object(run, 'ROOT', self.repository)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
+
+    def git(self, *args, env=None, cwd=None):
+        return subprocess.run(['git', *args], cwd=cwd or self.repository,
+                              env=self.env if env is None else env,
+                              capture_output=True, text=True)
+
+    def assert_untrusted(self, env, cwd=None):
+        result = self.git('rev-parse', 'HEAD', env=env, cwd=cwd)
+        self.assertEqual(result.returncode, 128, result.stderr)
+        self.assertIn('detected dubious ownership', result.stderr)
+
+    def test_job_global_trust_is_lost_with_private_home(self):
+        self.assertEqual(self.git('rev-parse', 'HEAD').returncode, 0)
+        self.assert_untrusted(self.worker_env)
+
+    def test_exact_protected_trust_preserves_settings_and_rejects_other_repo(self):
+        self.worker_env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='core.quotePath',
+                               GIT_CONFIG_VALUE_0='false')
+        original = dict(self.worker_env)
+        (self.home / '.gitconfig').write_text('[user]\n\tname = Private worker\n')
+        config = (self.home / '.gitconfig').read_bytes()
+        trusted = run.worker_git_env(self.worker_env, self.source)
+        self.assertEqual(self.worker_env, original)
+        self.assertEqual((self.home / '.gitconfig').read_bytes(), config)
+        self.assertEqual(self.git('config', 'user.name', env=trusted).stdout.strip(), 'Private worker')
+        self.assertEqual(self.git('config', 'core.quotePath', env=trusted).stdout.strip(), 'false')
+        entries = self.git('config', '--show-scope', '--get-all', 'safe.directory', env=trusted)
+        self.assertEqual(entries.stdout.splitlines(), ['command\t', 'command\t' + str(self.repository)])
+        for ref, expected in [('HEAD', self.source['sha']), ('HEAD^{tree}', self.source['tree'])]:
+            self.assertEqual(self.git('rev-parse', ref, env=trusted).stdout.strip(), expected)
+        self.assertEqual(self.git('status', '--porcelain', env=trusted).stdout, '')
+        (self.repository / 'untracked').write_text('dirty source must remain visible')
+        self.assertIn('?? untracked', self.git('status', '--porcelain', env=trusted).stdout)
+        self.assert_untrusted(trusted, self.other)
+        self.assert_untrusted(self.worker_env)
+
+    def test_inherited_trust_is_reset_and_wrong_paths_fail_closed(self):
+        self.worker_env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='safe.directory',
+                               GIT_CONFIG_VALUE_0=str(self.other))
+        trusted = run.worker_git_env(self.worker_env, self.source)
+        self.assert_untrusted(trusted, self.other)
+        for wrong in (self.root / 'missing', self.repository / '.git', self.other):
+            with self.subTest(path=wrong), patch.object(run, 'ROOT', wrong):
+                with self.assertRaises((RuntimeError, subprocess.CalledProcessError, FileNotFoundError)):
+                    run.worker_git_env(self.worker_env, self.source)
+        for field in ('sha', 'tree'):
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'mismatch'):
+                run.worker_git_env(self.worker_env, dict(self.source, **{field: '0' * 40}))
+        nested = self.repository / 'nested'
+        nested.mkdir()
+        with patch.object(run, 'ROOT', nested), self.assertRaises(subprocess.CalledProcessError):
+            run.worker_git_env(self.worker_env, self.source)
+
+    def test_canonical_path_and_ambiguous_command_configuration(self):
+        alias = self.root / 'alias'
+        alias.symlink_to(self.repository, target_is_directory=True)
+        with patch.object(run, 'ROOT', alias):
+            trusted = run.worker_git_env(self.worker_env, self.source)
+        self.assertEqual(trusted['GIT_CONFIG_VALUE_1'], str(self.repository))
+        for overrides in ({'GIT_CONFIG_COUNT': '-1'}, {'GIT_CONFIG_COUNT': 'bad'},
+                          {'GIT_CONFIG_PARAMETERS': "'safe.directory=*'"}):
+            with self.subTest(overrides=overrides), self.assertRaises((RuntimeError, ValueError)):
+                run.worker_git_env(dict(self.worker_env, **overrides), self.source)
+        wildcard = self.root / 'source*'
+        wildcard.mkdir()
+        with patch.object(run, 'ROOT', wildcard), self.assertRaisesRegex(RuntimeError, 'wildcard'):
+            run.worker_git_env(self.worker_env, self.source)
+
+    def test_original_identity_commands_in_actual_worker_environment_all_cells(self):
+        with patch.object(run.shutil, 'which', return_value='/verified/alr'):
+            self.identity_commands_all_cells('/verified/alr')
+
+    def test_original_identity_commands_without_alire_all_cells(self):
+        with patch.object(run.shutil, 'which', return_value=None):
+            self.identity_commands_all_cells(None)
+
+    def identity_commands_all_cells(self, alr):
+        real_execute = run.execute
+        for pack in ('a', 'b'):
+            for compiler in ('14', '16'):
+                for name in run.INVENTORY['packs'][pack]:
+                    with self.subTest(pack=pack, compiler=compiler, suite=name):
+                        directory = self.root / (name + '-' + compiler)
+                        (directory / 'evidence/setup/home').mkdir(parents=True)
+                        seen = []
+
+                        def execute(command, env, cwd, stem, timeout, cpu):
+                            self.assertTrue(all(isinstance(value, str) for value in env.values()))
+                            self.assertEqual(env.get('ADA_DEEP_REAL_ALR'), alr)
+                            self.assertEqual('ADA_DEEP_REAL_ALR' in env, alr is not None)
+                            if 'integration-identity.json' in command[-1]:
+                                seen.append(env)
+                                self.assertEqual(self.git('status', '--porcelain', env=env).returncode, 0)
+                                self.assert_untrusted(env, self.other)
+                                return real_execute(command, env, cwd, stem, timeout, cpu)
+                            # Compiler campaigns and evidence are deliberately
+                            # not fabricated as fresh qualification in this test.
+                            return dict(command=command, exit=0, reason=None)
+
+                        env = dict(self.worker_env, GITHUB_SHA=self.source['sha'],
+                                   GITHUB_RUN_ID='1', GITHUB_RUN_ATTEMPT='1',
+                                   ADA_DEEP_REAL_ALR='/stale/inherited/alr')
+                        with patch.dict(os.environ, env, clear=True), \
+                                patch.object(run, 'execute', side_effect=execute), \
+                                patch.object(run, 'verify_suite', return_value={'test_only': True}), \
+                                patch('builtins.print'):
+                            result = run.worker(name, directory, self.root / 'shared', compiler,
+                                                self.source, min(os.sched_getaffinity(0)))
+                        self.assertEqual(result['exit'], 0, result.get('error'))
+                        self.assertEqual(len(seen), 1)
+                        receipt = json.loads((directory / 'evidence/integration-identity.json').read_text())
+                        self.assertEqual(receipt, dict(sha=self.source['sha'], tree=self.source['tree'],
+                                                      run_id='1', run_attempt='1', compiler=compiler))
+                        # Trust cannot replace mandatory original evidence or artifacts.
+                        with self.assertRaises((RuntimeError, ValueError, KeyError)):
+                            run.verify_suite(name, directory, compiler, self.source)
+                        with self.assertRaisesRegex(RuntimeError, 'no files'), patch.object(run, 'ROOT', self.other):
+                            verify.artifact_files(name, self.root / 'absent', self.root / 'shared', compiler)
+                        self.assertIn(directory / 'evidence/integration-identity.json',
+                                      verify.artifact_files(name, directory, self.root / 'shared', compiler))
+
+    def test_worker_source_failure_retains_completion_and_skips_commands(self):
+        directory = self.root / 'failed-worker'
+        directory.mkdir()
+        with patch.dict(os.environ, self.worker_env, clear=True), \
+                patch.object(run.shutil, 'which', return_value=None), \
+                patch.object(run, 'execute') as execute, patch('builtins.print'):
+            result = run.worker(run.INVENTORY['packs']['a'][0], directory, self.root / 'shared',
+                                '14', dict(self.source, sha='0' * 40), 0)
+        execute.assert_not_called()
+        self.assertEqual(result['exit'], 1)
+        self.assertIn('mismatch', result['error'])
+        self.assertEqual(json.loads((directory / 'completion.json').read_text()), result)
 
 
 if __name__ == '__main__':

@@ -34,17 +34,17 @@ fn broker_barrier(log: &PathBuf, marker: &str, count: usize) {
     }
 }
 
-fn application_workers(pid: u32) -> BTreeSet<String> {
-    std::fs::read_dir(format!("/proc/{pid}/task"))
-        .unwrap()
-        .filter_map(|entry| {
-            let entry = entry.unwrap();
-            std::fs::read_to_string(entry.path().join("comm"))
-                .unwrap()
-                .starts_with("ams-gra-oms-lac")
-                .then(|| entry.file_name().to_string_lossy().into_owned())
-        })
-        .collect()
+pub fn repeated_runtime_joins() {
+    let (mut server, url) = start_sleet_with_topics(&TOPICS);
+    let pid = std::process::id();
+    let before = application_workers(pid);
+    for _ in 0..2_000 {
+        connect(&url).close().unwrap();
+        assert_eq!(application_workers(pid), before);
+        assert_eq!(connections(&url), 0);
+    }
+    server.shutdown();
+    eprintln!("RUST_WORKER_REAL_SLEET_JOIN {VERSION} iterations=2000: PASSED");
 }
 
 fn fixtures() -> [PathBuf; 4] {

@@ -932,9 +932,7 @@ jobs:
       # green without ever checking the generated Ada. Installing GNAT here,
       # and gating on it below, makes that skip impossible on the runner.
       - name: Install GNAT and Python regression dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnat strace
+        run: sudo python3 scripts/install-rust-ci-dependencies.py
       # Hard gate: no `|| true`. If GNAT is absent or broken, CI fails here
       # rather than silently degrading the Ada regressions into no-ops. The
       # version is printed so the log records which toolchain ran the tests.
