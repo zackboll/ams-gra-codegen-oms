@@ -1,0 +1,52 @@
+[
+  {
+    "mutation": "extra-attempt",
+    "rejected": true,
+    "reason": "extra connection attempt"
+  },
+  {
+    "mutation": "missing-callback",
+    "rejected": true,
+    "reason": "generated typed callback"
+  },
+  {
+    "mutation": "stale-callback",
+    "rejected": true,
+    "reason": "generated typed callback"
+  },
+  {
+    "mutation": "duplicate-init",
+    "rejected": true,
+    "reason": "exact receive-only operations; no replay"
+  },
+  {
+    "mutation": "resource-growth",
+    "rejected": true,
+    "reason": "resource growth after warmup"
+  },
+  {
+    "mutation": "missing-registration",
+    "rejected": true,
+    "reason": "independent Sleet subscription ownership"
+  },
+  {
+    "mutation": "duplicate-publish",
+    "rejected": true,
+    "reason": "independent publisher sequence; no duplicates"
+  },
+  {
+    "mutation": "deadline-overrun",
+    "rejected": true,
+    "reason": "caller deadline negative"
+  },
+  {
+    "mutation": "reset-retried",
+    "rejected": true,
+    "reason": "no speculative retry; delay reservation does not open a new epoch"
+  },
+  {
+    "mutation": "false-success",
+    "rejected": true,
+    "reason": "control exit classification"
+  }
+]

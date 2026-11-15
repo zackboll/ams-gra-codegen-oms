@@ -1,0 +1,48 @@
+contract_version: "0.1"
+service:
+  name: ada-uci-client
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.6"
+functions:
+  - id: log
+    name: Log reception
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: Log
+        topic: uci.log
+        timing:
+          kind: asynchronous
+  - id: rdma
+    name: RDMA setup reception
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: uci.rdma
+        timing:
+          kind: asynchronous
+  - id: survivability
+    name: Survivability risk reception
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SurvivabilityRiskLevel
+        topic: uci.survivability
+        timing:
+          kind: asynchronous

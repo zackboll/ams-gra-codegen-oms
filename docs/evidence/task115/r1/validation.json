@@ -1,0 +1,47 @@
+{
+  "unit-task114": {
+    "tests": 12,
+    "result": "PASS",
+    "sha256": "d71a2d0e2de6c193cd7dcc0f7efe73637429a7981a990e84c648dde1d01ea705"
+  },
+  "unit-selector-final": {
+    "tests": 41,
+    "result": "PASS",
+    "sha256": "a32b280b7a0805483c4a81dcf259431bcb7a10720176393748062fb10a8eaf37"
+  },
+  "unit-task116": {
+    "tests": 9,
+    "result": "PASS",
+    "sha256": "bfe23af7f86230587088d7b8678f172a8907c0bee90184921b961a05c670892e"
+  },
+  "unit-selector": {
+    "tests": 41,
+    "result": "PASS",
+    "sha256": "47b339069607feda24a5f7fc6bf86c156299d54aa68780b2f748ef603837a45f"
+  },
+  "unit-task112": {
+    "tests": 12,
+    "result": "PASS",
+    "sha256": "c7c676f491d6f9d9b98105a19aec0df985e21c0bb0dd661b117930e498b24e1e"
+  },
+  "unit-task113": {
+    "tests": 10,
+    "result": "PASS",
+    "sha256": "1c906504f9a9bd885929ef2276d9444e0b73eaa11e7a80ebda21dd06bb5f1e0b"
+  },
+  "unit-task110": {
+    "tests": 12,
+    "result": "PASS",
+    "sha256": "4a0fd2240510ce982221e69edaaa79717c14a8ac64d446c1858a35af8c65da00"
+  },
+  "unit-task109": {
+    "tests": 5,
+    "result": "PASS",
+    "sha256": "5a3629ff974a72091c0b8c925e813d493980941c986a13710824bc94c51a1839"
+  },
+  "unit-task115": {
+    "tests": 6,
+    "result": "PASS",
+    "sha256": "47c802acb45b1e8c46e5e2532725c96a1b87eedce838abb0395f95d75a45d4ee"
+  }
+}

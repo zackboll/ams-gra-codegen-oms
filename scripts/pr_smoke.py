@@ -136,7 +136,7 @@ def classify(paths):
                               "tests/rust-", "tests/fixtures/rust-")):
             selected.add("rust")
         elif (path.startswith(("crates/backend-ada/", "ada/", "qualification/ada/",
-                               "tests/ada-", "tests/fixtures/ada-",
+                               "tests/ada-", "tests/fixtures/ada-", "examples/ada-uci-client/", "scripts/task115/",
                                "tests/fixtures/service-generate/codec-ada-",
                                "crates/cli/tests/ada_", "scripts/task102/", "scripts/task103/",
                                "scripts/task104/", "scripts/task105/", "scripts/task106/", "scripts/task109/",
