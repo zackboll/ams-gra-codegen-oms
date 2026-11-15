@@ -1,0 +1,374 @@
+{
+  "disposition": "PEER_CLOSURE_SUBSET_QUALIFIED",
+  "qualified_source": [
+    "c2643594f41d3b7f30a2d6503b2e023d969aab0f",
+    "220efe0d2b0455589d4aed416427a7cdba468899"
+  ],
+  "publication_main": "c6ddb747d22ec3c9092a87755465c63a52ebad84",
+  "preserving_merge": "ed77046c002730ef623bf95441ffe15a95aa9721",
+  "original_task115_acceptance": false,
+  "original_task115_complete": false,
+  "historical_acceptance_flags_preserved": true,
+  "new_runtime_campaigns_for_documentation": 0,
+  "independent_review_required": true,
+  "exact_published_head_hosted_checks_required": true,
+  "dependencies": {
+    "aht": {
+      "commit": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "tree": "d137b924a7b0fa8b71c1ee8c582749e97294335b",
+      "origin": "https://github.com/zackboll/aht.git"
+    },
+    "codec": {
+      "commit": "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "tree": "6198cf7b10346003b91b379b568f26b378654565",
+      "origin": "https://github.com/kokhlo/websocket-ada.git"
+    },
+    "sleet": {
+      "commit": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+      "tree": "7e705f4eb5f658957bd414b4abc8207311f3c1e4",
+      "origin": "https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet.git"
+    },
+    "uci25": {
+      "commit": "093610b7753944059360d3236770ab446d039556",
+      "tree": "f811683ce81a3fcc5c306627cb43c3df5b525b54",
+      "origin": "https://gitlab.com/open-arsenal/uci/standard.git"
+    },
+    "uci26": {
+      "commit": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "tree": "43a8a74b15d2e20d00d4d8ed8543590dd9789046",
+      "origin": "https://gitlab.com/open-arsenal/uci/standard.git"
+    }
+  },
+  "toolchain": {
+    "gnat": [
+      "14.2.0",
+      "16.1.0"
+    ],
+    "gprbuild_package": "26.0.1",
+    "gprbuild_binary": "26.0.0",
+    "gnatcoll": "26.0.0",
+    "gnatcoll_minimal": "26.0.0",
+    "python": "3.13.5",
+    "websockets": "15.0.1"
+  },
+  "input_sources": {
+    "examples/ada-uci-client/README.md": "e96850a305e5f77ea9e5ef73040b977220daab31928c2b72fb69ef3894aa3f38",
+    "examples/ada-uci-client/src/ada_uci_client.adb": "ceed55573e01f8dd4bca6b18ae961e74e9d63c9ee29990d713215fe2335dd6b6",
+    "examples/ada-uci-client/src/uci_client-policy.ads": "f3a605b90ad5ce29c1bf141db0ad8286478069746e3406a93361edace47b71e3",
+    "examples/ada-uci-client/src/uci_client.ads": "f0145557cea70cc034037cd46fb988e768643e5620c340d36351ba2adc0d12b9",
+    "examples/ada-uci-client/src/uci_client-policy.adb": "a149653329c6d396010c179847645292b96eff7addb2e5fa679a45e3d9ab14c0",
+    "examples/ada-uci-client/contracts/uci26-service.yaml": "ae355621a231919fef59dfa6104f0bcbacdb544b65d817f579b8599344ee6bc8",
+    "examples/ada-uci-client/contracts/uci25-service.yaml": "433572da44810ec41aed5db212ab96eb3916e130bce23d155d00ed1ebb8e821c",
+    "scripts/task115/policy_tests.adb": "2ae371a32773166915906410e95b479db66c74715bf6d040f81bed507c3dcea8",
+    "scripts/task115/build.py": "763644ae8ebd7103aecd05dcaf95dda8ed277904fa7696a089510512e075288f",
+    "scripts/task115/test_qualification.py": "702a41d689886599962d683b28842ae0497ed97be588cfb3600a800f053fe00b",
+    "scripts/task115/verify.py": "c4c78e5467067f45f9619b2a7af72254d8a653db40a7b89c666400ce8c0df216",
+    "scripts/task115/qualify.py": "b16218a9a027d094ebe389214e659991f77c02e8f4fd9c3f1c2693eaca2076bf",
+    "ada/oms-lacal-runtime/oms_websocket_dependencies.gpr": "265c665c446a33b53520275babc8a9ca04283989eefbdc8bc88ba701ce18b166",
+    "ada/oms-lacal-runtime/.gitignore": "8281098cde45f7d3d2268770b8dee593495ff966d16ec112ef5d995d9cd60092",
+    "ada/oms-lacal-runtime/oms_lacal_websocket.gpr": "f093b29b78104383254c5c63695e13ad196b009b591238434642df61ebd40a02",
+    "ada/oms-lacal-runtime/oms_lacal_runtime.gpr": "d452be64a864966bac3d95522fbd65a6480cbff7a55b3843f963b41b297f136a",
+    "ada/oms-lacal-runtime/README.md": "6d66d0d9a2c7747cfd28ace5d6b08da011b5519fb44369be4a04529933d2ef6e",
+    "ada/oms-json-support/alire.toml": "958316eeeec7132a7abbdc4ffdfe5529c6963984ab0c99028e3241f8c656e642",
+    "ada/oms-json-support/ams_gra_oms_json.gpr": "6a282866dabb9dad48fdc11895ba886bab4240763923686bb14d50de85486ead",
+    "ada/oms-json-support/ams_gra_oms_json_float32.gpr": "24529c82e40ac8bda8b7221c27e4f357c670e1b2fb3fe379abee8f6f5b21aa9b",
+    "ada/oms-json-support/README.md": "1260c80ae5123431ad4519ded834eaf01fd8834157c41878cb3e896ff658d2c2",
+    "ada/oms-json-support/ams_gra_oms_json_lossless.gpr": "6979be3b6a8300500fb557a9f62108ae55381f75711fe92d13a10587a4be1a37",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_lossless_ingress.ads": "fad3d03b983ec8b640879ef7b6c7829f32b05664adbb1c445a5a5728eb3810d7",
+    "ada/oms-json-support/lossless/ams_gra_float64.h": "c4946cfe544e0516125e0fddc16139b7c97f92a0ff7553e7240670796bd13d3a",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_lossless_ingress.adb": "28beb3505c086944d3d2b37e584378f1ad826ac6502e491187a9ca4ca83f77a3",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_emitter.adb": "87f3c0cdc95d3d4d36c406a805d10790674582322635560742e47e5b9e62f644",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_float64.adb": "92d9b838fd5ee9e2774b6f177902d079148d269226d5911372302827d100cfd1",
+    "ada/oms-json-support/lossless/ams_gra_float64.c": "637ac60a28da1226ffa208d89897d0132df12d7c4da88d77de8f23bad04d9840",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_emitter.ads": "9c675c822c43a12e3312fdd6c4591bfd4b3b887e57fbc7d682090e187d3fe7ca",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_float64.ads": "4b3f3e749e36bed8cb29533e8baac5e6368037e038882f67b3ce3f4c2170acdd",
+    "ada/oms-json-support/src/ams_gra_oms_json_guard.ads": "e5175601265338eea218b10467f26ffc19cb24bc181d8386359affefef5a6a47",
+    "ada/oms-json-support/src/ams_gra_oms_json_guard.adb": "ff4fe37bc4efb7d5f620f0e5fe2a77b708118f525a2af70c407b3c00edd6006a",
+    "ada/oms-json-support/float32/ams_gra_oms_json_occurrences.ads": "9ed6b94a3861c9de2ea9a2186e9d48f69b668ca8469e8650201392a16ddeac59",
+    "ada/oms-json-support/float32/ams_gra_float32.c": "ec7217befcf053dfd133d836c983c0153f82099caaa273fffd34553b4c8b5320",
+    "ada/oms-json-support/float32/ams_gra_oms_json_occurrences.adb": "72a0f820dc794efadda510046ea4bea5e3cc5277468457b0cb460c1f447bba06",
+    "ada/oms-json-support/float32/ams_gra_oms_json_float32.ads": "f5bb00faf0529105f13550ba96ff87f5b2f11909518cac91f9dfaa460f84f289",
+    "ada/oms-json-support/float32/ams_gra_oms_json_float32.adb": "f3d77a4858a3fb08677b403ee792ba8ee74a0ff69266292838638354a22d18e5",
+    "ada/oms-lacal-runtime/src/oms_lacal-dispatchers.ads": "374d9b397942b8cba3ca3dcf26f0396e07a12e6469554423498ac9e5244276d2",
+    "ada/oms-lacal-runtime/src/oms_lacal-transports-mock.ads": "04aa4aa6e5774d5050fc470ce7010a0ced07f07c3df333938119e6d742a65e96",
+    "ada/oms-lacal-runtime/src/oms_lacal-envelopes.adb": "a7dc02bbfabafc9d204ff654a65d57c55cccc9471ad066abe3cd17aecfb42f29",
+    "ada/oms-lacal-runtime/src/oms_lacal-dispatchers.adb": "86cc6ef501ce2b8e0ccc13f5741b330f4505eb2bf446688db6acd0f446f2838b",
+    "ada/oms-lacal-runtime/src/oms_lacal.adb": "fd48fb983860460c827225216d1ff87611ae4211257fdce75c96baae74d5cf55",
+    "ada/oms-lacal-runtime/src/oms_lacal-envelopes.ads": "a68cefc7ae947e3c3ac623f39232090c3b20799a44c7c6975aefbfbae2e7a6d5",
+    "ada/oms-lacal-runtime/src/oms_lacal.ads": "eb779f30ad9dedfe7d1dde308dd931fe4b42b88f4ebc3ae43b2c993d1257f69c",
+    "ada/oms-lacal-runtime/src/oms_lacal-connections.ads": "3667df94b7f9b53e48e1495f7dbc7b16a132745a4e584b092c53236ae6f87e11",
+    "ada/oms-lacal-runtime/src/oms_lacal-transports-mock.adb": "95dd2cccf8e591e108f22a3218b912884806ca16bf779067a7b2f731dec42e8d",
+    "ada/oms-lacal-runtime/src/oms_lacal-typed.ads": "633ec00bfb655d49e8339d73cf531c31a7665612d11a72c6cca49562f06bd84d",
+    "ada/oms-lacal-runtime/src/oms_lacal-typed.adb": "485b875b533dfdd49ca576d50048e00e2e1b98eb24e1543a8ba9b7789e5a6e79",
+    "ada/oms-lacal-runtime/src/oms_lacal-transports.ads": "ae292d9ff1500bdb98386b77067dd22e8afa2526ce1aedd9bfe58c2e3868cb3e",
+    "ada/oms-lacal-runtime/src/oms_lacal-connections.adb": "2556c100e7dd51e00ca1a800043d025b75bb36a372999eba33bffb6bc464ab80",
+    "ada/oms-lacal-runtime/websocket/oms_lacal-transports-websocket.ads": "d9b387173f150dc8637bc42cc44a919462050934432e4d4c74b147d2daa0d9af",
+    "ada/oms-lacal-runtime/websocket/oms_lacal-transports-websocket.adb": "77a5353b72394517134f29e782b51c1751d05947633e10e5c9092d2b68619e18",
+    "ada/oms-lacal-runtime/websocket/oms_ws_handshake.ads": "d8e99c1555d7504e90a290fde0611075a745be54700b89c66d0ede993d8e3c9f"
+  },
+  "schema_sha256": {
+    "26": {
+      "UCI_MessageDefinitions_v2_6_0.xsd": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "UCI_SecurityMarkings_v2_6_0.xsd": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+    },
+    "25": {
+      "UCI_MessageDefinitions_v2_5_0.xsd": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "UCI_SecurityMarkings_v2_5_0.xsd": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+    }
+  },
+  "generator_sha256": "959318baebb82413ec891b7ec4d3b35dd08d181f98bcd5b7710cf21658c6812b",
+  "sleet_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94",
+  "evidence_totals": {
+    "campaign_cases": 30,
+    "controls": 55,
+    "initial_tls_probes": 5,
+    "supplemental_probes": 20,
+    "r2c_standalone_executions": 60
+  },
+  "cells": [
+    {
+      "cell": "16-openssl-26",
+      "executable_sha256": "04446dff5f5699e331795092d8e624e600358eec4300e91e89309af432902d89"
+    },
+    {
+      "cell": "16-mbedtls-26",
+      "executable_sha256": "9900ca35c9104b305fc7cd5291f499d4f95776ca86d60037fb0c6193412bda38"
+    },
+    {
+      "cell": "14-openssl-26",
+      "executable_sha256": "b35fafc03729825721735f7b86831bcc8af17baf15156a87fcf21fcae4889ef9"
+    },
+    {
+      "cell": "14-mbedtls-26",
+      "executable_sha256": "926e130ff447bd627aa109bbf27735ea2d2e18a925ed63d6c04245eb26819da1"
+    },
+    {
+      "cell": "16-openssl-25",
+      "executable_sha256": "83ff08b53b81c464a8b8c8d7ba7ae1db963a690db1b822d44bbee0a505956c2e"
+    }
+  ],
+  "focused_real_pressure": {
+    "cell": "16-openssl-26",
+    "application_exit": 0,
+    "elapsed": 5.004263767041266,
+    "blocked_attempts": 4546,
+    "max_observed_proc_txq": 7379,
+    "pending_outq_at_close": 7380,
+    "pings": 512,
+    "pongs_received_after_reap": 76,
+    "genuine_libc_EAGAIN": true,
+    "injected_EAGAIN": false,
+    "target_local_SO_SNDBUF_changed": true,
+    "host_global_changes": false,
+    "blocking_selector_park_wakeup_claimed": false,
+    "nonblocking_control_duration_deadline_demonstrated": true,
+    "synthetic_application_publications": false,
+    "receipt_sha256": "de0440e1f1c061606c3b4f6f544d543fbef541c3915f56dff7a47a9a877ae2e5"
+  },
+  "coverage_not_claimed": [
+    "Real kernel-blocked standalone INIT/SUB",
+    "Direct standalone blocking-selector sleep/wakeup telemetry",
+    "Five-cell real-pressure execution",
+    "Future-head hosted CI",
+    "Hard real-time CPU/filesystem preemption or arbitrary heap-leak freedom"
+  ],
+  "exclusions": [
+    "TCP-reset/general abrupt-network recovery",
+    "Integrity/protocol failure recovery",
+    "Lossless delivery, offline queues or message replay",
+    "Speculative retry after failed replacement",
+    "Full original TASK115 completion"
+  ],
+  "reproduction_reference": "README.md",
+  "acceptance_reference": "../../../task-115-peer-closure-subset-acceptance.md",
+  "external_evidence_sha256": {
+    "task115-r2d-evidence/REPORT.md": "ae3c6809bdc171ddec31f08e114bb316d46dd140f3154588f36dece334cd0f80",
+    "task115-r2d-evidence/acceptance-ledger.json": "4ff9934af62b31d46298794d96b7c0cb80a1225bd1cde43c24d36f7dc3d8117c",
+    "task115-r2d-evidence/PROPOSED-PR-SCOPE.md": "7ff402a10c3b46fc62d02ad66968d91f28f72cec1957273539623e0317d8a252",
+    "task115-r2d-evidence/proposed-pr-files.json": "6ac7499e26ef91046768efe8175d249f8b6ccfaba8dace83441ed30c71d04fe1",
+    "task115-r2d-evidence/final-preservation.json": "274f3465c7419f98211fd047b8af824a4d4ca2007bc9d37f7094dd2b8b388beb",
+    "task115-r2d-evidence/evidence-manifest.json": "ed5d7fbce8f0afae69a6d45863bc3b3c4437742f8384e5b6a5483868b337e515",
+    "task115-r2d-evidence/reconciliation.json": "53b96190abf45af15b6fb0ac25744471a76cf56b9e8eb8ae292ac996e179f964",
+    "task115-r2d-evidence/real-pressure-receipt.json": "de0440e1f1c061606c3b4f6f544d543fbef541c3915f56dff7a47a9a877ae2e5",
+    "task115-r2d-evidence/audit.py": "21d5fc7aaeb1bb2ce2b7bc7421f31b7df950ef0e6448d752c07b87c3702ad7ed",
+    "task115-r2d-evidence/final_check.py": "0d45ef35d85953aa263c58ee196a1f7f6f426e450add7afd0d81a0b8a213ee05",
+    "task115-r2d-evidence/verify_real_pressure.py": "8c37aa802e274fcbffea16b21543b412cd47d90e9ed9b75a185d74413f15671d",
+    "task115-r2d-evidence/real_pressure.py": "a1413c29242e725a20ca7e59882b2c4f5a0a4886cd6397775e6b200750237188",
+    "task115-r2d-evidence/socket_observer.c": "2d41d0f5ee706b19c689003e69a39e01c1305e96b2d19a7566f5ecabe7148a5f",
+    "task115-r2d-evidence/socket_observer.so": "59f6832aa637a594bfcc0de62e19af074dcfb15af5d6d9f416d67344b2a36ca6",
+    "task115-r2b-evidence/acceptance-ledger.json": "482df90430b03988bb807c861d3f8e760b1235e1631122e7f9591c3539d20716",
+    "task115-r2b-evidence/evidence-manifest.json": "07fb821111b9097ceee68078ef4c40faf4ae14f82de9015495b3950b41051471",
+    "task115-r2b-evidence/verify_supplement.py": "a92866f7a859a3a80fbf4bba83b9c78f5db8e70f6b669a617333f77f5dc293a5",
+    "task115-r2c-evidence/acceptance-ledger.json": "dc5e9624fd35c3427fb0342ebdaf8780e2e51ec3eaeddd573e710e050bdab26c",
+    "task115-r2c-evidence/evidence-manifest.json": "986e25ab1b1dd1c743e8ee37b6570063287a2b1f386d84ba727a6864496f31ee",
+    "task115-r2c-evidence/verify.py": "e710ee1875b4de3cd244dcab2a8c22cb01d525f9c165c125e365354cd67639ec",
+    "task115-r2c-evidence/test_verifier.py": "6c3e2445b164af1556d4d7d5f42dff7cb532aee6d11a129a35a0462ba43e204f"
+  },
+  "existing_pr_files": [
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/14-mbedtls.json",
+      "sha256": "fd3d251ef275b653ffcc0e39a955d00c97aa0e2f73edecc398bf1b56c4dcd843"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/14-openssl.json",
+      "sha256": "390cd40c909189f561e3662b47a4687508dc3936935bb5296e15146bbd0d8c74"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/16-mbedtls.json",
+      "sha256": "04c64f80ae3aa5b7bd69fdf7ae1eef1f47afaf5d7033b520df131b71fe552594"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/16-openssl-25.json",
+      "sha256": "1cd2fc0a69cb91b67d1351c14d30cf34d5fa2521da9a7d743aac3c913f489fed"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/16-openssl.json",
+      "sha256": "478f40dd498163bdabfd23eba91c846081f1326c402f91740cce0ecb30a717dd"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/README.md",
+      "sha256": "efa8420a035dcf135de64bf322a7ef44af948c52ce39b3ec2a224d1a5ae8de54"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/14-mbedtls-26.json",
+      "sha256": "100e4ecfdd6acb055053a81e9f4520d0f869599763d00ef3293ec1c99d45af37"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/14-openssl-26.json",
+      "sha256": "bc8bba46dc846d5f189733404457fa817c97b10ce4d42ca0a78768fa442ad1f1"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/16-mbedtls-26.json",
+      "sha256": "5e7b644bf5a6ca4bb6bcea07b02a9ab206e96952653032e843c30fa8fe7fa622"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/16-openssl-25.json",
+      "sha256": "78fc36505a81866780cf1a45d86a2e1c0da6eee7243490f782d8171a2307f22d"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/16-openssl-26.json",
+      "sha256": "6fba401a2c39c222f0c5a91b6a1a143d0e3748f7ce64ec91fd53026a7ee03258"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/README.md",
+      "sha256": "66a28df5cbe365c84f8b45ab27365af9cdda9d4c77faa7a06fd0e327b13485bf"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/matrix.json",
+      "sha256": "39c07f822c199269498f1ce33d69880899c28d06c255c7033807d65707e52480"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/mutations.json",
+      "sha256": "2f10ed8f097731afc94bcac03516768c32c193d64dc6abe23483427bb0c73d0f"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/reconciliation.json",
+      "sha256": "e544c03a0a76eb50ca6c43503222b39e1916d9b79096db66a5d7a8e0be57c36a"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/required-checks.json",
+      "sha256": "85570cd3fd7a9673534426b77a9a5cdcdd6d394eb11f83643939724c4b51c4de"
+    },
+    {
+      "status": "A",
+      "path": "docs/evidence/task115/r1/validation.json",
+      "sha256": "21ec41b93037cfbe821d49d25e7107a436f92e5bdb3e8a006f2e763961891d26"
+    },
+    {
+      "status": "A",
+      "path": "docs/task-115-ada-uci-standalone-reconnect.md",
+      "sha256": "4e8f58b84fdc37019d8fd3d1e8b6dab8d7ce346efc4d8bc6dd6adbed2b6fdb80"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/README.md",
+      "sha256": "e96850a305e5f77ea9e5ef73040b977220daab31928c2b72fb69ef3894aa3f38"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/contracts/uci25-service.yaml",
+      "sha256": "433572da44810ec41aed5db212ab96eb3916e130bce23d155d00ed1ebb8e821c"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/contracts/uci26-service.yaml",
+      "sha256": "ae355621a231919fef59dfa6104f0bcbacdb544b65d817f579b8599344ee6bc8"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/src/ada_uci_client.adb",
+      "sha256": "ceed55573e01f8dd4bca6b18ae961e74e9d63c9ee29990d713215fe2335dd6b6"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/src/uci_client-policy.adb",
+      "sha256": "a149653329c6d396010c179847645292b96eff7addb2e5fa679a45e3d9ab14c0"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/src/uci_client-policy.ads",
+      "sha256": "f3a605b90ad5ce29c1bf141db0ad8286478069746e3406a93361edace47b71e3"
+    },
+    {
+      "status": "A",
+      "path": "examples/ada-uci-client/src/uci_client.ads",
+      "sha256": "f0145557cea70cc034037cd46fb988e768643e5620c340d36351ba2adc0d12b9"
+    },
+    {
+      "status": "M",
+      "path": "scripts/pr_smoke.py",
+      "sha256": "bef31395b817009250a215bb0698d2762650dc5139dffe92063121238a524cdb"
+    },
+    {
+      "status": "A",
+      "path": "scripts/task115/build.py",
+      "sha256": "763644ae8ebd7103aecd05dcaf95dda8ed277904fa7696a089510512e075288f"
+    },
+    {
+      "status": "A",
+      "path": "scripts/task115/policy_tests.adb",
+      "sha256": "2ae371a32773166915906410e95b479db66c74715bf6d040f81bed507c3dcea8"
+    },
+    {
+      "status": "A",
+      "path": "scripts/task115/qualify.py",
+      "sha256": "b16218a9a027d094ebe389214e659991f77c02e8f4fd9c3f1c2693eaca2076bf"
+    },
+    {
+      "status": "A",
+      "path": "scripts/task115/test_qualification.py",
+      "sha256": "702a41d689886599962d683b28842ae0497ed97be588cfb3600a800f053fe00b"
+    },
+    {
+      "status": "A",
+      "path": "scripts/task115/verify.py",
+      "sha256": "c4c78e5467067f45f9619b2a7af72254d8a653db40a7b89c666400ce8c0df216"
+    },
+    {
+      "status": "M",
+      "path": "scripts/test_pr_smoke.py",
+      "sha256": "64dcde1a0aab901e7ba4abf2460cbc292f8399e8005dd9a3988a70f35a21a6ff"
+    }
+  ],
+  "documentation_additions": [
+    "docs/task-115-peer-closure-subset-acceptance.md",
+    "docs/evidence/task115/r2d/README.md",
+    "docs/evidence/task115/r2d/acceptance-ledger.json"
+  ]
+}
