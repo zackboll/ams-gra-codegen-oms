@@ -1,0 +1,1 @@
+{"url":"https://api.github.com/repos/zackboll/ams-gra-codegen-oms/branches/main/protection/required_status_checks","strict":true,"contexts":["PR smoke"],"contexts_url":"https://api.github.com/repos/zackboll/ams-gra-codegen-oms/branches/main/protection/required_status_checks/contexts","checks":[{"context":"PR smoke","app_id":15368}]}
