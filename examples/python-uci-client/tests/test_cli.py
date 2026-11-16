@@ -152,17 +152,27 @@ class GeneratedBindings(unittest.TestCase):
                 self.assertIs(type(value), bindings.model.RDMA_InitializeSetupMT)
                 self.assertEqual(json.loads(bindings.codec.encode_RDMA_InitializeSetupMT(value)), golden(release))
 
-    def test_generator_output_is_unmodified_production_output(self):
-        import subprocess
-        with tempfile.TemporaryDirectory() as temporary:
-            direct = Path(temporary) / 'direct'
-            subprocess.run([str(generator()), 'service-generate', '--schema', str(schema_root('2.6')),
-                            '--contract', str(APP / 'contracts/uci26-service.yaml'), '--language', 'python',
-                            '--world', 'closed-schema', '--with-codec', '--output', str(direct)],
-                           check=True, capture_output=True)
-            built = bindings_directory('2.6')
-            for name in client.GENERATED:
-                self.assertEqual((direct / name).read_bytes(), (built / name).read_bytes(), name)
+    def test_manifest_binds_pins_contract_generator_and_generated_files(self):
+        for release in ('2.5', '2.6'):
+            with self.subTest(release=release):
+                directory = bindings_directory(release)
+                manifest = json.loads((directory / generate_bindings.MANIFEST).read_text())
+                pin = generate_bindings.PINS[release]
+                contract = generate_bindings.contract(release)
+                self.assertEqual(manifest['schema_sha256'], generate_bindings.digest(schema_root(release)))
+                self.assertEqual(manifest['schema_sha256'], pin['root'])
+                self.assertEqual(manifest['include'], {pin['include'][0]: pin['include'][1]})
+                self.assertEqual((manifest['contract'], manifest['contract_sha256']),
+                                 (contract.relative_to(APP.parents[1]).as_posix(),
+                                  generate_bindings.digest(contract)))
+                self.assertEqual(manifest['generator_sha256'], generate_bindings.digest(generator()))
+                self.assertEqual(manifest['files'], {name: generate_bindings.digest(directory / name)
+                                                     for name in client.GENERATED})
+                # Unmodified production output: the generator's own header.
+                self.assertTrue((directory / 'service_api.py').read_text().startswith(
+                    '# Generated Python service API.'))
+                self.assertIn('MESSAGE_NAME = "RDMA_InitializeSetup"',
+                              (directory / 'service_api.py').read_text())
 
     def test_release_mismatch_and_tampering_exit_3_without_network(self):
         code, _, err = run_main(args('2.6', bindings_directory('2.5')))

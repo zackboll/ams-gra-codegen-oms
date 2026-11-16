@@ -72,10 +72,19 @@ _GENERATED = {}
 
 
 def bindings_directory(release):
-    """Generate once per test module into external temporary storage.
+    """Generated bindings for one release, in external temporary storage.
 
-    Modules must call `cleanup_bindings` from tearDownModule.
+    PY_OMS_020_BINDINGS may name a directory holding `2.5`/`2.6` outputs of
+    generate_bindings.py (the qualification wrapper generates each release
+    once per interpreter). They are still digest-verified by load_bindings.
+    Otherwise generate once per test module; modules call `cleanup_bindings`.
     """
+    shared = os.environ.get('PY_OMS_020_BINDINGS')
+    if shared:
+        directory = Path(shared) / release
+        if not (directory / generate_bindings.MANIFEST).is_file():
+            raise RuntimeError(f'PY_OMS_020_BINDINGS lacks generated {release} bindings')
+        return directory
     if release not in _GENERATED:
         holder = tempfile.TemporaryDirectory(prefix=f'py-oms-020-{release}-')
         output = Path(holder.name) / 'bindings'
