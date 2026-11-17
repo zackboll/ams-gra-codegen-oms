@@ -61,7 +61,8 @@ Generate one release (or both) into a new directory outside the repository:
 
 The helper refuses a schema root or `UCI_SecurityMarkings_v2_<n>_0.xsd`
 include whose SHA-256 differs from the release pin, refuses to write inside the
-repository or into a non-empty directory, and records
+repository (judged on the fully resolved path, so a symlinked ancestor cannot
+alias it) or into a non-empty directory, and records
 `python-uci-client-build.json` with the release and the SHA-256 of the three
 generated files. `--generator PATH` (or `AMS_GRA_GENERATOR`) selects another
 production binary; the default is `target/release/ams-gra-codegen-oms`.
@@ -102,7 +103,7 @@ Then:
 | `--schema-release` | `2.5` or `2.6`; must match the generated bindings |
 | `--bindings` | Output directory of `generate_bindings.py` |
 | `--duration-seconds` | Receive window after SUB `+OK`, 1–86400 (default 10) |
-| `--max-messages` | Optional early stop after N typed messages |
+| `--max-messages` | Optional early stop after N typed messages, 1–1000000 |
 | `--ca-file` | Extra trusted CA PEM for `wss://` only |
 | `--help` | Usage and exit statuses |
 

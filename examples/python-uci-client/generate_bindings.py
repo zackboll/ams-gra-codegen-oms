@@ -82,9 +82,21 @@ def _check_inputs(release, schema, output, generator):
         raise BuildError(f'generator not found: {generator}; build it with '
                          'cargo build --release --locked -p ams-gra-codegen-oms')
     output = Path(os.path.abspath(output))
+    if output.is_symlink():
+        raise BuildError(f'output must be a new or empty directory: {output}')
+    # Judge, and later write to, the real destination: a symlinked (even
+    # dangling) ancestor must not alias the repository. REPOSITORY is resolved.
+    try:
+        resolved = output.resolve()
+    except (OSError, RuntimeError):  # symlink loop: RuntimeError on Python 3.11
+        resolved = None
+    # Python 3.13 instead returns a loop unresolved; a real path has no symlinks.
+    if resolved is None or any(path.is_symlink() for path in (resolved, *resolved.parents)):
+        raise BuildError(f'cannot resolve output directory: {output}')
+    output = resolved
     if output == REPOSITORY or REPOSITORY in output.parents:
         raise BuildError('refusing to write generated UCI bindings inside the repository')
-    if output.is_symlink() or (output.exists() and (not output.is_dir() or any(output.iterdir()))):
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
         raise BuildError(f'output must be a new or empty directory: {output}')
     return pin, schema, output, generator
 

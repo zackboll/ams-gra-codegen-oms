@@ -74,6 +74,11 @@ class Arguments(unittest.TestCase):
             args(duration_seconds=0), args(duration_seconds=86401), args(duration_seconds=-1),
             args(duration_seconds='1.5'), args(duration_seconds='07'), args(duration_seconds='١'),
             args(max_messages=0), args(max_messages='x'),
+            # Oversized values are rejected before int(), both inside and past
+            # sys.get_int_max_str_digits() (4300 by default).
+            args(duration_seconds='9' * 6), args(max_messages='1' + '0' * 6 + '1'),
+            args(duration_seconds='9' * 5000), args(max_messages='9' * 5000),
+            args(duration_seconds='1' * 100_000), args(max_messages='0' * 5000),
             ['--url', 'http://127.0.0.1'] + args()[2:], ['--url', 'ws://'] + args()[2:],
             ['--url', 'ws://user:pw@host'] + args()[2:], ['--url', 'ws://host/#frag'] + args()[2:],
             ['--url', 'tcp://host:1'] + args()[2:],
@@ -213,6 +218,39 @@ class GeneratedBindings(unittest.TestCase):
                 generate_bindings.generate('2.5', schema_root('2.5'), target, generator())
             self.assertEqual((target / 'existing').read_text(), 'user data')
             self.assertFalse((APP / 'build-output').exists())
+        self.check_repository_reached_through_symlinked_ancestor_is_refused()
+
+    def check_repository_reached_through_symlinked_ancestor_is_refused(self):
+        # Part of the test above: the qualification lane pins this suite's test count.
+        repository = APP.parents[1]
+        before = sorted(p.name for p in APP.iterdir()), sorted(p.name for p in repository.iterdir())
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary = Path(temporary)
+            (temporary / 'app').symlink_to(APP, target_is_directory=True)
+            (temporary / 'repo').symlink_to(repository, target_is_directory=True)
+            (temporary / 'dangling').symlink_to(APP / 'not-yet-created')
+            (temporary / 'chain').symlink_to(temporary / 'app')
+            for output in (temporary / 'app' / 'build-output', temporary / 'repo' / 'x' / 'y',
+                           temporary / 'dangling' / 'out', temporary / 'chain' / 'out'):
+                with self.subTest(output=output):
+                    with self.assertRaises(generate_bindings.BuildError) as caught:
+                        generate_bindings.generate('2.5', schema_root('2.5'), output, generator())
+                    self.assertIn('inside the repository', str(caught.exception))
+            (temporary / 'loop-a').symlink_to(temporary / 'loop-b')
+            (temporary / 'loop-b').symlink_to(temporary / 'loop-a')
+            with self.assertRaises(generate_bindings.BuildError) as caught:
+                generate_bindings.generate('2.5', schema_root('2.5'), temporary / 'loop-a' / 'out',
+                                           generator())
+            self.assertIn('cannot resolve output directory', str(caught.exception))
+            # A symlinked ancestor that leads OUTSIDE the repository stays usable,
+            # and the real (resolved) destination is what gets written.
+            (temporary / 'external').mkdir()
+            (temporary / 'external-alias').symlink_to(temporary / 'external')
+            _, _, output, _ = generate_bindings._check_inputs(
+                '2.5', schema_root('2.5'), temporary / 'external-alias' / 'out', generator())
+            self.assertEqual(output, (temporary / 'external').resolve() / 'out')
+        self.assertEqual(before, (sorted(p.name for p in APP.iterdir()),
+                                  sorted(p.name for p in repository.iterdir())))
 
 
 if __name__ == '__main__':

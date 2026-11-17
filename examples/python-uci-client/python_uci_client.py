@@ -101,8 +101,13 @@ class Options:
 
 
 def _bounded_integer(flag, text, upper):
-    if not (text.isascii() and text.isdigit()) or text != str(int(text)):
+    # Validate the spelling and length before int(): converting an arbitrarily
+    # long digit string is costly and, past sys.get_int_max_str_digits(),
+    # raises ValueError instead of producing a usage error.
+    if not (text.isascii() and text.isdigit()) or (len(text) > 1 and text[0] == '0'):
         raise UsageError(f'{flag} expects a canonical decimal integer')
+    if len(text) > len(str(upper)):
+        raise UsageError(f'{flag} must be between 1 and {upper}')
     value = int(text)
     if not 1 <= value <= upper:
         raise UsageError(f'{flag} must be between 1 and {upper}')
