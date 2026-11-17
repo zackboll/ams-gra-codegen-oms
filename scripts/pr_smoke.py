@@ -129,7 +129,8 @@ def classify(paths):
             selected.update(BACKENDS)
         elif path.startswith(("crates/backend-python/", "python/", "tests/fixtures/python-",
                               "tests/python-", "crates/cli/tests/python_",
-                              "scripts/check-py", "scripts/test-py", "scripts/measure-py")):
+                              "scripts/check-py", "scripts/test-py", "scripts/measure-py",
+                              "examples/python-uci-client/")):
             selected.add("python")
         elif path.startswith(("crates/backend-rust/", "crates/runtime-rust/",
                               "crates/runtime-api-rust/", "crates/runtime-rust-facade-tests/",

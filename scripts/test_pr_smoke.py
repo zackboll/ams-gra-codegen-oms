@@ -23,6 +23,15 @@ class Routing(unittest.TestCase):
                      "tests/fixtures/python-codec/new.json", "crates/cli/tests/python_codec.rs"):
             self.assert_execution([path], ["python"])
 
+    def test_python_uci_client_only_and_boundaries(self):
+        for path in ("examples/python-uci-client/python_uci_client.py",
+                     "examples/python-uci-client/contracts/uci26-service.yaml",
+                     "examples/python-uci-client/tests/test_real_sleet.py",
+                     "examples/python-uci-client/README.md"):
+            self.assert_execution([path], ["python"])
+        for path in ("examples/python-uci-client-other/main.py", "examples/python-uci-client.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_rust_only(self):
         for path in ("crates/backend-rust/src/lib.rs", "crates/runtime-rust/src/lib.rs",
                      "crates/runtime-api-rust/src/lib.rs", "crates/runtime-rust-facade-tests/tests/a.rs"):

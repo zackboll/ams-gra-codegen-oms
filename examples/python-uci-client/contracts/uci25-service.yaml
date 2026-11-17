@@ -1,0 +1,24 @@
+# Authentic UCI 2.5 receive-only RDMA service for the standalone Python client.
+# Derived from tests/fixtures/task103/uci25-service.yaml (same global message).
+contract_version: "0.1"
+service:
+  name: python-uci-client
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: rdma
+    name: RDMA setup reception
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: uci.rdma
+        timing:
+          kind: asynchronous
