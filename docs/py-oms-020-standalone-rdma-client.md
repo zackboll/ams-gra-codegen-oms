@@ -25,10 +25,13 @@ produce one selected message and 50 selected types with the codec.
 | UCI 2.5 (`093610b7753944059360d3236770ab446d039556`) | `ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27` | `002.5.0` |
 | UCI 2.6 (`78eb61b6112c8bffa40820c33124b57787fc5bd9`) | `af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b` | `002.6.0` |
 
-No generated UCI source or XSD is committed. The generated files are byte-for-byte
-identical to a direct `service-generate` run (tested). The client refuses
-bindings whose manifest release differs from `--schema-release`, or whose
-files differ from the recorded digests.
+No generated UCI source or XSD is committed. `generate_bindings.py` only invokes
+production `service-generate`; it does not post-process the output. Each set of
+generated files is bound to its manifest digests, and the qualification suite
+tests that binding. Byte-for-byte identity with a direct `service-generate` run
+was verified manually (`diff -r`) and is not an automated test. The client
+refuses bindings whose manifest release differs from `--schema-release`, or
+whose files differ from the recorded digests.
 
 ## Qualification
 
