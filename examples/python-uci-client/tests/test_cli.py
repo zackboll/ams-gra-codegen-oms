@@ -15,7 +15,7 @@ import unittest
 from unittest import mock
 
 from support import (APP, bindings_directory, cleanup_bindings, client, generate_bindings,
-                     generator, golden, schema_root)
+                     generator, golden, log_golden, schema_root)
 
 URL = 'ws://127.0.0.1:9'
 
@@ -251,6 +251,141 @@ class GeneratedBindings(unittest.TestCase):
             self.assertEqual(output, (temporary / 'external').resolve() / 'out')
         self.assertEqual(before, (sorted(p.name for p in APP.iterdir()),
                                   sorted(p.name for p in repository.iterdir())))
+
+
+def rewrite(directory, change):
+    path = directory / generate_bindings.MANIFEST
+    manifest = json.loads(path.read_text())
+    change(manifest)
+    path.write_text(json.dumps(manifest))
+
+
+def edit_source(directory, name, old, new, resign=False):
+    path = directory / name
+    text = path.read_text()
+    if old not in text:
+        raise AssertionError(f'{old!r} not found in generated {name}')
+    path.write_text(text.replace(old, new))
+    if resign:  # isolate the API/codec check from the digest check
+        rewrite(directory, lambda m: m['files'].update({name: generate_bindings.digest(path)}))
+
+
+class CombinedBindings(unittest.TestCase):
+    """PY-OMS-021 --with-log: one combined generated package, two typed families."""
+
+    def test_with_log_argument_and_default_mode(self):
+        self.assertFalse(client.parse_arguments(args()).with_log)
+        self.assertTrue(client.parse_arguments(args() + ['--with-log']).with_log)
+        self.assertTrue(client.parse_arguments(['--with-log'] + args('2.6')).with_log)
+        for argv in (args() + ['--with-log', '--with-log'], args() + ['--with-log=yes'],
+                     args() + ['--with-log', 'true'], args() + ['--with-logs'],
+                     ['--with-log', '--help']):
+            with self.subTest(argv=argv):
+                code, out, err = run_main(argv)
+                self.assertEqual((code, out), (client.EXIT_USAGE, ''), err)
+        code, out, _ = run_main(['--help'])
+        self.assertIn('--with-log', out)
+
+    def test_actual_combined_package_for_each_release(self):
+        for release in ('2.5', '2.6'):
+            with self.subTest(release=release):
+                directory = bindings_directory(release, with_log=True)
+                manifest = json.loads((directory / generate_bindings.MANIFEST).read_text())
+                self.assertEqual((manifest['format'], manifest['with_log'], manifest['release'],
+                                  manifest['schema_version'], manifest['world'], manifest['with_codec']),
+                                 (2, True, release, client.SCHEMA_VERSIONS[release], 'closed-schema', True))
+                self.assertEqual(manifest['messages'], [
+                    dict(message='RDMA_InitializeSetup', payload_type='RDMA_InitializeSetupMT',
+                         topic='uci.rdma'),
+                    dict(message='Log', payload_type='LogMT', topic='uci.log')])
+                self.assertNotIn('message', manifest)
+                contract = generate_bindings.contract(release, with_log=True)
+                self.assertEqual((manifest['contract'], manifest['contract_sha256']),
+                                 (contract.relative_to(APP.parents[1]).as_posix(),
+                                  generate_bindings.digest(contract)))
+                self.assertEqual(manifest['files'], {name: generate_bindings.digest(directory / name)
+                                                     for name in client.GENERATED})
+                bindings = client.load_bindings(directory, release, with_log=True)
+                self.assertTrue(bindings.with_log)
+                model, codec = bindings.model, bindings.codec
+                identities = [(f.message, f.payload_name, f.topic, f.receive.MESSAGE_NAME,
+                               f.receive.TOPIC, f.receive.Payload) for f in bindings.families]
+                self.assertEqual(identities, [
+                    ('RDMA_InitializeSetup', 'RDMA_InitializeSetupMT', 'uci.rdma',
+                     'RDMA_InitializeSetup', 'uci.rdma', model.RDMA_InitializeSetupMT),
+                    ('Log', 'LogMT', 'uci.log', 'Log', 'uci.log', model.LogMT)])
+                # The wire global element is not the payload class name.
+                self.assertEqual(model.LogMT.__schema_name__, (client.OAM, 'LogMT'))
+                self.assertIs(bindings.receive, bindings.families[0].receive)
+                log = bindings.registry.lookup(client.OAM, 'Log')
+                self.assertEqual((log.payload_type, log.decode, log.error_type),
+                                 (model.LogMT, codec.decode_LogMT, codec.CodecError))
+                with self.assertRaises(client.InvalidInput):
+                    bindings.registry.lookup(client.OAM, 'LogMT')
+                value = codec.decode_LogMT(json.dumps(log_golden(release)))
+                self.assertIs(type(value), model.LogMT)
+                self.assertEqual(json.loads(codec.encode_LogMT(value)), log_golden(release))
+                self.assertEqual(client.message_name(value), 'Log')
+                rdma = codec.decode_RDMA_InitializeSetupMT(json.dumps(golden(release)))
+                self.assertEqual(client.message_name(rdma), 'RDMA_InitializeSetup')
+                self.assertEqual(client.summarize_log(value)['severity'], 'INFO')
+
+    def test_mode_release_and_tamper_mismatches_exit_3_without_network(self):
+        cases = [
+            (args('2.5', bindings_directory('2.5')) + ['--with-log'], 'select only RDMA_InitializeSetup'),
+            (args('2.5', bindings_directory('2.5', with_log=True)), 'were generated with --with-log'),
+            (args('2.6', bindings_directory('2.5', with_log=True)) + ['--with-log'],
+             "generated for UCI '2.5', not --schema-release 2.6")]
+        for argv, message in cases:
+            with self.subTest(message=message):
+                code, _, err = run_main(argv)
+                self.assertEqual(code, client.EXIT_BINDINGS, err)
+                self.assertIn(message, err)
+        log_codec = 'def decode_LogMT('
+        edits = [
+            ('modified-codec', lambda d: edit_source(d, 'service_codec.py', log_codec, 'def _x_LogMT('),
+             'service_codec.py was modified'),
+            ('modified-api', lambda d: edit_source(d, 'service_api.py', 'uci.log', 'uci.lag'),
+             'service_api.py was modified'),
+            # Re-signed: digests match, but the generated LogMT decoder is gone.
+            ('missing-log-codec', lambda d: edit_source(d, 'service_codec.py', log_codec,
+                                                        'def _x_LogMT(', resign=True),
+             'generated service codec lacks the LogMT codec'),
+            # Re-signed: digests match, but the generated Log endpoint is gone.
+            ('missing-log-api', lambda d: edit_source(d, 'service_api.py', 'MESSAGE_NAME = "Log"',
+                                                      'MESSAGE_NAME = "Lag"', resign=True),
+             'generated service API has no unique Log input exchange'),
+            ('manifest-without-log', lambda d: rewrite(d, lambda m: m['messages'].pop()),
+             'does not describe closed-schema'),
+            ('manifest-renamed-payload', lambda d: rewrite(
+                d, lambda m: m['messages'][1].update(payload_type='LogMDT')),
+             'does not describe closed-schema'),
+            ('manifest-mixed-format', lambda d: rewrite(d, lambda m: m.update(message='Log')),
+             'does not describe closed-schema'),
+            ('manifest-unknown-format', lambda d: rewrite(d, lambda m: m.update(format=3)),
+             'is not a python-uci-client build manifest')]
+        with tempfile.TemporaryDirectory() as temporary:
+            for name, edit, message in edits:
+                with self.subTest(case=name):
+                    copy = Path(temporary) / name
+                    shutil.copytree(bindings_directory('2.5', with_log=True), copy)
+                    edit(copy)
+                    code, _, err = run_main(args('2.5', copy) + ['--with-log'])
+                    self.assertEqual(code, client.EXIT_BINDINGS, err)
+                    self.assertIn(message, err)
+
+    def test_combined_manifest_cannot_relabel_rdma_only_sources(self):
+        # RDMA-only generated files under a forged combined manifest: digests
+        # match, but the generated API/codec have no Log endpoint or LogMT codec.
+        with tempfile.TemporaryDirectory() as temporary:
+            copy = Path(temporary) / 'forged'
+            shutil.copytree(bindings_directory('2.5'), copy)
+            rewrite(copy, lambda m: (m.pop('message'), m.pop('payload_type'), m.update(
+                format=2, with_log=True,
+                messages=[dict(item) for item in generate_bindings.COMBINED_MESSAGES])))
+            code, _, err = run_main(args('2.5', copy) + ['--with-log'])
+            self.assertEqual(code, client.EXIT_BINDINGS, err)
+            self.assertIn('generated service API has no unique Log input exchange', err)
 
 
 if __name__ == '__main__':

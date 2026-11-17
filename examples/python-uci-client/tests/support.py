@@ -2,7 +2,8 @@
 
 The independent publisher/observer is a raw `websockets` OWP peer that never
 imports the application, the runtime or generated code. It publishes
-independently authored Task092 golden documents (or targeted edits of them).
+independently authored Task092 RDMA golden documents and PY-016 Log golden
+documents (or targeted edits of them).
 """
 import asyncio
 import copy
@@ -29,6 +30,7 @@ SLEET_TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
 SERVICE = 'python-uci-client'
 SERVICE_UUID = '550e8400-e29b-41d4-a716-446655440020'
 TOPIC = 'uci.rdma'
+LOG_TOPIC = 'uci.log'
 TLS_HELPER = ROOT / 'examples/rust-uci-client/tests/support/tls_endpoint.py'
 
 
@@ -36,6 +38,23 @@ def golden(release):
     """Independent Task092 golden payload body for the release."""
     return json.loads((ROOT / 'tests/fixtures/service-generate' /
                        f'task092-real-rdma{release.replace(".", "")}.json').read_text())
+
+
+def log_golden(release):
+    """Independent PY-016 full-schema Log golden body for the release."""
+    return json.loads((ROOT / 'tests/fixtures/python-whitespace-visible/goldens' /
+                       f'{release}-Log.json').read_text())
+
+
+def log_variant(release, severity=None, timestamp=None, log_timestamp=None):
+    body = copy.deepcopy(log_golden(release))
+    if severity is not None:
+        body['MessageData']['Severity'] = severity
+    if timestamp is not None:
+        body['MessageHeader']['Timestamp'] = timestamp
+    if log_timestamp is not None:
+        body['MessageData']['Timestamp'] = log_timestamp
+    return body
 
 
 def variant(release, setup_uuid=None, endpoints=None, provider=None, timestamp=None):
@@ -71,30 +90,33 @@ def generator():
 _GENERATED = {}
 
 
-def bindings_directory(release):
+def bindings_directory(release, with_log=False):
     """Generated bindings for one release, in external temporary storage.
 
-    PY_OMS_020_BINDINGS may name a directory holding `2.5`/`2.6` outputs of
-    generate_bindings.py (the qualification wrapper generates each release
-    once per interpreter). They are still digest-verified by load_bindings.
-    Otherwise generate once per test module; modules call `cleanup_bindings`.
+    PY_OMS_020_BINDINGS may name a directory holding `2.5`/`2.6` (RDMA-only)
+    and `2.5-log`/`2.6-log` (--with-log) outputs of generate_bindings.py (the
+    qualification wrapper generates each once per interpreter). They are still
+    digest-verified by load_bindings. Otherwise generate once per test module;
+    modules call `cleanup_bindings`.
     """
+    key = release + ('-log' if with_log else '')
     shared = os.environ.get('PY_OMS_020_BINDINGS')
     if shared:
-        directory = Path(shared) / release
+        directory = Path(shared) / key
         if not (directory / generate_bindings.MANIFEST).is_file():
-            raise RuntimeError(f'PY_OMS_020_BINDINGS lacks generated {release} bindings')
+            raise RuntimeError(f'PY_OMS_020_BINDINGS lacks generated {key} bindings')
         return directory
-    if release not in _GENERATED:
-        holder = tempfile.TemporaryDirectory(prefix=f'py-oms-020-{release}-')
+    if key not in _GENERATED:
+        holder = tempfile.TemporaryDirectory(prefix=f'py-oms-02x-{key}-')
         output = Path(holder.name) / 'bindings'
         try:
-            generate_bindings.generate(release, schema_root(release), output, generator())
+            generate_bindings.generate(release, schema_root(release), output, generator(),
+                                       with_log=with_log)
         except BaseException:
             holder.cleanup()
             raise
-        _GENERATED[release] = (holder, output)
-    return _GENERATED[release][1]
+        _GENERATED[key] = (holder, output)
+    return _GENERATED[key][1]
 
 
 def cleanup_bindings():
@@ -153,16 +175,22 @@ def sleet_binary():
 class Broker:
     """One isolated unchanged Sleet process for one release (debug log retained)."""
 
-    def __init__(self, release, *, schema=None, allowed_messages=('RDMA_InitializeSetup',)):
+    def __init__(self, release, *, schema=None, allowed_messages=('RDMA_InitializeSetup',),
+                 bindings=None):
+        """`bindings` maps authorized topic -> allowed global messages. The
+        default is the PY-OMS-020 single uci.rdma binding (`allowed_messages`)."""
         self.release, self.binary = release, sleet_binary()
         self.directory = tempfile.TemporaryDirectory(prefix=f'py-oms-020-sleet-{release}-')
         path = Path(self.directory.name)
         services = path / 'services.d'
         services.mkdir()
-        (services / 'client.toml').write_text(
-            f'service_id="{SERVICE}"\nservice_uuid="{SERVICE_UUID}"\n'
-            f'allowed_topics=["{TOPIC}"]\n[[topic_bindings]]\ntopic="{TOPIC}"\n'
-            f'allowed_messages={json.dumps(list(allowed_messages))}\n')
+        bindings = bindings if bindings is not None else {TOPIC: tuple(allowed_messages)}
+        text = (f'service_id="{SERVICE}"\nservice_uuid="{SERVICE_UUID}"\n'
+                f'allowed_topics={json.dumps(list(bindings))}\n')
+        for topic, messages in bindings.items():
+            text += (f'[[topic_bindings]]\ntopic="{topic}"\n'
+                     f'allowed_messages={json.dumps(list(messages))}\n')
+        (services / 'client.toml').write_text(text)
         self.port = free_port()
         self.url = f'ws://127.0.0.1:{self.port}'
         schema = schema or schema_root(release)
@@ -229,9 +257,12 @@ class RawPeer:
                 continue
             return reply, messages
 
-    async def publish(self, body, name='RDMA_InitializeSetup'):
+    async def publish(self, body, name='RDMA_InitializeSetup', topic=TOPIC):
         text = body if isinstance(body, str) else json.dumps({name: body})
-        return await self.status(f'PUB {TOPIC} {text}')
+        return await self.status(f'PUB {topic} {text}')
+
+    async def publish_log(self, body):
+        return await self.publish(body, name='Log', topic=LOG_TOPIC)
 
 
 async def run_cli(arguments, *, until=None, timeout=60, env=None):
