@@ -11,9 +11,14 @@ scripts/fetch-pinned-uci-<release>.sh. Generated source is never written into
 the repository. A build manifest records the release and the digests of the
 three actual generated files; python_uci_client.py refuses any mismatch.
 
+Without --with-log the RDMA-only contract and the PY-OMS-020 manifest (format
+1) are used unchanged. With --with-log the combined RDMA + Log contract of the
+same release is used; one model.py/service_codec.py/service_api.py then holds
+both messages and the manifest (format 2) lists both selected messages.
+
 Usage:
   generate_bindings.py --schema-release {2.5|2.6} --schema ROOT_XSD --output DIR
-                       [--generator PATH]
+                       [--with-log] [--generator PATH]
 """
 import argparse
 import hashlib
@@ -52,8 +57,17 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def contract(release):
-    return APP / 'contracts' / ('uci' + release.replace('.', '') + '-service.yaml')
+def contract(release, with_log=False):
+    suffix = '-rdma-log-service.yaml' if with_log else '-service.yaml'
+    return APP / 'contracts' / ('uci' + release.replace('.', '') + suffix)
+
+
+# Selected messages of the combined contract, in contract order:
+# OWP global element, generated payload class, generated contract topic.
+COMBINED_MESSAGES = (
+    dict(message='RDMA_InitializeSetup', payload_type='RDMA_InitializeSetupMT', topic='uci.rdma'),
+    dict(message='Log', payload_type='LogMT', topic='uci.log'),
+)
 
 
 def default_generator():
@@ -101,16 +115,17 @@ def _check_inputs(release, schema, output, generator):
     return pin, schema, output, generator
 
 
-def generate(release, schema, output, generator):
+def generate(release, schema, output, generator, with_log=False):
     """Generate, verify and atomically publish one release's bindings."""
     pin, schema, output, generator = _check_inputs(release, schema, output, generator)
+    selected = contract(release, with_log)
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix='.python-uci-client-', dir=output.parent))
     try:
         target = staging / 'generated'
         result = subprocess.run(
             [str(generator), 'service-generate', '--schema', str(schema),
-             '--contract', str(contract(release)), '--language', 'python',
+             '--contract', str(selected), '--language', 'python',
              '--world', 'closed-schema', '--with-codec', '--output', str(target)],
             capture_output=True, text=True)
         if result.returncode != 0:
@@ -118,16 +133,23 @@ def generate(release, schema, output, generator):
         produced = sorted(path.name for path in target.iterdir())
         if produced != sorted(GENERATED):
             raise BuildError('unexpected generated file set: ' + ', '.join(produced))
+        if with_log:
+            # Combined manifest: both selected messages are named explicitly.
+            identity = dict(format=2, with_log=True,
+                            messages=[dict(item) for item in COMBINED_MESSAGES])
+        else:
+            # PY-OMS-020 manifest, unchanged.
+            identity = dict(format=1, message='RDMA_InitializeSetup',
+                            payload_type='RDMA_InitializeSetupMT')
         manifest = dict(
-            format=1, application='python-uci-client', release=release,
-            schema_version=pin['schema_version'], message='RDMA_InitializeSetup',
-            payload_type='RDMA_InitializeSetupMT', language='python',
+            application='python-uci-client', release=release,
+            schema_version=pin['schema_version'], language='python',
             world='closed-schema', with_codec=True,
-            contract=contract(release).relative_to(REPOSITORY).as_posix(),
-            contract_sha256=digest(contract(release)), schema_sha256=pin['root'],
+            contract=selected.relative_to(REPOSITORY).as_posix(),
+            contract_sha256=digest(selected), schema_sha256=pin['root'],
             include={pin['include'][0]: pin['include'][1]},
             generator_sha256=digest(generator),
-            files={name: digest(target / name) for name in GENERATED})
+            files={name: digest(target / name) for name in GENERATED}, **identity)
         (target / MANIFEST).write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
         if output.exists():
             output.rmdir()
@@ -140,8 +162,11 @@ def generate(release, schema, output, generator):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog='generate_bindings.py', allow_abbrev=False,
-        description='Generate RDMA_InitializeSetup Python bindings for python-uci-client.')
+        description='Generate RDMA_InitializeSetup (optionally + Log) Python bindings '
+                    'for python-uci-client.')
     parser.add_argument('--schema-release', required=True, choices=sorted(PINS))
+    parser.add_argument('--with-log', action='store_true',
+                        help='also select UCI Log (topic uci.log) for python_uci_client.py --with-log')
     parser.add_argument('--schema', required=True,
                         help='pinned UCI_MessageDefinitions root XSD for that release')
     parser.add_argument('--output', required=True,
@@ -151,11 +176,13 @@ def main(argv=None):
                              '(default: $AMS_GRA_GENERATOR or target/release in this checkout)')
     args = parser.parse_args(argv)
     try:
-        output = generate(args.schema_release, args.schema, args.output, args.generator)
+        output = generate(args.schema_release, args.schema, args.output, args.generator,
+                          with_log=args.with_log)
     except (BuildError, OSError) as error:
         print(f'generate_bindings.py: error: {error}', file=sys.stderr)
         return 1
-    print(f'GENERATED UCI {args.schema_release} RDMA_InitializeSetup bindings: {output}')
+    selection = 'RDMA_InitializeSetup + Log' if args.with_log else 'RDMA_InitializeSetup'
+    print(f'GENERATED UCI {args.schema_release} {selection} bindings: {output}')
     return 0
 
 

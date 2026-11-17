@@ -1,0 +1,38 @@
+# Authentic UCI 2.6 receive-only RDMA + Log service (PY-OMS-021, --with-log).
+# The RDMA function is identical to uci26-service.yaml; the Log function uses
+# the same global message as tests/fixtures/task102/uci26-service.yaml.
+contract_version: "0.1"
+service:
+  name: python-uci-client
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.6"
+  uci_schema_version: "2.6"
+functions:
+  - id: rdma
+    name: RDMA setup reception
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: uci.rdma
+        timing:
+          kind: asynchronous
+  - id: log
+    name: Log reception
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: Log
+        topic: uci.log
+        timing:
+          kind: asynchronous

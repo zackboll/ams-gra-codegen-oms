@@ -18,6 +18,7 @@ from websockets.asyncio.server import serve
 from support import (TLS_HELPER, TOPIC, Broker, RawPeer, bindings_directory, cleanup_bindings,
                      client, free_port, run_cli, stop_process, wait_port)
 from test_real_sleet import assert_session, cli_arguments, exercise
+import test_real_sleet_with_log as with_log
 
 CERTIFICATES = None
 # Child processes must not trust the generated CA through any host default.
@@ -31,6 +32,7 @@ def setUpModule():
                    check=True, capture_output=True)
     for release in ('2.5', '2.6'):
         bindings_directory(release)
+        bindings_directory(release, with_log=True)
 
 
 def tearDownModule():
@@ -86,6 +88,29 @@ class Wss(unittest.IsolatedAsyncioTestCase):
                 self.assertIn(f'subscription removed sid={sid}', events)
                 self.assertIn('localhost', tls.handshakes())  # SNI carried the verified name
                 print(f'PY-OMS-020 WSS UCI {release}: PASSED sid={sid}', flush=True)
+
+    async def test_verified_wss_receives_rdma_and_log_on_one_connection(self):
+        # PY-OMS-021: --with-log over the same verified WSS path, per release.
+        for release in ('2.5', '2.6'):
+            with self.subTest(release=release):
+                schema = client.SCHEMA_VERSIONS[release]
+                observer_tls = ssl.create_default_context(cafile=ca())
+                async with Broker(release, bindings=with_log.BOTH) as broker, \
+                        Terminator(broker.port, 'valid') as tls:
+                    url = f'wss://localhost:{tls.port}'
+                    async with RawPeer(url, schema, ssl_context=observer_tls) as publisher, \
+                            RawPeer(url, schema, ssl_context=observer_tls) as observer:
+                        await with_log.witness_both(observer)
+                        code, lines, stderr = await with_log.exercise(
+                            self, release, url, publisher, observer,
+                            extra=dict(ca_file=ca()), env=ISOLATED)
+                    events = broker.events()
+                rdma_sid, log_sid = with_log.assert_session(self, release, code, lines, stderr)
+                self.assertIn(f'CONNECTED wss://localhost:{tls.port} owp=1.0 '
+                              f'service-id=python-uci-client schema={schema}', lines)
+                with_log.assert_broker_ownership(self, events, rdma_sid, log_sid, peers=2)
+                self.assertIn('localhost', tls.handshakes())
+                print(f'PY-OMS-021 WSS UCI {release}: PASSED sids={rdma_sid},{log_sid}', flush=True)
 
     async def assert_rejected(self, identity, host, ca_name, expected):
         async with Broker('2.5') as broker, Terminator(broker.port, identity) as tls:
