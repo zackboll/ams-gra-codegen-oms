@@ -2,8 +2,8 @@
 
 The independent publisher/observer is a raw `websockets` OWP peer that never
 imports the application, the runtime or generated code. It publishes
-independently authored Task092 RDMA golden documents and PY-016 Log golden
-documents (or targeted edits of them).
+independently authored Task092 RDMA golden documents and PY-016 Log and
+SurvivabilityRiskLevel golden documents (or targeted edits of them).
 """
 import asyncio
 import copy
@@ -31,6 +31,7 @@ SERVICE = 'python-uci-client'
 SERVICE_UUID = '550e8400-e29b-41d4-a716-446655440020'
 TOPIC = 'uci.rdma'
 LOG_TOPIC = 'uci.log'
+SURVIVABILITY_TOPIC = 'uci.survivability'
 TLS_HELPER = ROOT / 'examples/rust-uci-client/tests/support/tls_endpoint.py'
 
 
@@ -54,6 +55,27 @@ def log_variant(release, severity=None, timestamp=None, log_timestamp=None):
         body['MessageHeader']['Timestamp'] = timestamp
     if log_timestamp is not None:
         body['MessageData']['Timestamp'] = log_timestamp
+    return body
+
+
+def survivability_golden(release):
+    """Independent PY-016 full-schema SurvivabilityRiskLevel golden body for the release."""
+    return json.loads((ROOT / 'tests/fixtures/python-whitespace-visible/goldens' /
+                       f'{release}-SurvivabilityRiskLevel.json').read_text())
+
+
+def survivability_variant(release, risk_level_uuid=None, settings=None, timestamp=None):
+    """Targeted edit of the golden. `settings` is [(prioritization, [allowed risk, ...])]."""
+    body = copy.deepcopy(survivability_golden(release))
+    if risk_level_uuid is not None:
+        body['MessageData']['SurvivabilityRiskLevelID']['UUID'] = risk_level_uuid
+    if settings is not None:
+        body['MessageData']['RiskSetting'] = [
+            {'RiskPrioritization': prioritization,
+             'RiskLevel': [{'AllowedRisk': risk} for risk in risks]}
+            for prioritization, risks in settings]
+    if timestamp is not None:
+        body['MessageHeader']['Timestamp'] = timestamp
     return body
 
 
@@ -90,16 +112,17 @@ def generator():
 _GENERATED = {}
 
 
-def bindings_directory(release, with_log=False):
+def bindings_directory(release, with_log=False, with_survivability=False):
     """Generated bindings for one release, in external temporary storage.
 
-    PY_OMS_020_BINDINGS may name a directory holding `2.5`/`2.6` (RDMA-only)
-    and `2.5-log`/`2.6-log` (--with-log) outputs of generate_bindings.py (the
-    qualification wrapper generates each once per interpreter). They are still
-    digest-verified by load_bindings. Otherwise generate once per test module;
-    modules call `cleanup_bindings`.
+    PY_OMS_020_BINDINGS may name a directory holding `2.5`/`2.6` (RDMA-only),
+    `2.5-log`/`2.6-log` (--with-log) and `2.5-log-survivability`/
+    `2.6-log-survivability` (--with-log --with-survivability) outputs of
+    generate_bindings.py (the qualification wrapper generates each once per
+    interpreter). They are still digest-verified by load_bindings. Otherwise
+    generate once per test module; modules call `cleanup_bindings`.
     """
-    key = release + ('-log' if with_log else '')
+    key = release + ('-log' if with_log else '') + ('-survivability' if with_survivability else '')
     shared = os.environ.get('PY_OMS_020_BINDINGS')
     if shared:
         directory = Path(shared) / key
@@ -111,7 +134,7 @@ def bindings_directory(release, with_log=False):
         output = Path(holder.name) / 'bindings'
         try:
             generate_bindings.generate(release, schema_root(release), output, generator(),
-                                       with_log=with_log)
+                                       with_log=with_log, with_survivability=with_survivability)
         except BaseException:
             holder.cleanup()
             raise
@@ -263,6 +286,9 @@ class RawPeer:
 
     async def publish_log(self, body):
         return await self.publish(body, name='Log', topic=LOG_TOPIC)
+
+    async def publish_survivability(self, body):
+        return await self.publish(body, name='SurvivabilityRiskLevel', topic=SURVIVABILITY_TOPIC)
 
 
 async def run_cli(arguments, *, until=None, timeout=60, env=None):

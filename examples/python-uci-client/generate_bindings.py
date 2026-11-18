@@ -14,11 +14,14 @@ three actual generated files; python_uci_client.py refuses any mismatch.
 Without --with-log the RDMA-only contract and the PY-OMS-020 manifest (format
 1) are used unchanged. With --with-log the combined RDMA + Log contract of the
 same release is used; one model.py/service_codec.py/service_api.py then holds
-both messages and the manifest (format 2) lists both selected messages.
+both messages and the manifest (format 2) lists both selected messages. With
+--with-log --with-survivability the three-message RDMA + Log +
+SurvivabilityRiskLevel contract of the same release is used and the manifest
+(format 3) lists all three selected messages in subscription order.
 
 Usage:
   generate_bindings.py --schema-release {2.5|2.6} --schema ROOT_XSD --output DIR
-                       [--with-log] [--generator PATH]
+                       [--with-log [--with-survivability]] [--generator PATH]
 """
 import argparse
 import hashlib
@@ -57,8 +60,11 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def contract(release, with_log=False):
-    suffix = '-rdma-log-service.yaml' if with_log else '-service.yaml'
+def contract(release, with_log=False, with_survivability=False):
+    if with_survivability and not with_log:
+        raise BuildError('--with-survivability requires --with-log')
+    suffix = ('-rdma-log-survivability-service.yaml' if with_survivability else
+              '-rdma-log-service.yaml' if with_log else '-service.yaml')
     return APP / 'contracts' / ('uci' + release.replace('.', '') + suffix)
 
 
@@ -67,6 +73,13 @@ def contract(release, with_log=False):
 COMBINED_MESSAGES = (
     dict(message='RDMA_InitializeSetup', payload_type='RDMA_InitializeSetupMT', topic='uci.rdma'),
     dict(message='Log', payload_type='LogMT', topic='uci.log'),
+)
+# The three-message contract: the combined messages, then SurvivabilityRiskLevel.
+# The wire global element is 'SurvivabilityRiskLevel'; 'SurvivabilityRiskLevelMT'
+# is only the generated payload class.
+SURVIVABILITY_MESSAGES = COMBINED_MESSAGES + (
+    dict(message='SurvivabilityRiskLevel', payload_type='SurvivabilityRiskLevelMT',
+         topic='uci.survivability'),
 )
 
 
@@ -115,10 +128,12 @@ def _check_inputs(release, schema, output, generator):
     return pin, schema, output, generator
 
 
-def generate(release, schema, output, generator, with_log=False):
+def generate(release, schema, output, generator, with_log=False, with_survivability=False):
     """Generate, verify and atomically publish one release's bindings."""
+    if with_survivability and not with_log:
+        raise BuildError('--with-survivability requires --with-log')
     pin, schema, output, generator = _check_inputs(release, schema, output, generator)
-    selected = contract(release, with_log)
+    selected = contract(release, with_log, with_survivability)
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix='.python-uci-client-', dir=output.parent))
     try:
@@ -133,7 +148,11 @@ def generate(release, schema, output, generator, with_log=False):
         produced = sorted(path.name for path in target.iterdir())
         if produced != sorted(GENERATED):
             raise BuildError('unexpected generated file set: ' + ', '.join(produced))
-        if with_log:
+        if with_survivability:
+            # Three-message manifest: the exact ordered selected inventory.
+            identity = dict(format=3, with_log=True, with_survivability=True,
+                            messages=[dict(item) for item in SURVIVABILITY_MESSAGES])
+        elif with_log:
             # Combined manifest: both selected messages are named explicitly.
             identity = dict(format=2, with_log=True,
                             messages=[dict(item) for item in COMBINED_MESSAGES])
@@ -162,11 +181,15 @@ def generate(release, schema, output, generator, with_log=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog='generate_bindings.py', allow_abbrev=False,
-        description='Generate RDMA_InitializeSetup (optionally + Log) Python bindings '
-                    'for python-uci-client.')
+        description='Generate RDMA_InitializeSetup (optionally + Log, + SurvivabilityRiskLevel) '
+                    'Python bindings for python-uci-client.')
     parser.add_argument('--schema-release', required=True, choices=sorted(PINS))
     parser.add_argument('--with-log', action='store_true',
                         help='also select UCI Log (topic uci.log) for python_uci_client.py --with-log')
+    parser.add_argument('--with-survivability', action='store_true',
+                        help='with --with-log only: also select UCI SurvivabilityRiskLevel '
+                             '(topic uci.survivability) for python_uci_client.py '
+                             '--with-log --with-survivability')
     parser.add_argument('--schema', required=True,
                         help='pinned UCI_MessageDefinitions root XSD for that release')
     parser.add_argument('--output', required=True,
@@ -175,13 +198,16 @@ def main(argv=None):
                         help='production ams-gra-codegen-oms binary '
                              '(default: $AMS_GRA_GENERATOR or target/release in this checkout)')
     args = parser.parse_args(argv)
+    if args.with_survivability and not args.with_log:
+        parser.error('--with-survivability requires --with-log')  # usage exit 2
     try:
         output = generate(args.schema_release, args.schema, args.output, args.generator,
-                          with_log=args.with_log)
+                          with_log=args.with_log, with_survivability=args.with_survivability)
     except (BuildError, OSError) as error:
         print(f'generate_bindings.py: error: {error}', file=sys.stderr)
         return 1
-    selection = 'RDMA_InitializeSetup + Log' if args.with_log else 'RDMA_InitializeSetup'
+    selection = ('RDMA_InitializeSetup + Log + SurvivabilityRiskLevel' if args.with_survivability
+                 else 'RDMA_InitializeSetup + Log' if args.with_log else 'RDMA_InitializeSetup')
     print(f'GENERATED UCI {args.schema_release} {selection} bindings: {output}')
     return 0
 

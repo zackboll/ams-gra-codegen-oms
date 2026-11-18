@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Standalone Python UCI client: typed RDMA_InitializeSetup (and optional Log)
-reception from Sleet.
+"""Standalone Python UCI client: typed RDMA_InitializeSetup (and optional Log
+and SurvivabilityRiskLevel) reception from Sleet.
 
 Uses only the existing Python OMS LA-CAL runtime (`oms_lacal`) and the actual
 generated `model.py`, `service_api.py` and `service_codec.py` produced by
 generate_bindings.py. It neither frames OWP nor decodes UCI JSON itself.
-With --with-log, one connection carries two generated subscriptions.
+With --with-log, one connection carries two generated subscriptions; with
+--with-log --with-survivability it carries three.
 """
 import asyncio
 from dataclasses import dataclass, field
@@ -41,9 +42,16 @@ LOG_PAYLOAD = 'LogMT'
 # the generated Python type. They are never derived from each other.
 RDMA_FAMILY = (MESSAGE, PAYLOAD, 'uci.rdma')
 LOG_FAMILY = (LOG_MESSAGE, LOG_PAYLOAD, 'uci.log')
+SURVIVABILITY_MESSAGE = 'SurvivabilityRiskLevel'
+SURVIVABILITY_PAYLOAD = 'SurvivabilityRiskLevelMT'
+SURVIVABILITY_FAMILY = (SURVIVABILITY_MESSAGE, SURVIVABILITY_PAYLOAD, 'uci.survivability')
 # Manifest format -> selected message families. Format 1 is the PY-OMS-020
-# RDMA-only manifest; format 2 is the --with-log combined manifest.
-MANIFEST_FAMILIES = {1: (RDMA_FAMILY,), 2: (RDMA_FAMILY, LOG_FAMILY)}
+# RDMA-only manifest; format 2 is the --with-log combined manifest; format 3
+# is the --with-log --with-survivability three-message manifest.
+MANIFEST_FAMILIES = {1: (RDMA_FAMILY,), 2: (RDMA_FAMILY, LOG_FAMILY),
+                     3: (RDMA_FAMILY, LOG_FAMILY, SURVIVABILITY_FAMILY)}
+# Manifest format -> the exact CLI/generator flags that select it.
+MODE_FLAGS = {1: '', 2: '--with-log', 3: '--with-log --with-survivability'}
 
 EXIT_OK = 0
 EXIT_INTERNAL = 1
@@ -61,12 +69,17 @@ DEFAULT_BUFFER = 16
 MAX_BUFFER = 4096
 DRAIN_TIMEOUT = 5.0
 MAX_DISPLAYED_ENDPOINTS = 8
+# The schema already bounds RiskSetting to 1..4 and RiskLevel to 1..5; the
+# display is bounded independently so output can never grow with input.
+MAX_DISPLAYED_RISK_SETTINGS = 4
+MAX_DISPLAYED_ALLOWED_RISKS = 5
 
 HELP = f"""usage: {PROGRAM} --url ws[s]://HOST[:PORT][/PATH] --service-id ID
                          --schema-release {{2.5|2.6}} --bindings DIR [OPTIONS]
 
 Receive typed UCI RDMA_InitializeSetup messages from a Sleet OMS endpoint
-(and, with --with-log, typed UCI Log messages on the same connection).
+(and, with --with-log, typed UCI Log messages on the same connection; with
+--with-log --with-survivability, also typed UCI SurvivabilityRiskLevel).
 
 Required:
   --url URL               Sleet endpoint: ws:// or certificate-verified wss://
@@ -84,6 +97,12 @@ Options:
                           over the same connection. Requires bindings made by
                           generate_bindings.py --with-log. --max-messages then
                           counts both message families together.
+  --with-survivability    With --with-log only: also receive typed UCI
+                          SurvivabilityRiskLevel (SurvivabilityRiskLevelMT) on
+                          topic uci.survivability over the same connection.
+                          Requires bindings made by generate_bindings.py
+                          --with-log --with-survivability. --max-messages then
+                          counts all three message families together.
   --help                  Show this help and exit
 
 Exit status:
@@ -116,6 +135,12 @@ class Options:
     max_messages: int | None = None
     ca_file: Path | None = None
     with_log: bool = False
+    with_survivability: bool = False
+
+    @property
+    def manifest_format(self):
+        """Manifest format this mode requires: 1 RDMA, 2 +Log, 3 +Survivability."""
+        return 3 if self.with_survivability else 2 if self.with_log else 1
 
 
 def _bounded_integer(flag, text, upper):
@@ -145,7 +170,7 @@ def parse_arguments(argv):
         return None
     flags = ('--url', '--service-id', '--schema-release', '--bindings',
              '--duration-seconds', '--max-messages', '--ca-file')
-    switches = ('--with-log',)  # presence-only; never consumes a value
+    switches = ('--with-log', '--with-survivability')  # presence-only; never consume a value
     values = {}
     items = iter(argv)
     for flag in items:
@@ -165,6 +190,9 @@ def parse_arguments(argv):
     for flag in ('--url', '--service-id', '--schema-release', '--bindings'):
         if flag not in values:
             raise UsageError(f'missing required argument {flag}')
+    if '--with-survivability' in values and '--with-log' not in values:
+        # Only the three explicit modes exist; no arbitrary message selection.
+        raise UsageError('--with-survivability requires --with-log')
     if values['--schema-release'] not in SCHEMA_VERSIONS:
         raise UsageError('--schema-release must be 2.5 or 2.6')
     options = Options(
@@ -175,7 +203,8 @@ def parse_arguments(argv):
         max_messages=(_bounded_integer('--max-messages', values['--max-messages'], MAX_MESSAGES)
                       if '--max-messages' in values else None),
         ca_file=Path(values['--ca-file']) if '--ca-file' in values else None,
-        with_log='--with-log' in values)
+        with_log='--with-log' in values,
+        with_survivability='--with-survivability' in values)
     runtime_config(options)
     return options
 
@@ -238,6 +267,7 @@ class Bindings:
     registry: CodecRegistry = field(repr=False)
     families: tuple = ()
     with_log: bool = False
+    with_survivability: bool = False
 
 
 _PACKAGES = itertools.count()
@@ -278,12 +308,40 @@ def _described_families(manifest, families):
             and 'message' not in manifest and 'payload_type' not in manifest)
 
 
-def load_bindings(directory, release, with_log=False):
+def _format_marker_valid(manifest):
+    """Format 3 carries with_survivability=true; formats 1 and 2 never carry it."""
+    if manifest['format'] == 3:
+        return manifest.get('with_survivability') is True
+    return 'with_survivability' not in manifest
+
+
+def _mode_mismatch(directory, actual, required):
+    """Diagnostic for a manifest whose mode differs from the selected CLI flags."""
+    if actual == 2 and required == 1:  # PY-OMS-021 wording, unchanged
+        return (f'bindings in {directory} were generated with --with-log; '
+                'pass --with-log or use RDMA-only bindings')
+    if actual == 1 and required == 2:  # PY-OMS-021 wording, unchanged
+        return (f'bindings in {directory} select only {MESSAGE}; --with-log needs '
+                'bindings from generate_bindings.py --with-log')
+    if actual == 3:
+        return (f'bindings in {directory} were generated with {MODE_FLAGS[3]}; '
+                f'pass {MODE_FLAGS[3]} or use bindings generated for the selected mode')
+    names = ' + '.join(message for message, _, _ in MANIFEST_FAMILIES[actual])
+    return (f'bindings in {directory} select only {names}; --with-survivability needs '
+            f'bindings from generate_bindings.py {MODE_FLAGS[3]}')
+
+
+def load_bindings(directory, release, with_log=False, with_survivability=False):
     """Load generate_bindings.py output; refuse modified, wrong-release or wrong-mode bindings.
 
     with_log=False needs a PY-OMS-020 RDMA-only manifest (format 1);
-    with_log=True needs a combined RDMA + Log manifest (format 2).
+    with_log=True needs a combined RDMA + Log manifest (format 2);
+    with_log=True, with_survivability=True needs the three-message RDMA + Log +
+    SurvivabilityRiskLevel manifest (format 3).
     """
+    if with_survivability and not with_log:
+        raise BindingsError('--with-survivability requires --with-log')
+    required = 3 if with_survivability else 2 if with_log else 1
     directory = Path(directory)
     try:
         manifest = json.loads((directory / MANIFEST).read_text(encoding='utf-8'))
@@ -292,20 +350,16 @@ def load_bindings(directory, release, with_log=False):
     except (OSError, UnicodeError, ValueError):
         raise BindingsError(f'unreadable {MANIFEST} in {directory}') from None
     if (type(manifest) is not dict or type(manifest.get('format')) is not int or
-            manifest['format'] not in MANIFEST_FAMILIES or
+            manifest['format'] not in MANIFEST_FAMILIES or not _format_marker_valid(manifest) or
             manifest.get('application') != PROGRAM or type(manifest.get('files')) is not dict or
             sorted(manifest['files']) != sorted(GENERATED)):
         raise BindingsError(f'{MANIFEST} is not a python-uci-client build manifest')
     if manifest.get('release') != release:
         raise BindingsError(f'bindings in {directory} were generated for UCI '
                             f'{manifest.get("release")!r}, not --schema-release {release}')
-    combined = manifest['format'] == 2
-    if combined and not with_log:
-        raise BindingsError(f'bindings in {directory} were generated with --with-log; '
-                            'pass --with-log or use RDMA-only bindings')
-    if with_log and not combined:
-        raise BindingsError(f'bindings in {directory} select only {MESSAGE}; --with-log needs '
-                            'bindings from generate_bindings.py --with-log')
+    if manifest['format'] != required:
+        raise BindingsError(_mode_mismatch(directory, manifest['format'], required))
+    combined = manifest['format'] >= 2
     families = MANIFEST_FAMILIES[manifest['format']]
     names = ' + '.join(message for message, _, _ in families)
     if (manifest.get('schema_version') != SCHEMA_VERSIONS[release] or
@@ -353,7 +407,7 @@ def load_bindings(directory, release, with_log=False):
         raise BindingsError('generated codecs conflict in the codec registry') from None
     return Bindings(release, SCHEMA_VERSIONS[release], directory, model, codec, api,
                     selected[0].receive, selected[0].payload_type, registry,
-                    tuple(selected), combined)
+                    tuple(selected), combined, manifest['format'] == 3)
 
 
 def endpoint_summary(endpoint):
@@ -397,15 +451,18 @@ def _endpoint_text(endpoint):
 def message_name(value):
     """Wire global-element name for an actual generated payload value.
 
-    Callbacks receive either generated RDMA_InitializeSetupMT or LogMT values;
-    this maps the generated class identity (its `__schema_name__`) back to the
-    OWP message. It never infers a wire name from the class name itself.
+    Callbacks receive generated RDMA_InitializeSetupMT, LogMT or
+    SurvivabilityRiskLevelMT values; this maps the generated class identity
+    (its `__schema_name__`) back to the OWP message. It never infers a wire
+    name from the class name itself (SurvivabilityRiskLevelMT is never sent
+    as a global message name).
     """
     schema_name = getattr(type(value), '__schema_name__', None)
-    for message, payload, _ in (RDMA_FAMILY, LOG_FAMILY):
+    for message, payload, _ in (RDMA_FAMILY, LOG_FAMILY, SURVIVABILITY_FAMILY):
         if schema_name == (OAM, payload):
             return message
-    raise TypeError('not a generated RDMA_InitializeSetupMT or LogMT value')
+    raise TypeError('not a generated RDMA_InitializeSetupMT, LogMT or '
+                    'SurvivabilityRiskLevelMT value')
 
 
 def _uuid_or_none(identifier):
@@ -446,9 +503,55 @@ def format_log_summary(index, value):
             f'components={summary["components"]} capabilities={summary["capabilities"]}')
 
 
+def summarize_survivability(value):
+    """Selected schema-checked SurvivabilityRiskLevelMT fields only.
+
+    Reports the header schema version, timestamp and mode, the classification,
+    the SurvivabilityRiskLevelID UUID and, per RiskSetting, the
+    RiskPrioritizationEnum value with its VulnerabilityTypeEnum AllowedRisk
+    values. Descriptive labels, exposure durations, AppliesToSystemID
+    identities and security caveats are never reported.
+    """
+    header, data = value.messageheader, value.messagedata
+    return dict(
+        risk_level_id=data.survivabilityrisklevelid.uuid.value,
+        classification=value.securityinformation.classification.value,
+        system_id=header.systemid.uuid.value,
+        timestamp=header.timestamp.value,
+        schema_version=header.schemaversion.value,
+        mode=header.mode.value,
+        risk_settings=[(setting.riskprioritization.value,
+                        tuple(level.allowedrisk.value for level in setting.risklevel))
+                       for setting in data.risksetting])
+
+
+def _bounded(items, limit):
+    """At most `limit` items, then a '+N more' marker; never the hidden values."""
+    shown = list(items[:limit])
+    if len(items) > limit:
+        shown.append(f'+{len(items) - limit} more')
+    return shown
+
+
+def format_survivability_summary(index, value):
+    summary = summarize_survivability(value)
+    settings = summary['risk_settings']
+    # e.g. [HIGH:NONE, LOW:TRACK+KILL]: prioritization, then its allowed risks.
+    shown = _bounded([f'{prioritization}:' + '+'.join(_bounded(risks, MAX_DISPLAYED_ALLOWED_RISKS))
+                      for prioritization, risks in settings], MAX_DISPLAYED_RISK_SETTINGS)
+    return (f'RECEIVED {SURVIVABILITY_MESSAGE} #{index} type={type(value).__name__} '
+            f'risk-level-id={summary["risk_level_id"]} '
+            f'mode={summary["mode"]} schema={summary["schema_version"]} '
+            f'timestamp={summary["timestamp"]} classification={summary["classification"]} '
+            f'risk-settings={len(settings)} [{", ".join(shown)}]')
+
+
 def format_summary(index, value):
-    if message_name(value) == LOG_MESSAGE:
+    name = message_name(value)
+    if name == LOG_MESSAGE:
         return format_log_summary(index, value)
+    if name == SURVIVABILITY_MESSAGE:
+        return format_survivability_summary(index, value)
     summary = summarize(value)
     endpoints = summary['endpoints']
     shown = [_endpoint_text(item) for item in endpoints[:MAX_DISPLAYED_ENDPOINTS]]
@@ -769,20 +872,26 @@ async def run_client(options, *, bindings=None, callback=None, stop=None,
     """Receive typed values until duration, limit or stop.
 
     `callback(value)` receives each actual generated RDMA_InitializeSetupMT
-    instance (and, with `options.with_log`, each generated LogMT instance)
-    outside the runtime receive path; it may be async. Values of one
-    subscription arrive in order; the two families may interleave. Use
-    `isinstance(value, bindings.model.LogMT)` or `message_name(value)` to
-    tell them apart. Returns a SessionResult whose `status` is the exit code.
+    instance (with `options.with_log`, also each generated LogMT instance;
+    with `options.with_survivability`, also each generated
+    SurvivabilityRiskLevelMT instance) outside the runtime receive path; it
+    may be async. Values of one subscription arrive in order; different
+    families may interleave in any order. Use `isinstance(value,
+    bindings.model.LogMT)` or `message_name(value)` to tell them apart.
+    Returns a SessionResult whose `status` is the exit code.
     """
     if type(buffer_size) is not int or not 1 <= buffer_size <= MAX_BUFFER:
         raise ValueError(f'buffer_size must be between 1 and {MAX_BUFFER}')
+    if options.with_survivability and not options.with_log:
+        raise ValueError('with_survivability requires with_log')
     bindings = bindings or load_bindings(options.bindings, options.schema_release,
-                                         options.with_log)
+                                         options.with_log, options.with_survivability)
     if bindings.release != options.schema_release:
         raise BindingsError('generated bindings do not match --schema-release')
     if bindings.with_log is not options.with_log:
         raise BindingsError('generated bindings do not match --with-log')
+    if bindings.with_survivability is not options.with_survivability:
+        raise BindingsError('generated bindings do not match --with-survivability')
     session = _Session(options, bindings, callback or printing_callback(stdout),
                        stop or asyncio.Event(), _line(stdout or sys.stdout),
                        _line(stderr or sys.stderr), buffer_size)
@@ -828,7 +937,8 @@ def main(argv=None):
         print(HELP, end='')
         return EXIT_OK
     try:
-        bindings = load_bindings(options.bindings, options.schema_release, options.with_log)
+        bindings = load_bindings(options.bindings, options.schema_release, options.with_log,
+                                 options.with_survivability)
     except BindingsError as error:
         print(f'{PROGRAM}: error: {error}', file=sys.stderr)
         return EXIT_BINDINGS

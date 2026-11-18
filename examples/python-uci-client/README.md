@@ -1,4 +1,4 @@
-# Standalone Python UCI RDMA (and optional Log) receiver
+# Standalone Python UCI RDMA (and optional Log and SurvivabilityRiskLevel) receiver
 
 A command-line application that connects to a Sleet OMS endpoint, subscribes
 to the authentic UCI global message **`RDMA_InitializeSetup`** and hands each
@@ -10,6 +10,20 @@ With **`--with-log`** (PY-OMS-021) the same single authenticated connection
 also subscribes to the UCI global message **`Log`** and delivers generated
 **`LogMT`** values to the same callback. Without it, behavior, output and exit
 statuses are exactly those of the RDMA-only receiver (PY-OMS-020).
+
+With **`--with-log --with-survivability`** (PY-OMS-022) the same connection
+additionally subscribes to the UCI global message **`SurvivabilityRiskLevel`**
+and delivers generated **`SurvivabilityRiskLevelMT`** values. There are exactly
+three modes; no other message selection exists:
+
+| Mode | Flags | Messages | Bindings manifest |
+| --- | --- | --- | --- |
+| A | *(none)* | `RDMA_InitializeSetup` | format 1 |
+| B | `--with-log` | `RDMA_InitializeSetup`, `Log` | format 2 |
+| C | `--with-log --with-survivability` | `RDMA_InitializeSetup`, `Log`, `SurvivabilityRiskLevel` | format 3 |
+
+`--with-survivability` without `--with-log` is a usage error (exit `2`,
+reported before any network activity). Modes A and B are unchanged.
 
 It is built only from existing, tested pieces:
 
@@ -29,7 +43,8 @@ schemas nor generated UCI source are committed.
 | `generate_bindings.py` | Generates one release into external build storage |
 | `contracts/uci25-service.yaml`, `contracts/uci26-service.yaml` | Receive-only RDMA contracts derived from `tests/fixtures/task103` |
 | `contracts/uci25-rdma-log-service.yaml`, `contracts/uci26-rdma-log-service.yaml` | Receive-only RDMA + Log contracts (`--with-log`); Log as in `tests/fixtures/task102` |
-| `tests/` | CLI, session, multimessage, real-Sleet and WSS qualification |
+| `contracts/uci25-rdma-log-survivability-service.yaml`, `contracts/uci26-rdma-log-survivability-service.yaml` | Receive-only RDMA + Log + SurvivabilityRiskLevel contracts (`--with-log --with-survivability`); RDMA and Log functions verbatim from the RDMA + Log contracts, SurvivabilityRiskLevel as in `tests/fixtures/task104`/`task105` |
+| `tests/` | CLI, session, multimessage, three-message, real-Sleet and WSS qualification |
 
 ## 1. Python environment and runtime
 
@@ -105,6 +120,44 @@ The client refuses `--with-log` with RDMA-only bindings, combined bindings
 without `--with-log`, a release mismatch, a modified file, and generated
 sources lacking the Log endpoint or `LogMT` codec (exit `3`).
 
+### RDMA + Log + SurvivabilityRiskLevel bindings (`--with-log --with-survivability`)
+
+```bash
+"$PY" examples/python-uci-client/generate_bindings.py --with-log --with-survivability \
+  --schema-release 2.5 --schema "$UCI25" --output "$CLIENT_SCRATCH/rdma-log-surv-2.5"
+"$PY" examples/python-uci-client/generate_bindings.py --with-log --with-survivability \
+  --schema-release 2.6 --schema "$UCI26" --output "$CLIENT_SCRATCH/rdma-log-surv-2.6"
+```
+
+One `model.py`, one `service_codec.py` and one `service_api.py` then contain all
+three messages (production `service-check` reports model, service API and
+codec `READY` for both releases):
+
+| Global message (OWP wire name) | Generated payload type | Topic | Generated endpoint |
+| --- | --- | --- | --- |
+| `RDMA_InitializeSetup` | `model.RDMA_InitializeSetupMT` | `uci.rdma` | `function_rdma.exchange_receive` |
+| `Log` | `model.LogMT` | `uci.log` | `function_log.exchange_receive` |
+| `SurvivabilityRiskLevel` | `model.SurvivabilityRiskLevelMT` | `uci.survivability` | `function_survivability.exchange_receive` |
+
+`SurvivabilityRiskLevelMT` is only the generated payload class. The OWP
+`SUB`/`MSG` global element, and the codec-registry key, is always
+`SurvivabilityRiskLevel`.
+
+The three-message manifest has `"format": 3`, `"with_log": true`,
+`"with_survivability": true` and a `messages` list naming the three global
+messages, payload types and topics in subscription order. It also carries the
+same pin, contract, generator and per-file digests. Format 1 and format 2
+generation is unchanged and byte-identical to PY-OMS-020/021 output. The
+client fails closed with exit `3` on:
+
+- a manifest format that does not match the selected flags (including three-message
+  bindings used without both flags, or older bindings used with
+  `--with-survivability`);
+- a release mismatch, a modified or missing file, or a reordered, renamed or
+  truncated message inventory;
+- generated sources lacking the Survivability endpoint or the
+  `SurvivabilityRiskLevelMT` codec.
+
 ## 3. Run against a Sleet endpoint
 
 The broker must load the same UCI release and authorize the service identity
@@ -139,6 +192,7 @@ Then:
 | `--max-messages` | Optional early stop after N typed messages, 1–1000000 |
 | `--ca-file` | Extra trusted CA PEM for `wss://` only |
 | `--with-log` | Also receive `Log` on `uci.log` over the same connection; needs `--with-log` bindings |
+| `--with-survivability` | With `--with-log` only: also receive `SurvivabilityRiskLevel` on `uci.survivability`; needs `--with-log --with-survivability` bindings |
 | `--help` | Usage and exit statuses |
 
 All arguments are validated before any connection is opened. Contradictions
@@ -239,6 +293,92 @@ UNSUBed. The client reports `UNSUBSCRIBE SKIPPED … (session already failed;
 released by connection close)`, closes, and exits `6`. Cancellation between
 the two SUBs closes the one connection.
 
+### RDMA + Log + SurvivabilityRiskLevel on one connection (`--with-log --with-survivability`)
+
+The broker must authorize all three topics for the service identity:
+
+```toml
+service_id = "python-uci-client"
+service_uuid = "550e8400-e29b-41d4-a716-446655440020"
+allowed_topics = ["uci.rdma", "uci.log", "uci.survivability"]
+[[topic_bindings]]
+topic = "uci.rdma"
+allowed_messages = ["RDMA_InitializeSetup"]
+[[topic_bindings]]
+topic = "uci.log"
+allowed_messages = ["Log"]
+[[topic_bindings]]
+topic = "uci.survivability"
+allowed_messages = ["SurvivabilityRiskLevel"]
+```
+
+```bash
+"$PY" examples/python-uci-client/python_uci_client.py \
+  --url ws://127.0.0.1:9000 --service-id python-uci-client \
+  --schema-release 2.5 --bindings "$CLIENT_SCRATCH/rdma-log-surv-2.5" \
+  --with-log --with-survivability --duration-seconds 30
+"$PY" examples/python-uci-client/python_uci_client.py \
+  --url ws://127.0.0.1:9000 --service-id python-uci-client \
+  --schema-release 2.6 --bindings "$CLIENT_SCRATCH/rdma-log-surv-2.6" \
+  --with-log --with-survivability --duration-seconds 30
+```
+
+This is the actual UCI 2.5 output on real pinned Sleet. An independent
+publisher sent RDMA, SurvivabilityRiskLevel, Log, then a
+SurvivabilityRiskLevel whose date the broker accepts but the generated
+`SurvivabilityRiskLevelMT` decoder rejects. UCI 2.6 output is identical
+except for `schema=002.6.0`:
+
+```text
+CONNECTED ws://127.0.0.1:9000 owp=1.0 service-id=python-uci-client schema=002.5.0
+SUBSCRIBED RDMA_InitializeSetup topic=uci.rdma sid=sub-1 payload=RDMA_InitializeSetupMT
+SUBSCRIBED Log topic=uci.log sid=sub-2 payload=LogMT
+SUBSCRIBED SurvivabilityRiskLevel topic=uci.survivability sid=sub-3 payload=SurvivabilityRiskLevelMT
+READY subscriptions=3 messages=RDMA_InitializeSetup,Log,SurvivabilityRiskLevel duration=2s
+RECEIVED RDMA_InitializeSetup #1 type=RDMA_InitializeSetupMT setup-id=5b0f6d4e-1c2a-4b7e-9a3d-0123456789ab provider=TCP mode=LIVE schema=002.5.0 timestamp=2026-01-02T03:04:05Z classification=U endpoints=2 [IPv4 192.0.2.10, IPv6 2001:db8::1]
+RECEIVED SurvivabilityRiskLevel #2 type=SurvivabilityRiskLevelMT risk-level-id=12345678-1234-1234-8234-123456789abc mode=LIVE schema=002.5.0 timestamp=2026-01-02T03:04:05Z classification=U risk-settings=2 [HIGH:NONE, LOW:TRACK+KILL]
+RECEIVED Log #3 type=LogMT severity=WARNING log-timestamp=2026-01-02T03:04:05Z mode=LIVE schema=002.5.0 timestamp=2026-01-02T03:04:05Z classification=U service-id=- subsystem-id=- components=0 capabilities=0
+UNSUBSCRIBED sid=sub-3 message=SurvivabilityRiskLevel
+UNSUBSCRIBED sid=sub-2 message=Log
+UNSUBSCRIBED sid=sub-1 message=RDMA_InitializeSetup
+CLOSED received=3 rejected=1 callback-failures=0 RDMA_InitializeSetup=1/0 Log=1/0 SurvivabilityRiskLevel=1/1
+```
+
+On standard error: `REJECTED SurvivabilityRiskLevel payload (CodecFailure:
+payload decoder rejected message)`. That run exits `7`.
+
+- SUBs are sent strictly in order: RDMA, Log, then SurvivabilityRiskLevel.
+  `READY` is printed only after **all three** acknowledgements, and only while
+  the session is still healthy.
+- `#N` and `--max-messages N` count typed messages across all three families.
+- Order is preserved within each subscription. Different subscriptions are
+  independent, so the client makes no cross-family ordering guarantee.
+- The SurvivabilityRiskLevel summary prints only:
+  - the `SurvivabilityRiskLevelID` UUID;
+  - the header mode, schema version and checked timestamp;
+  - the classification;
+  - the number of `RiskSetting` entries;
+  - for each entry, the `RiskPrioritizationEnum` value and its
+    `VulnerabilityTypeEnum` `AllowedRisk` values.
+
+  The schema bounds `RiskSetting` to 1–4 and `RiskLevel` to 1–5. The display
+  is bounded independently (at most 4 settings and 5 risks each, then
+  `+N more`). The summary never prints descriptive labels,
+  `MaximumContinuousExposure` durations, `AppliesToSystemID` identities or
+  security caveats.
+- RDMA and Log summary lines are byte-identical to those in modes A and B.
+- `CLOSED … SurvivabilityRiskLevel=R/J` gives received/rejected counts for
+  each of the three messages.
+
+Partial setup is cleaned up at every position:
+
+| Failure | Result |
+| --- | --- |
+| A SUB is rejected (e.g. `uci.survivability` not authorized) | The client prints `SUBSCRIBE REJECTED by server: Illegal-State message=SurvivabilityRiskLevel`. Earlier SIDs are explicitly UNSUBed in reverse order (Log, then RDMA) before close. Exit `5`, never `READY` |
+| Connection loss during the third SUB | Neither earlier SID can be UNSUBed. Each is reported as `UNSUBSCRIBE SKIPPED` and released by connection close. The client never claims an UNSUB the dead transport could not perform. Exit `6` |
+| Cancellation between any two SUBs | The one connection is closed |
+| Failure right after the final acknowledgement | Never `READY`. Exit `6` |
+
 ### Exit statuses
 
 | Code | Meaning |
@@ -319,6 +459,50 @@ document arriving on the RDMA SID is an envelope rejection and never reaches
 the other decoder. `SessionResult` adds `received_by_message`,
 `rejected_by_message`, `subscription_ids` and `unsubscribed_ids`.
 
+### Handling `SurvivabilityRiskLevelMT` (three-message mode)
+
+With `with_log=True, with_survivability=True` the callback also receives
+generated `SurvivabilityRiskLevelMT` values:
+
+```python
+import asyncio
+from python_uci_client import Options, load_bindings, message_name, run_client
+
+bindings = load_bindings('/path/to/rdma-log-surv-2.5', '2.5', with_log=True,
+                         with_survivability=True)
+model = bindings.model
+
+def on_message(value):
+    if isinstance(value, model.SurvivabilityRiskLevelMT):   # "SurvivabilityRiskLevel"
+        data = value.messagedata
+        for setting in data.risksetting:                    # SurvivabilityRiskSettingType, 1..4
+            if setting.riskprioritization is model.RiskPrioritizationEnum.HIGH:
+                print('high', [level.allowedrisk.value for level in setting.risklevel])
+    elif isinstance(value, model.LogMT):                    # "Log"
+        print('log', value.messagedata.severity.value)
+    elif isinstance(value, model.RDMA_InitializeSetupMT):   # "RDMA_InitializeSetup"
+        print('rdma', value.messagedata.rdma_initializesetupid.uuid.value)
+    assert message_name(value) in ('RDMA_InitializeSetup', 'Log', 'SurvivabilityRiskLevel')
+
+result = asyncio.run(run_client(
+    Options(url='ws://127.0.0.1:9000', service_id='python-uci-client', schema_release='2.5',
+            bindings='/path/to/rdma-log-surv-2.5', duration=30,
+            with_log=True, with_survivability=True),
+    bindings=bindings, callback=on_message))
+raise SystemExit(result.status)
+```
+
+The third `CodecBinding` is registered under the global message
+`SurvivabilityRiskLevel`. It uses the generated
+`encode_SurvivabilityRiskLevelMT`/`decode_SurvivabilityRiskLevelMT` and
+subscribes through the generated
+`function_survivability.exchange_receive.subscribe` endpoint. The three
+subscriptions share the one connection, runtime, INIT/INFO exchange and
+bounded application inbox. Each SID is owned separately: a document of
+another family arriving on the Survivability SID (or the reverse) is an
+envelope rejection that never reaches the wrong generated decoder. A callback
+failure for one family is counted against that family only.
+
 Lifecycle and buffering:
 
 - The application inbox is bounded (16 values by default, `buffer_size`
@@ -358,6 +542,20 @@ section 3):
   --with-log --ca-file /etc/pki/deployment-ca.pem
 ```
 
+RDMA + Log + SurvivabilityRiskLevel over the same verified WSS connection (all
+three topics authorized as in section 3), for UCI 2.5 or 2.6:
+
+```bash
+"$PY" examples/python-uci-client/python_uci_client.py \
+  --url wss://sleet.example.test:9443 --service-id python-uci-client \
+  --schema-release 2.5 --bindings "$CLIENT_SCRATCH/rdma-log-surv-2.5" \
+  --with-log --with-survivability --ca-file /etc/pki/deployment-ca.pem
+"$PY" examples/python-uci-client/python_uci_client.py \
+  --url wss://sleet.example.test:9443 --service-id python-uci-client \
+  --schema-release 2.6 --bindings "$CLIENT_SCRATCH/rdma-log-surv-2.6" \
+  --with-log --with-survivability --ca-file /etc/pki/deployment-ca.pem
+```
+
 Connect to the name in the certificate's subjectAltName. An untrusted chain, a
 wrong hostname or IP, or a server that does not negotiate the `owp`
 subprotocol fails with exit `4` before INIT is sent.
@@ -381,21 +579,32 @@ export AMS_GRA_SLEET_BIN=/path/to/clean/sleet/checkout/target/release/sleet
 | `test_real_sleet.py` (4) | Real Sleet with UCI 2.5 and 2.6 independently, wrong-release/service/message rejection, SIGINT/SIGTERM |
 | `test_real_sleet_with_log.py` (4) | Real Sleet `--with-log`, UCI 2.5 and 2.6: two SUB acks, interleaved independent RDMA and Log publication, broker vs decoder rejection, both UNSUBs, one broker connection; unauthorized `uci.log` releases RDMA; SIGTERM releases both |
 | `test_wss.py` (5) | Verified WSS positive (both releases, RDMA-only and `--with-log`), untrusted CA, wrong hostname, missing `owp` over TLS |
+| `test_survivability_cli.py` (6) | `--with-survivability` parsing and the `--with-log` requirement (CLI and generator, before any network), format-3 package identities (wire name vs payload class, `function_survivability.exchange_receive`, registry keyed by global message), bounded and safe Survivability summary, mode/release mismatch, missing/altered/re-signed/relabelled bindings |
+| `test_survivability.py` (11) | Three subscriptions on one connection: interleaved typed delivery, per-subscription order, exact output, cross-SID and payload-name envelope rejection, Survivability decoder failure with recovery, per-family callback failure, rejected first/second/third SUB, connection loss during the third SUB, cancellation between each SUB pair, failure after the final ack, shutdown with queued data of all three families, combined `--max-messages`, mode/bindings mismatch |
+| `test_real_sleet_with_survivability.py` (4) | Real Sleet three-message mode, UCI 2.5 and 2.6: three SUB acks and distinct SIDs, interleaved independent publication of all three families witnessed on the wire and at the typed callback, broker vs decoder rejection, three UNSUBs, one broker connection, no delivery after teardown; unauthorized `uci.survivability` releases RDMA and Log; SIGTERM releases all three |
+| `test_wss_survivability.py` (2) | Verified WSS three-message reception for both releases; untrusted CA and wrong hostname still rejected |
 
 The real-Sleet and WSS tests use an independent raw-`websockets` OWP
 publisher/observer, not this application or `oms_lacal`. They publish edits of
-the independent Task092 RDMA and PY-016 Log golden documents and assert
+the independent Task092 RDMA and PY-016 Log and SurvivabilityRiskLevel golden
+documents and assert
 broker-side debug evidence (INIT, subscription registered/removed). In CI these
 suites run through `python/qualification/sleet/test_python_uci_client.py` in
 the existing pinned-Sleet lane.
 
 ## Known limitations
 
-- Receives `RDMA_InitializeSetup` on `uci.rdma` and, with `--with-log`, `Log`
-  on `uci.log`. No other message families, topics or subscription groups are
-  selectable. It does not publish.
-- The two `--with-log` families are independent subscriptions: their relative
-  delivery order is not defined, only the order within each family.
+- Receives `RDMA_InitializeSetup` on `uci.rdma`, with `--with-log` also `Log`
+  on `uci.log`, and with `--with-log --with-survivability` also
+  `SurvivabilityRiskLevel` on `uci.survivability`. These three fixed modes are
+  the only selections: no arbitrary or dynamic message selection, other
+  topics, or subscription groups. It does not publish.
+- The families are independent subscriptions: their relative delivery order is
+  not defined (no cross-subscription broker ordering is assumed), only the
+  order within each family.
+- The SurvivabilityRiskLevel summary deliberately omits `AppliesToSystemID`,
+  `MaximumContinuousExposure` and descriptive labels; callbacks receive the
+  full typed value.
 - No automatic reconnect, retry, resubscription or replay. A lost connection
   ends the session with exit `6`.
 - Closed-schema generation only. Unknown subtypes or extensions are rejected
@@ -403,6 +612,6 @@ the existing pinned-Sleet lane.
 - Pinned Sleet validates before routing, so most malformed documents are
   rejected at the broker and never reach the client. The decoder-rejection
   path is exercised with a payload the broker accepts (an impossible
-  Gregorian date, for both RDMA and Log).
+  Gregorian date, for RDMA, Log and SurvivabilityRiskLevel).
 - Deployment authentication (beyond TLS server verification) and client
   certificates are not supported by the runtime and are not added here.
