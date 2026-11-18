@@ -15,7 +15,8 @@
 //! concrete Record declarations with required, optional and repeated members,
 //! plus the value profiles added by CPP-OMS-002/004/005/006 (checked String
 //! profiles including Task 058 bounded ASCII and Task 059 structured ASCII,
-//! temporal, hexBinary, Float64).
+//! temporal, hexBinary, Float64), plus CPP-OMS-007 checked length-only named
+//! hexBinary carriers.
 //! This renderer calls that analyzer first and refuses anything it rejects, so
 //! readiness (`service-check`) and generation can never disagree.
 //!
@@ -37,10 +38,10 @@ use crate::{
 };
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CPP_SERVICE_CODEC_FILE, CodegenError, GeneratedFile, InclusiveIntegralDomain,
-    ServiceApiModel, TypeEmission, analyze_service_codec, cpp_codec_admits_string_profile,
-    cpp_model_header_name, effective_choice_alternatives, effective_record_fields, floating_domain,
-    generated_enum_variant_name, oms_json_member_name, oms_json_type_name, plan_type_emissions,
-    string_profile,
+    ServiceApiModel, TypeEmission, analyze_service_codec, binary_length_domain,
+    cpp_codec_admits_string_profile, cpp_model_header_name, effective_choice_alternatives,
+    effective_record_fields, floating_domain, generated_enum_variant_name, oms_json_member_name,
+    oms_json_type_name, plan_type_emissions, string_profile,
 };
 use ams_gra_oms_ir::{
     FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
@@ -498,6 +499,26 @@ impl Renderer<'_> {
                 .expect("infallible");
             }
             TypeKind::Primitive(PrimitiveKind::Binary) => {
+                if binary_length_domain(PrimitiveKind::Binary, &declaration.constraints)
+                    .map_err(|reason| {
+                        error(format!("service codec boundary: {reason} on {local}"))
+                    })?
+                    .is_some()
+                {
+                    writeln!(
+                        output,
+                        "// {local} (checked hexBinary; the generated factory validates octet length)\n\
+                         inline bool encode_t{id:03}(const {cpp}& value, std::string& out, CodecError& error, const Path* path) {{\n    \
+                         static_cast<void>(error);\n    static_cast<void>(path);\n    return put_hex_binary(out, value.value());\n}}\n\n\
+                         inline std::optional<{cpp}> decode_t{id:03}(const Value& value, CodecError& error, const Path* path) {{\n    \
+                         auto octets = get_hex_binary(value, error, path);\n    \
+                         if (!octets) {{\n        return std::nullopt;\n    }}\n    \
+                         auto result = {cpp}::create(std::move(*octets));\n    \
+                         if (!result) {{\n        return fail(error, path, \"value is not valid for {local}\");\n    }}\n    return result;\n}}\n"
+                    )
+                    .expect("infallible");
+                    return Ok(());
+                }
                 writeln!(
                     output,
                     "// {local} (named hexBinary: canonical uppercase, case-insensitive on input)\n\
