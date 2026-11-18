@@ -1,0 +1,30 @@
+# PY-OMS-023: installable python-uci-client application (not published).
+#
+# The wheel contains exactly one module, python_uci_client.py, plus metadata
+# and the `python-uci-client` console script. It never contains generated UCI
+# bindings, contracts, UCI schemas, the generation helper or tests: deployed
+# clients consume previously generated bindings through --bindings.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ams-gra-oms-python-uci-client"
+version = "0.1.0"
+description = "Standalone UCI RDMA/Log/SurvivabilityRiskLevel receiver over the OMS LA-CAL runtime"
+readme = "README.md"
+requires-python = ">=3.11"
+# The repository's own runtime (python/oms-lacal-runtime); it pins websockets.
+dependencies = ["ams-gra-oms-lacal-runtime==0.1.0"]
+license = {text = "Apache-2.0"}
+# Refused by PyPI: this application is distributed only as a locally built wheel.
+classifiers = ["Private :: Do Not Upload"]
+
+[project.scripts]
+python-uci-client = "python_uci_client:main"
+
+[tool.setuptools]
+# Package the existing module directly; no automatic discovery, so
+# generate_bindings.py, contracts/ and tests/ can never be included.
+py-modules = ["python_uci_client"]
+include-package-data = false

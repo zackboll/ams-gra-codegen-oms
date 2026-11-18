@@ -1,4 +1,9 @@
-"""PY-OMS-020/021/022 standalone Python UCI client joins the existing pinned-Sleet lane.
+"""PY-OMS-020/021/022/023 standalone Python UCI client joins the existing pinned-Sleet lane.
+
+PY-OMS-023 adds two suites that build the application wheel, install it
+offline into a fresh environment and run the INSTALLED `python-uci-client`
+console script outside the repository (test_installed_cli.py,
+test_installed_real_sleet.py); under -O they set PYTHONOPTIMIZE=1 for it.
 
 That lane already supplies the shared pinned broker, both verified UCI roots,
 the qualified generator and the installed LA-CAL runtime on Python 3.11/3.13,
@@ -20,12 +25,18 @@ APP = ROOT / 'examples/python-uci-client'
 SUITES = {'test_cli.py': 13, 'test_session.py': 10, 'test_real_sleet.py': 4, 'test_wss.py': 5,
           'test_multimessage.py': 12, 'test_real_sleet_with_log.py': 4,
           'test_survivability_cli.py': 6, 'test_survivability.py': 11,
-          'test_real_sleet_with_survivability.py': 4, 'test_wss_survivability.py': 2}
+          'test_real_sleet_with_survivability.py': 4, 'test_wss_survivability.py': 2,
+          'test_installed_cli.py': 8, 'test_installed_real_sleet.py': 6}
 MARKERS = {'test_real_sleet.py': ('PY-OMS-020 REAL SLEET UCI {}: PASSED',),
            'test_wss.py': ('PY-OMS-020 WSS UCI {}: PASSED', 'PY-OMS-021 WSS UCI {}: PASSED'),
            'test_real_sleet_with_log.py': ('PY-OMS-021 REAL SLEET UCI {}: PASSED',),
            'test_real_sleet_with_survivability.py': ('PY-OMS-022 REAL SLEET UCI {}: PASSED',),
-           'test_wss_survivability.py': ('PY-OMS-022 WSS UCI {}: PASSED',)}
+           'test_wss_survivability.py': ('PY-OMS-022 WSS UCI {}: PASSED',),
+           'test_installed_cli.py': ('PY-OMS-023 WHEEL: ', 'PY-OMS-023 OFFLINE INSTALL: PASSED',
+                                     'PY-OMS-023 IMPORT AUDIT: PASSED',
+                                     'PY-OMS-023 DEPLOYED BINDINGS: PASSED'),
+           'test_installed_real_sleet.py': ('PY-OMS-023 INSTALLED REAL SLEET UCI {}: PASSED',
+                                            'PY-OMS-023 INSTALLED WSS UCI 2.6: PASSED')}
 # Binding-set directory suffix -> generate_bindings.py mode flags.
 MODES = (('', []), ('-log', ['--with-log']),
          ('-log-survivability', ['--with-log', '--with-survivability']))
