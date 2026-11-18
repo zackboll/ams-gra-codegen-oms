@@ -30,14 +30,9 @@ def positives(release):
 
 
 def decoder_invalid(release):
-    # Pinned Sleet treats unconstrained hexBinary as string. These documents
-    # must reach the Ada decoder, not be counted as broker schema rejections.
-    values = []
-    for label, spelling in [('odd-hex', '000'), ('invalid-digit', '0G'), ('internal-space', 'AA BB')]:
-        doc = copy.deepcopy(golden(release))
-        doc['MessageData']['Data'] = spelling
-        values.append((label, doc))
-    return values
+    # Lexical hex negatives now belong to the broker boundary. Independent
+    # codec and mock-transport suites retain generated-decoder rejection tests.
+    return []
 
 
 def broker_cases(release):
@@ -60,4 +55,9 @@ def broker_cases(release):
         ('unknown-sid', 'UNSUB 987', '-ERR Illegal-State', 'unknown subscription id 987'),
         ('malformed-document', 'PUB task102-log {', '-ERR Invalid-Message', 'invalid JSON payload'),
     ]
+    for label, spelling in [('odd-hex', '000'), ('invalid-digit', '0G'), ('internal-space', 'AA BB')]:
+        doc = copy.deepcopy(base)
+        doc['MessageData']['Data'] = spelling
+        values.append((label, 'PUB task102-log ' + json.dumps({'Log': doc}),
+                       '-ERR Invalid-Message', 'FacetViolation'))
     return values

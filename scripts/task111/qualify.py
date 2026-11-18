@@ -19,7 +19,7 @@ from task110 import qualify as task110
 
 PINS = dict(aht="827b0c17dd964e935f8e88912ce0611ee92b6f16",
             codec="765d9cd612838eb00645037977c8cc9af7171c3e",
-            sleet="e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+            sleet="94796daf55ebd1134dce0925e6a204a05ad3423b",
             uci25="093610b7753944059360d3236770ab446d039556",
             uci26="78eb61b6112c8bffa40820c33124b57787fc5bd9")
 SCHEMAS = {

@@ -79,7 +79,7 @@ def decoder_invalid(release):
     # Observed +OK through pinned Sleet for both releases. Sleet does not enforce
     # the complete inherited dateTime lexical space; generated Ada does.
     doc = golden(release)
-    doc['MessageHeader']['Timestamp'] = 'not-a-dateZ'
+    doc['MessageHeader']['Timestamp'] = '2023-02-29T00:00:00Z'
     return [('invalid-timestamp', doc)]
 
 

@@ -372,55 +372,36 @@ TEST_CASE(pinned_sleet_roundtrip_rejections_and_recovery) {
     struct Bad {
         std::string name;
         std::string document;  // full global-element document
-        bool sleet_delivers;   // pinned Sleet admits it (weak hexBinary lexical check)
         std::string diagnostic;
     };
-    const auto data_case = [&](const char* name, const char* data, bool delivered) {
-        return Bad{name, "{\"Log\":" + with(kGolden, R"("0080FF")", data) + "}", delivered, "Data"};
+    const auto data_case = [&](const char* name, const char* data) {
+        return Bad{name, "{\"Log\":" + with(kGolden, R"("0080FF")", data) + "}", "Data"};
     };
     std::vector<Bad> bad = {
-        data_case("odd hex", R"("0")", true),
-        data_case("invalid digits", R"("0G")", true),
-        data_case("internal whitespace", R"("00 80 FF")", true),
-        data_case("binary JSON type", "[0,128,255]", false),
-        {"missing Timestamp", "{\"Log\":" + with(kGolden, R"("Timestamp":"2026-01-02T03:04:06Z",)", "") + "}", false, "Timestamp"},
-        {"missing Severity", "{\"Log\":" + with(kGolden, R"("Severity":"INFO",)", "") + "}", false, "Severity"},
-        {"missing Label", "{\"Log\":" + with(kGolden, R"("Label":"Task093",)", "") + "}", false, "Label"},
+        data_case("odd hex", R"("0")"),
+        data_case("invalid digits", R"("0G")"),
+        data_case("internal whitespace", R"("00 80 FF")"),
+        data_case("binary JSON type", "[0,128,255]"),
+        {"missing Timestamp", "{\"Log\":" + with(kGolden, R"("Timestamp":"2026-01-02T03:04:06Z",)", "") + "}", "Timestamp"},
+        {"missing Severity", "{\"Log\":" + with(kGolden, R"("Severity":"INFO",)", "") + "}", "Severity"},
+        {"missing Label", "{\"Log\":" + with(kGolden, R"("Label":"Task093",)", "") + "}", "Label"},
         {"missing Details",
-         "{\"Log\":" + with(kGolden, R"("Details":"Independent real Log Binary codec qualification",)", "") + "}", false,
+         "{\"Log\":" + with(kGolden, R"("Details":"Independent real Log Binary codec qualification",)", "") + "}",
          "Details"},
-        {"missing MessageHeader", "{\"Log\":" + with(kGolden, kHeader + ",", "") + "}", false, "MessageHeader"},
-        {"missing SecurityInformation", "{\"Log\":" + with(kGolden, kSecurity + ",", "") + "}", false,
+        {"missing MessageHeader", "{\"Log\":" + with(kGolden, kHeader + ",", "") + "}", "MessageHeader"},
+        {"missing SecurityInformation", "{\"Log\":" + with(kGolden, kSecurity + ",", "") + "}",
          "SecurityInformation"},
-        {"missing MessageData", "{\"Log\":" + with(kGolden, "," + kDataHead + R"(,"Data":"0080FF"})", "") + "}", false,
+        {"missing MessageData", "{\"Log\":" + with(kGolden, "," + kDataHead + R"(,"Data":"0080FF"})", "") + "}",
          "MessageData"},
-        {"wrong global element", "{\"LogMT\":" + kGolden + "}", false, "LogMT"},
+        {"wrong global element", "{\"LogMT\":" + kGolden + "}", "LogMT"},
     };
     for (const Bad& item : bad) {
         const std::string status = publisher.command("PUB " + kTopic + " " + item.document);
-        if (item.sleet_delivers) {
-            CHECK_EQ(status, std::string("+OK"));
-            CHECK_EQ(observe(), item.document);  // the malformed MSG really crossed Sleet
-            auto event = runtime.poll_event(kWait);
-            CHECK(event.has_value() && event->kind == lacal::EventKind::decode_error);
-            if (event) {
-                CHECK(event->error.kind == lacal::ErrorKind::codec);  // client-side codec rejection
-                CHECK_EQ(event->message_name, std::string("Log"));
-                CHECK_EQ(event->sid, subscription->id());
-                CHECK(event->error.codec_path.find(item.diagnostic) != std::string::npos);
-                std::cout << "CPP-OMS-003 " << kVersion << " " << item.name
-                          << ": Sleet MSG -> generated decoder rejected at " << event->error.codec_path << ": "
-                          << event->error.message << std::endl;
-            }
-        } else {
-            // Broker rejection: -ERR to the publisher, no MSG, no event, no callback.
-            CHECK(status.rfind("-ERR Invalid-Message", 0) == 0);
-            CHECK(status.find(item.diagnostic) != std::string::npos);
-            CHECK(!observer.receive(kQuiet).has_value());
-            CHECK(!runtime.poll_event(kQuiet).has_value());
-            std::cout << "CPP-OMS-003 " << kVersion << " " << item.name << ": Sleet rejected: " << status.substr(0, 160)
-                      << std::endl;
-        }
+        CHECK(status.rfind("-ERR Invalid-Message", 0) == 0);
+        CHECK(status.find(item.diagnostic) != std::string::npos);
+        CHECK(!observer.receive(kQuiet).has_value());
+        CHECK(no_event());
+        std::cout << "CPP-OMS-003 " << kVersion << " " << item.name << ": Sleet rejected: " << status << std::endl;
         CHECK(!inbox.take(kQuiet).has_value());  // never a typed delivery
         recover(item.name);
     }
@@ -471,7 +452,7 @@ TEST_CASE(pinned_sleet_roundtrip_rejections_and_recovery) {
     CHECK_EQ(observer.command("UNSUB wire"), std::string("+OK"));
     const lacal::Stats stats = runtime.stats();
     CHECK_EQ(stats.delivered, 3U + 13U);  // three states + one recovery per case and after rejections
-    CHECK_EQ(stats.decode_errors, 3U);
+    CHECK_EQ(stats.decode_errors, 0U);
     CHECK_EQ(stats.unknown_subscription, 0U);
     std::cout << "CPP-OMS-003 " << kVersion << " SLEET AND RECOVERY: PASSED" << std::endl;
 }

@@ -805,5 +805,154 @@
       "qualification_inputs_changed": 0,
       "review": "Preserve PR191 in-memory PEM trust/recovery qualification, offline mutation regressions and Ada smoke routing unchanged. Production Ada, generator/compiler sources, workspace lockfile, workflow allocations and all 330 campaign inputs are unchanged. Retain preceding full campaign receipts under their original identity and rerun existing qualifications for the final merge identity."
     }
-  ]
+  ],
+  "dependency_updates": {
+    "scripts/task100/real_sleet.py": {
+      "previous_sha256": "3f9df6f4910a93e2d1ee486a70f17c887ec4a6b58e6140629d0aa3cba3fc985d",
+      "current_sha256": "abb6d2bff3db23afcf595deae2cfd8492c07f689cd7219d23e7304f301964a3d",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task100_evidence.py": {
+      "previous_sha256": "28bd210d8b554d6eb8b98bf36bea6e591b43d80399e61185cf67303c999b4dcf",
+      "current_sha256": "f39509006de54ed797213925260eaeeb28b012d3cb9a0665a8a140b73bc7b796",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task101/sleet.py": {
+      "previous_sha256": "d7a39047909f8ed8c7a32eef023c7ebfd907fdc39e5de4a8e1cc8acc7a6a9251",
+      "current_sha256": "3fa455086af7e3e25d54f73899c177e7336332cd8f47ef4b03615314e4d3f8de",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task101_evidence.py": {
+      "previous_sha256": "bda5acb2dfac33f2448729b92d9e3416a0393f216baedbbfffbbce9179a2dfcb",
+      "current_sha256": "c5fa3e5050f7b9cc11b723f133d3f90c033eb81077219073320d24da0f182fd3",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102/admission.py": {
+      "previous_sha256": "b2bc4d024a86affd075c11afa558db0788bbd0946d3a15de33a0f1888eef741b",
+      "current_sha256": "5bc1bd8179d2a4e04d266d8fb8a821de0a7924237acc5c1aacdef8bb7e092448",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102/cases.py": {
+      "previous_sha256": "85c3dd19db27d4fe14edffcad34d04fc9b3986346d0d58152bc9972c0eba5960",
+      "current_sha256": "fae9ea49a38a43539aff3b33721cf31b214c11ec7c7626c95b25ca2bf34b716d",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102/constrained.py": {
+      "previous_sha256": "9a8c4439b7da2d9d2507f082d7d8c5a43cd96832cdb22b3d8430d301d1689268",
+      "current_sha256": "1dfdcd10e2f9239fa57a58732d4a4039a08a740d2ec7102b7a7a3f274b01e596",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102/sleet.py": {
+      "previous_sha256": "5ed0517fbcae94b844679976ec5f58a72a8ed49b077468f7e7ebe79389e3bd0b",
+      "current_sha256": "868a1a25484012bf19fb65128fdf60638416296c697c38d7385b862810d49cc6",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102_evidence.py": {
+      "previous_sha256": "d71fa00e6e2a46c8f25f1052157926841429cac3cf0a577a55881e608041f708",
+      "current_sha256": "3a90ac79f9b3705cbd08f132aef788eeb1791c96c77fcc061f0fa1cf96bf15fb",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task103/admission.py": {
+      "previous_sha256": "9b44745c19cda4623ccab23f6cc3451fc3c9fcdc331e6bef082e5ab3a0da88cd",
+      "current_sha256": "2f5066ab2ea6135fec6f2b8ca00fe3cca7eec26844bd29d049f6d8a63c9a38cc",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task103/cases.py": {
+      "previous_sha256": "733651b3485f539da8e789fbca4cd2267836ea2ce28c0e5d152eb4ef69029217",
+      "current_sha256": "07012832ae414bc917373b80fcd6422a828a955cfb7064f2d2c962d1043333d5",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task103/sleet.py": {
+      "previous_sha256": "32bb3799a834578f752141cb37caa716da0760c77f0360db35394c2fec127938",
+      "current_sha256": "b96040a68ea5c66a1623022e15bcec9e4fc1a879170631ce795044a0b57e4d01",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task103_evidence.py": {
+      "previous_sha256": "5424dbbfceaa223d8eee9bb85a98ab86edcef27ac8ea2a6d063b3dbc7d3f7f37",
+      "current_sha256": "4d3ac9469160aec0ed246117d3d4cc29f659e76f793fccd4c86999cd40810d1d",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task104/admission.py": {
+      "previous_sha256": "e73999965edeeaa3b8251f22ea1d47f667cb137e9902fa06704528b2cdae383e",
+      "current_sha256": "81ae46caf40d6f12d34f4c3868b49438537006c7c4551d532c0b4ae85799ecea",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task104/cases.py": {
+      "previous_sha256": "681f075bb12465757c187e98c0e2054ba91fff5c42560ba3dec34c869790d798",
+      "current_sha256": "70ca6068e7f128ac80f4b6039018c4b39160a2a78485f8d319cd8384bbc8ff92",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task104/sleet.py": {
+      "previous_sha256": "08e91697c35bcdbd1efd42ef4dcf3884d873e5eb4e01f1f74571790bcba26a3b",
+      "current_sha256": "b5bb4178d71013e480fb8a454b29f81c753f0286ec4a908d0d38fd60855f4f33",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task104_evidence.py": {
+      "previous_sha256": "24adcfb43dfffd3d6ab36ae73bc8d6c88982e3b7ee000ace091b53830cd259a0",
+      "current_sha256": "6b1d9a980f5fcc033ccca085a803a239b234b2574169992e52244a4390f01b3c",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task105/admission.py": {
+      "previous_sha256": "201486148e859f073606795c79c47264b7729ccaa6d9d125b240dfb84b1d63a4",
+      "current_sha256": "a0b351b27b2859c8e5abb4cbcf5353cbb8fbb118fc2a748f395999ad066dce44",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task105/cases.py": {
+      "previous_sha256": "5cf3d7cbe8bf060c5db6b222095fb46326327cfff7ba690f5b0db42a78c07c02",
+      "current_sha256": "ec415e4b7a2afa4daea6332186a2666fd303f85cca954c3f1b032cd906d77974",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task105/sleet.py": {
+      "previous_sha256": "750604f7005832573c65adc528ae1e89a4ad81c1ac6a8e0079f9b064e006c1ad",
+      "current_sha256": "5c6af405429aebcf988dcdf12e5e12434a7f01ad784350a99f70741345e70a5a",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task105_evidence.py": {
+      "previous_sha256": "7565055d94daa6d5f663cdf7a71433ab0a0f8599020a951e70e5edff331e4eb1",
+      "current_sha256": "08cd063856980c0600c1f772993d6057b49f747e7c944525eb51f41d6ce36767",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task106/admission.py": {
+      "previous_sha256": "bd0a5e197e029b19bee15d7cb39ec35abdd07035cdfd3d3daab1ff283467c1ef",
+      "current_sha256": "f136e23cd132bb5e193ac759a2691391a798c743c283b90d6a4879f4350b1046",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task106_evidence.py": {
+      "previous_sha256": "e9cb8d527eb10213d528f6d72e3fbef738a785094dc02ef6dd806e4e39dc6ae7",
+      "current_sha256": "3f6811d31414229cf028bd42eb6222cfd6368f3500bee7590f82a7f190d1f80f",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "tests/ada-real-uci-log/log_consumer.adb": {
+      "previous_sha256": "5056c82418f88a71dc9de45634e06dab3d55a600ed018a56e418449bdff5a461",
+      "current_sha256": "ff895893cca3f407d9255f0e5b962452768acd83d81eeb124508277231410137",
+      "review": "Current GitLab Sleet candidate pin and affected rejection boundary qualification; exact 94796daf/47da595b identity. Preserve historical evidence identities; no retroactive qualification. Malformed hex is broker-rejected; independent impossible-date negatives retain decoder rejection."
+    },
+    "scripts/task102/qualify.py": {
+      "previous_sha256": "f3c94a655fcbfd49ff48205de7269f491941e53091a6d7726e03e290600e5e0d",
+      "current_sha256": "b5416b4a22a0150fb2d32ffc7667209b2a8e62ee901bd9714df147f5a8e55bff",
+      "review": "Require corrected broker rejection boundary and exact zero downstream hex decoder failures. Historical qualification receipts retain their original identities."
+    }
+  },
+  "correction_updates": {
+    "scripts/task101/qualify.py": {
+      "previous_sha256": "e8d235ae6a56ad6250ee5a65a30e4ecf64d7bd57086033c80e058acd5b20a034",
+      "current_sha256": "08c5a937ddb72d74c707005b803af9dcb7856b1fff8d8a5b33a4065263e8eb6a",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    },
+    "scripts/task101/sleet.py": {
+      "previous_sha256": "3fa455086af7e3e25d54f73899c177e7336332cd8f47ef4b03615314e4d3f8de",
+      "current_sha256": "413745e2aafee3412152d1192aba1484c446dbeb6c5c6adce1658169d125456a",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    },
+    "scripts/task101_evidence.py": {
+      "previous_sha256": "c5fa3e5050f7b9cc11b723f133d3f90c033eb81077219073320d24da0f182fd3",
+      "current_sha256": "a71b770116135e53b34c416e51125539963653c9afc2b6b2fd9d138d0cf20f8b",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    },
+    "tests/ada-real-uci-dlz/dlz_consumer.adb": {
+      "previous_sha256": "27afe1dbc3adde6fd9d6974403ee2ddad8e474c673bbda03fcfc7f1b4365f69b",
+      "current_sha256": "ed585f336ec66939a8c991e1c9b84d2a342c26ad8c4426515ed82e83293ff456",
+      "review": "PR208 downstream malformed-time boundary correction on unchanged 94796daf/47da595b Sleet candidate. Require broker rejection, no routed malformed MSG or fabricated decoder error, original-SID recovery and cleanup; preserve independent decoder negatives and historical receipts."
+    }
+  }
 }

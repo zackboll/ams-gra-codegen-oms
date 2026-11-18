@@ -120,7 +120,7 @@ def invalid_documents(release):
 def decoder_invalid(release):
     # Candidate only until the actual pinned broker campaign observes +OK/MSG.
     doc = golden(release)
-    doc['MessageHeader']['Timestamp'] = 'not-a-dateZ'
+    doc['MessageHeader']['Timestamp'] = '2023-02-29T00:00:00Z'
     return [('invalid-timestamp', doc)]
 
 

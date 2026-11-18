@@ -1,27 +1,16 @@
 //! Task 053: GENERATED constrained named Binary carriers -> GENERATED hex
 //! codec -> runtime-rust -> pinned sleet-client -> the UNMODIFIED pinned
-//! Sleet server (open-arsenal/ams-gra-hello-world-sk-infra-sleet @ e38f61d8)
+//! Sleet server (GitLab reviewed candidate @ 94796daf)
 //! -> GENERATED decoder -> GENERATED checked constructors -> typed handler.
 //!
 //! A NEW test beside Task 052's unconstrained hexBinary real-Sleet test,
 //! which is unchanged. Needs `AMS_GRA_SLEET_BIN` (see
 //! `scripts/run-real-sleet-test.sh`); without it the test is a stated skip.
 //!
-//! # Recorded external Sleet behavior
-//!
-//! Pinned Sleet (`sleet/src/facets.rs`) measures `xs:length`/`minLength`/
-//! `maxLength` of a hexBinary value in lexical CHARACTERS; XML Schema 2E
-//! 4.3.1 measures them in OCTETS (two hex characters each). So pinned Sleet
-//! REJECTS the spec-correct canonical encoding of a legal `Exact4` (8
-//! characters, `length 8 != 4`) and would ACCEPT a 2-octet value. This test
-//! uses `constrained-binary-sleet.xsd`, whose required members admit octet
-//! counts that also satisfy Sleet's character count, and records the
-//! `Exact4` divergence separately. The generated codec is never loosened to
-//! match Sleet: the generated carrier is the authority.
+//! Require exact and ranged lengths in octets, broker rejection before
+//! delivery, and valid recovery on the same subscription.
 
-use ams_gra_oms_runtime_rust::{
-    MessageDecodeError, OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetRuntime,
-};
+use ams_gra_oms_runtime_rust::{OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetRuntime};
 use ams_gra_oms_runtime_rust_facade_tests::constrained_binary_sleet::model as m;
 use ams_gra_oms_runtime_rust_facade_tests::constrained_binary_sleet::service_api::function_sleet_blob as blob;
 use ams_gra_oms_runtime_rust_facade_tests::constrained_binary_sleet::service_codec::ServiceCodec;
@@ -51,9 +40,7 @@ fn free_port() -> u16 {
         .port()
 }
 
-/// Legal octet counts that are ALSO legal Sleet character counts:
-/// `Ranged` 2 octets = 4 chars (2..6), `Middle` 4 octets = 8 chars (4..16),
-/// `Zero` 0 octets = 0 chars.
+/// Representative legal octet counts.
 fn sample(id: i64) -> m::SleetBlobPayload {
     m::SleetBlobPayload {
         id: m::BoundedI64::new(id).expect("xs:int"),
@@ -69,9 +56,7 @@ fn sample(id: i64) -> m::SleetBlobPayload {
     }
 }
 
-/// Test-only PROBE codec: delegates to the GENERATED codec both ways; for the
-/// marked `Id` only, it overwrites `Ranged` with lexically VALID hex of an
-/// ILLEGAL octet count (1 octet) that is a LEGAL Sleet character count (2).
+/// Inject a one-octet value that the typed encoder cannot produce.
 struct ProbeCodec;
 
 const PROBE_ID: i64 = 777;
@@ -169,19 +154,6 @@ fn server_errors(events: &[RuntimeEvent]) -> Vec<String> {
         .collect()
 }
 
-fn decode_errors(events: &[RuntimeEvent]) -> Vec<String> {
-    events
-        .iter()
-        .filter_map(|event| match event {
-            RuntimeEvent::SubscriptionDecodeError {
-                error: MessageDecodeError::Codec(error),
-                ..
-            } => Some(error.message().to_owned()),
-            _ => None,
-        })
-        .collect()
-}
-
 #[test]
 fn task053_constrained_binary_generated_codec_round_trips_through_real_sleet() {
     let Some(binary) = std::env::var_os("AMS_GRA_SLEET_BIN") else {
@@ -233,35 +205,17 @@ fn task053_constrained_binary_generated_codec_round_trips_through_real_sleet() {
     assert_eq!(received.middle.as_slice(), [0x00, 0x0A, 0xEE, 0xFF]);
     eprintln!("REAL SLEET CONSTRAINED BINARY: legal document accepted and routed");
 
-    // 2. OBSERVATION: a legal 4-octet Exact4 encodes to 8 characters, which
-    //    pinned Sleet rejects (it counts characters). Recorded, not relied on.
+    // Exact and upper ranged boundaries must survive with identical bytes.
     let mut with_exact = sample(54);
     with_exact.exact = Some(m::Exact4::new(vec![0xDE, 0xAD, 0xBE, 0xEF]).expect("4 octets"));
-    let publish = blob::exchange_output_sleet_blob::publish(&mut runtime, &with_exact);
-    let events = drain(&mut runtime);
-    eprintln!(
-        "REAL SLEET EXACT4 OBSERVATION: publish = {:?}",
-        publish.as_ref().err()
-    );
-    eprintln!("REAL SLEET EXACT4 OBSERVATION: events = {events:?}");
-    assert!(seen.try_recv().is_err(), "not routed by pinned Sleet");
-    assert_eq!(
-        server_errors(&events),
-        [
-            "schema validation failed: FacetViolation { path: \"SleetBlobNotice.Exact\", \
-          facet: \"length\", detail: \"length 8 != 4\" }"
-        ],
-        "pinned Sleet outcome changed; update the Task 053 record"
-    );
-    eprintln!(
-        "REAL SLEET EXACT4 OBSERVATION: pinned Sleet counts hexBinary length in CHARACTERS \
-         and rejects a spec-legal 4-octet Exact4 (8 characters)"
-    );
+    with_exact.ranged = m::Between2And6::new(vec![0xAB; 6]).unwrap();
+    blob::exchange_output_sleet_blob::publish(&mut runtime, &with_exact).unwrap();
+    assert_eq!(seen.recv_timeout(WAIT).unwrap(), with_exact);
+    assert!(drain(&mut runtime).is_empty());
     subscription.unsubscribe().expect("unsubscribe");
     runtime.close().expect("close");
 
-    // 3. OBSERVATION: 1 octet ("AB", 2 characters) is ILLEGAL for
-    //    Between2And6 but satisfies Sleet's 2..6 character check.
+    // A short range must fail at the broker, not at the generated decoder.
     let mut probe = connect(&url, || ProbeCodec);
     let (probe_tx, probe_seen) = mpsc::channel();
     let probe_subscription = blob::exchange_input_sleet_blob::subscribe(
@@ -285,18 +239,19 @@ fn task053_constrained_binary_generated_codec_round_trips_through_real_sleet() {
         probe_seen.recv_timeout(Duration::from_millis(200)).is_err(),
         "a 1-octet Between2And6 must never reach a typed handler"
     );
-    assert!(publish.is_ok(), "Sleet accepted the PUB");
-    assert_eq!(
-        decode_errors(&events),
-        ["SleetBlobPayload.Ranged: value rejected by generated Between2And6::new"],
-        "pinned Sleet outcome changed; update the Task 053 record"
-    );
-    eprintln!(
-        "REAL SLEET CONSTRAINED BINARY PROBE: pinned Sleet ROUTED {PROBE_SHORT_HEX:?} \
-         (1 octet, 2 characters); the GENERATED Between2And6::new rejected it"
-    );
-    let _ = probe_subscription.unsubscribe();
-    let _ = probe.close();
+    assert!(publish.is_ok(), "non-verbose PUB frame written");
+    assert_eq!(events.len(), 1, "one broker error, no decoder error");
+    let errors = server_errors(&events);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].contains("FacetViolation"), "{errors:?}");
+    assert!(errors[0].contains("Ranged"), "{errors:?}");
+    blob::exchange_output_sleet_blob::publish(&mut probe, &sample(55)).unwrap();
+    assert_eq!(probe_seen.recv_timeout(WAIT).unwrap(), 2);
+    assert!(drain(&mut probe).is_empty());
+    probe_subscription
+        .unsubscribe()
+        .expect("unsubscribe after recovery");
+    probe.close().expect("close after recovery");
     let _ = std::fs::remove_dir_all(&dir);
     eprintln!("REAL SLEET GENERATED CONSTRAINED BINARY CODEC: PASSED");
 }

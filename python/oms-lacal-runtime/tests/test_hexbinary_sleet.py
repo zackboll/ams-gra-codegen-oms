@@ -11,7 +11,7 @@ import sys
 from tempfile import TemporaryDirectory
 import unittest
 
-from oms_lacal import CodecBinding, CodecFailure, CodecRegistry, LacalRuntime, RuntimeConfig, ServerRejection
+from oms_lacal import CodecBinding, CodecRegistry, LacalRuntime, RuntimeConfig, ServerRejection
 from support import ROOT, OAM
 
 
@@ -21,7 +21,7 @@ class HexBinarySleetTests(unittest.IsolatedAsyncioTestCase):
         checkout = Path(binary).resolve().parents[2]
         self.assertEqual(subprocess.check_output(
             ['git', '-C', str(checkout), 'rev-parse', 'HEAD', 'HEAD^{tree}'], text=True).splitlines(),
-            ['e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b', '7e705f4eb5f658957bd414b4abc8207311f3c1e4'])
+            ['94796daf55ebd1134dce0925e6a204a05ad3423b', '47da595b9078cac1a9351e8290d1ae7f3976367f'])
         self.assertEqual(subprocess.check_output(['git', '-C', str(checkout), 'status', '--porcelain']), b'')
         initial_tasks = set(asyncio.all_tasks())
         with TemporaryDirectory(prefix='py013-sleet-') as temporary:
@@ -99,39 +99,25 @@ class HexBinarySleetTests(unittest.IsolatedAsyncioTestCase):
                         await publisher._operation('PUB binary.loop {"BinaryNotice":{"Required":"80ff","Repeated":["aa","00"]}}')
                         self.assertEqual(await asyncio.wait_for(received.get(), 5),
                                          m.Payload(required=b'\x80\xff', repeated=(b'\xaa', b'\x00')))
-                        # The broker's lexical-character length bug is observed,
-                        # not copied into the Python octet-count validator.
+                        # Corrected Sleet measures exact length in octets.
                         constrained = m.Payload(required=b'', constrained=m.Exact(b'\x80\xff'))
                         self.assertEqual(c.decode_Payload('{"Required":"","Constrained":"80ff"}'), constrained)
-                        try:
-                            await api.function_loop.exchange_output.publish(publisher, constrained)
-                        except ServerRejection as error:
-                            observations.append(dict(case='valid two-octet carrier', outcome='broker rejection', code=error.code))
-                        else:
-                            self.assertEqual(await asyncio.wait_for(received.get(), 5), constrained)
-                            observations.append(dict(case='valid two-octet carrier', outcome='typed delivery'))
+                        await api.function_loop.exchange_output.publish(publisher, constrained)
+                        self.assertEqual(await asyncio.wait_for(received.get(), 5), constrained)
+                        observations.append(dict(case='valid two-octet carrier', outcome='typed delivery'))
                         malformed = ['{"Required":"0"}', '{"Required":"GG"}', '{"Required":[0]}',
                                      '{"Required":"00 00"}', '{"Required":"","Repeated":["00","Z0"]}',
                                      '{"Required":"","Constrained":"80"}']
                         for body in malformed:
                             before = len(decoder_calls)
-                            try:
+                            with self.assertRaises(ServerRejection) as rejected:
                                 await publisher._operation('PUB binary.loop {"BinaryNotice":' + body + '}')
-                            except ServerRejection as error:
-                                self.assertEqual(len(decoder_calls), before)
-                                observations.append(dict(payload=body, outcome='broker rejection', code=error.code))
-                            else:
-                                event = await asyncio.wait_for(subscriber.next_event(), 5)
-                                self.assertIs(type(event.error), CodecFailure)
-                                self.assertEqual(len(decoder_calls), before + 1)
-                                observations.append(dict(payload=body, outcome='generated decoder rejection',
-                                                         decoder_input=decoder_calls[-1]))
+                            self.assertEqual(len(decoder_calls), before)
+                            observations.append(dict(payload=body, outcome='broker rejection', code=rejected.exception.code))
                             self.assertTrue(received.empty())
                             recovery = m.Payload(required=b'\xff\x80')
                             await api.function_loop.exchange_output.publish(publisher, recovery)
                             self.assertEqual(await asyncio.wait_for(received.get(), 5), recovery)
-                        self.assertTrue(any(row['outcome'] == 'generated decoder rejection' for row in observations),
-                                        'no actual transport-to-decoder rejection')
                         await handle.unsubscribe()
                         self.assertFalse(handle.active)
                         self.assertEqual(len(subscriber._subscriptions), 0)

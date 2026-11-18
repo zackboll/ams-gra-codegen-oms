@@ -1,7 +1,4 @@
-use ams_gra_oms_runtime_rust::{
-    MessageDecodeError, OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetRuntime,
-    unwrap_global_element,
-};
+use ams_gra_oms_runtime_rust::{OmsJsonCodec, RuntimeConfig, SleetRuntime, unwrap_global_element};
 use generated::{model as m, service_api::function_f as svc, service_codec::ServiceCodec};
 use serde_json::{Value, json};
 use sleet_client::{CalClient, ClientError, InitOptions};
@@ -56,12 +53,16 @@ fn inspect(value: &m::OrdersMetadataMT, expected: &Value) {
     );
 }
 
-fn negatives() -> Vec<(String, Value, String, bool)> {
+fn negatives() -> Vec<(String, Value, String)> {
     document(NEGATIVE)
         .as_array()
         .unwrap()
         .iter()
         .map(|case| {
+            assert_eq!(
+                case["boundary"], "broker",
+                "no alternate rejection boundary"
+            );
             let mut body = document(NORMAL);
             let path = case["path"].as_str().unwrap();
             if case["omit"] == true {
@@ -81,7 +82,6 @@ fn negatives() -> Vec<(String, Value, String, bool)> {
                 case["name"].as_str().unwrap().to_owned(),
                 body,
                 case["diagnostic"].as_str().unwrap().to_owned(),
-                case["boundary"] == "decoder",
             )
         })
         .collect()
@@ -135,12 +135,16 @@ fn checked_model_and_codec() {
     for n in [0, 1000, -1] {
         assert!(m::USMTFSerialNumberOfQualifierType::new(n).is_none());
     }
-    for (name, body, _, _) in negatives() {
+    for (name, body, _) in negatives() {
         let result: Result<m::OrdersMetadataMT, _> = ServiceCodec.decode_payload(&body);
         let error = result.expect_err(&name);
         eprintln!("RUST-OMS-012 {VERSION} {name}: local codec rejected: {error}");
         if name.starts_with("qualifier-") {
             assert!(error.message().contains("QualifierSerialNumber"));
+        }
+        if name == "timestamp-calendar-invalid" {
+            assert_eq!(body["MessageHeader"]["Timestamp"], "not-a-dateZ");
+            assert!(error.message().contains("Timestamp"), "{error}");
         }
     }
     for body in omitted_documents() {
@@ -287,43 +291,27 @@ fn pinned_sleet_interoperability() {
             body
         );
     }
-    for (name, body, diagnostic, decoder) in negatives() {
+    for (name, body, diagnostic) in negatives() {
         let wire = json!({MESSAGE: body});
         let result = executor.block_on(raw_publish(&mut publisher, TOPIC, &wire));
-        if decoder {
-            result.expect("broker admission is not generated decoder acceptance");
-            assert_eq!(receive_wire(&mut observer), wire);
-            match runtime
-                .recv_event_timeout(WAIT)
-                .expect("subscription rejection")
-            {
-                RuntimeEvent::SubscriptionDecodeError {
-                    sid,
-                    message_name,
-                    error: MessageDecodeError::Codec(error),
-                } => {
-                    assert_eq!(sid, subscription.id());
-                    assert_eq!(message_name, MESSAGE);
-                    assert!(error.message().contains(&diagnostic), "{name}: {error}");
-                    eprintln!(
-                        "RUST-OMS-012 {VERSION} {name}: routed MSG; generated decoder rejected: {error}"
-                    );
-                }
-                other => panic!("wrong rejection boundary: {other:?}"),
-            }
-        } else {
-            let error = result.expect_err("broker rejects before routing");
-            assert!(
-                matches!(error, ClientError::Server { .. }),
-                "{name}: {error}"
-            );
-            assert!(error.to_string().contains(&diagnostic), "{name}: {error}");
-            executor.block_on(async {
-                assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
-            });
-            assert!(runtime.recv_event_timeout(QUIET).is_none());
-            eprintln!("RUST-OMS-012 {VERSION} {name}: broker rejected: {error}");
+        let error = result.expect_err("broker rejects before routing");
+        assert!(
+            matches!(error, ClientError::Server { .. }),
+            "{name}: {error}"
+        );
+        assert!(error.to_string().contains(&diagnostic), "{name}: {error}");
+        if name == "timestamp-calendar-invalid" {
+            let ClientError::Server { error, details } = &error else {
+                unreachable!("server error checked above")
+            };
+            assert_eq!(error.to_string(), "Invalid-Message");
+            assert_eq!(details.as_deref(), Some(diagnostic.as_str()));
         }
+        executor.block_on(async {
+            assert!(tokio::time::timeout(QUIET, observer.recv()).await.is_err());
+        });
+        assert!(runtime.recv_event_timeout(QUIET).is_none());
+        eprintln!("RUST-OMS-012 {VERSION} {name}: broker rejected: {error}");
         assert!(
             seen.recv_timeout(QUIET).is_err(),
             "invalid input never becomes a typed callback"
@@ -333,6 +321,7 @@ fn pinned_sleet_interoperability() {
         inspect(&seen.recv_timeout(WAIT).unwrap().1, &normal);
         assert!(runtime.is_running());
         assert!(runtime.try_recv_event().is_none());
+        eprintln!("RUST-OMS-012 {VERSION} {name}: original subscription recovery: PASSED");
     }
     for (name, topic, wire, diagnostic) in [
         (

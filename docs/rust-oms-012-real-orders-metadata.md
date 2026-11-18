@@ -23,9 +23,10 @@ repository's established pins, not reconstructed subsets:
 | 2.5 | `093610b7753944059360d3236770ab446d039556` (`v2.5`) | `ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27` | `4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b` |
 | 2.6 | `78eb61b6112c8bffa40820c33124b57787fc5bd9` (`v2.6`) | `af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b` | `ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88` |
 
-Sleet remains the clean, unmodified revision
-`e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b`, tree
-`7e705f4eb5f658957bd414b4abc8207311f3c1e4`. The existing runner checks these
+The original qualification used Sleet `e38f61d8`. PR #208's downstream
+requalification uses the clean, unmodified candidate revision
+`94796daf55ebd1134dce0925e6a204a05ad3423b`, tree
+`47da595b9078cac1a9351e8290d1ae7f3976367f`. The existing runner checks these
 identities and clean status, builds with Sleet's own pinned toolchain/lockfile,
 and reuses that single checkout/build. Qualification Rust uses **1.95.0** and
 locked dependencies.
@@ -73,8 +74,9 @@ The numeric path is:
 MessageData.OrdersAssociation[0].Orders.ATO[0].Identifier.QualifierSerialNumber
 ```
 
-Each release has 32 independent negative payload cases: 31 rejected at the
-broker and one admitted by the broker but rejected by the generated decoder.
+Each release has 32 independent negative payload cases, all rejected at the
+selected broker before routing. The direct codec test independently rejects
+all 32, including the unchanged malformed timestamp `not-a-dateZ`.
 The live test additionally exercises incorrect INIT version, global identity
 and unauthorized topic as separate controls.
 
@@ -123,21 +125,31 @@ acceptance acknowledgement. Another independent `CalClient` publishes the
 distinguishable second document, which must reach a typed generated
 `OrdersMetadataMT` callback and re-encode to the independently authored JSON.
 
-Invalid cases distinguish broker rejection (`ClientError::Server`, no observer
-MSG or typed callback) from broker-admitted/generated-decoder rejection
-(`RuntimeEvent::SubscriptionDecodeError` naming the exact subscription/message,
-observer MSG present, no typed callback). Valid traffic is required after every
-payload negative to prove the original runtime and subscription remain usable.
+Live invalid cases require broker rejection (`ClientError::Server`, no observer
+MSG, typed callback or subscription decoder event). They do not accept an
+alternate decoder boundary. The separate direct `ServiceCodec.decode_payload`
+test retains generated-decoder rejection coverage without requiring a validating
+broker to forward malformed input. Valid typed publication, independent observer
+JSON comparison and typed decoding are required after every payload negative to
+prove the original runtime and subscription remain usable.
 
 Observed qualifier diagnostics preserve release differences: UCI 2.5 rejects
 `1000` and `-1` at its `pattern` facet and `0` at `minInclusive`; UCI 2.6 uses
 the numeric inclusive-bound facets. Floating-point/string/boolean/null/object
 representations produce `TypeMismatch`; an array at the scalar member produces
-`OccurrenceMismatch`. The timestamp `not-a-dateZ` passes Sleet's lexical suffix
-facet (schema pattern `.+Z`) but is not a valid XSD
-dateTime: actual routed MSG must be rejected by generated `DateTimeType::new`
-at the decoder boundary. This records the broker's existing validation limit;
-neither schemas nor validation are weakened.
+`OccurrenceMismatch`. Although `not-a-dateZ` matches the schema's `.+Z` suffix
+pattern, it is not a valid XSD dateTime. The selected candidate rejects it with
+OWP `Invalid-Message` (`ClientError::Server` / `InvalidMessage`) and the exact
+detail observed for both releases:
+
+```text
+schema validation failed: FacetViolation { path: "OrdersMetadata.MessageHeader.Timestamp", facet: "lexicalRepresentation", detail: "value 'not-a-dateZ' is not a valid xs:dateTime" }
+```
+
+The live assertion checks this complete detail and error code, not an arbitrary
+`FacetViolation`. No MSG or decoder event is expected. The direct codec test
+separately requires a Timestamp diagnostic. Neither schemas nor invalid values
+are weakened; cleanup and per-case original-subscription recovery are unchanged.
 
 A second generated subscription witnesses valid traffic after removing the
 original subscription. Only the remaining handler may run. Both subscriptions
@@ -250,7 +262,10 @@ OrdersMetadata application integration, reconnect policy or new WSS behavior.
 The existing four-/five-message client and its WSS tests remain regression
 coverage only. Duplicate-key detection is not a payload-codec property because
 `serde_json::Value` has already collapsed duplicate members. The known
-FileMetadata SHA-256 Sleet incompatibility is unrelated and remains out of scope.
+historical FileMetadata SHA-256 incompatibility is corrected by the selected
+candidate. Its remaining valid-input compatibility failures (XML Schema midnight,
+hexBinary XML whitespace normalization and OMS's XSD 1.0 leap-second profile),
+upstream acceptance and canonical pin are separate unresolved adoption blockers.
 Non-Linux hosts do not provide the Linux established-socket evidence. Schema
 validity is not a claim of operational order semantics beyond the authentic
 checked XSD/OMS JSON model. No Sleet patch or schema relaxation is used.

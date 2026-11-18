@@ -193,7 +193,7 @@ begin
       Ada.Text_IO.Put_Line ("TASK102_SUBSCRIBED");
       Ada.Text_IO.Flush;
       Await_Calls (1);
-      if Rejected /= 3 then raise Program_Error with "missing decode rejection before recovery"; end if;
+      if Rejected /= 0 then raise Program_Error with "broker-rejected hex reached decoder"; end if;
       Ada.Text_IO.Put_Line ("TASK102_DECODE_RECOVERY_COMPLETE");
       Sent := Publisher.Publish (Base);
       if not Sent then raise Program_Error with "not sent"; end if;

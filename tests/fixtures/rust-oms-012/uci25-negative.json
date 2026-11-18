@@ -251,8 +251,8 @@
     "name": "timestamp-calendar-invalid",
     "path": "/MessageHeader/Timestamp",
     "value": "not-a-dateZ",
-    "diagnostic": "Timestamp",
-    "boundary": "decoder",
+    "diagnostic": "schema validation failed: FacetViolation { path: \"OrdersMetadata.MessageHeader.Timestamp\", facet: \"lexicalRepresentation\", detail: \"value 'not-a-dateZ' is not a valid xs:dateTime\" }",
+    "boundary": "broker",
     "omit": false
   }
 ]

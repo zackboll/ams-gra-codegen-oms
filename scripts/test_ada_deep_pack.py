@@ -62,7 +62,21 @@ class DeepPack(unittest.TestCase):
             'git', 'show', historical['sha'] + ':scripts/ada_deep_pack/inventory.json'], cwd=run.ROOT))
         previous = json.loads(raw)
         updates = report.get('qualification_updates', {})
-        self.assertEqual(report['qualification_sha256'], run.INVENTORY['qualification_sha256'])
+        dependency_updates = report.get('dependency_updates', {})
+        current_inputs = dict(run.INVENTORY['qualification_sha256'])
+        for path, update in report.get('correction_updates', {}).items():
+            self.assertEqual(current_inputs[path], update['current_sha256'])
+            self.assertEqual(run.sha(run.ROOT / path), update['current_sha256'])
+            self.assertTrue(update['review'])
+            current_inputs[path] = update['previous_sha256']
+        for path, update in dependency_updates.items():
+            self.assertEqual(current_inputs[path], update['current_sha256'])
+            self.assertEqual(report.get('correction_updates', {}).get(path, {}).get(
+                                 'previous_sha256', run.sha(run.ROOT / path)),
+                             update['current_sha256'])
+            self.assertTrue(update['review'])
+            current_inputs[path] = update['previous_sha256']
+        self.assertEqual(report['qualification_sha256'], current_inputs)
         self.assertEqual(len(previous['qualification_sha256']), 330)
         self.assertEqual(report['reviewed_inputs'], 330)
         self.assertEqual(report['unchanged_inputs'], 310)
@@ -77,7 +91,7 @@ class DeepPack(unittest.TestCase):
             self.assertEqual(changed, update['changed_files'])
             self.assertEqual(update['qualification_inputs_changed'], 0)
             self.assertFalse(set(changed) & set(run.INVENTORY['qualification_sha256']))
-        for path, digest in run.INVENTORY['qualification_sha256'].items():
+        for path, digest in current_inputs.items():
             with self.subTest(path=path):
                 original = subprocess.check_output([
                     'git', 'show', previous['origin_commit'] + ':' + path], cwd=run.ROOT)
@@ -129,6 +143,9 @@ class DeepPack(unittest.TestCase):
                         new = "grep -qE '^test result: ok\\. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in [0-9.]+s$' <<<\"$output\""
                         self.assertEqual(body.count(old), 1)
                         body = body.replace(old, new)
+                    if name == 'real-sleet':
+                        body = body.replace('real pinned Sleet (e38f61d8)',
+                                            'real pinned Sleet (94796daf)')
                     if name == 'real-uci-regressions':
                         old = '          cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles\n'
                         self.assertEqual(body.count(old), 1)

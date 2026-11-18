@@ -140,7 +140,7 @@ end Consumer;
             output = campaign.run(cell + '-sleet', [sys.executable, ROOT / 'scripts/task101/sleet.py',
                 '--checkout', args.sleet.resolve(), '--consumer', build / 'bin/dlz_consumer', '--schema', schema,
                 '--release', release, '--evidence', build / 'sleet'])
-            assert f'TASK101_REAL_SLEET_CELL_COMPLETE {release} handlers=11 decode_rejected=1 witness=1\n' in output
+            assert f'TASK101_REAL_SLEET_CELL_COMPLETE {release} handlers=11 decode_rejected=0 witness=1\n' in output
             cells.append(dict(release=release, policy=policy, optimization=optimization))
             print('TASK101_CELL_COMPLETE', campaign.version, cell, flush=True)
     assert all(hashlib.sha256((ROOT / p).read_bytes()).hexdigest() == digest for p, digest in hashes.items())

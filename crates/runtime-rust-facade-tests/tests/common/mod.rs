@@ -1,7 +1,7 @@
 //! A deterministic, TEST-ONLY OWP WebSocket peer.
 //!
-//! It accepts exactly one connection, REQUIRES `Sec-WebSocket-Protocol: owp`
-//! (anything else gets HTTP 400, as OMSC-SPC-013 CERT LACAL-000004
+//! It accepts exactly one connection, REQUIRES an `owp` subprotocol offer
+//! (missing OWP gets HTTP 400, as OMSC-SPC-013 CERT LACAL-000004
 //! requires), answers `INIT` as scripted, records every text frame the
 //! client writes, and sends whatever frames the test asks for. It is not a
 //! CAL server and nothing in production uses it.

@@ -18,8 +18,8 @@ from websockets.sync.client import connect
 sys.dont_write_bytecode = True
 import cases
 
-REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 
 
 def execute(checkout, consumer, schema, release, directory):
@@ -121,7 +121,7 @@ def execute(checkout, consumer, schema, release, directory):
             (directory / 'consumer.exit').write_text(str(child.returncode) + '\n')
             output = (directory / 'consumer.stdout').read_text()
             assert child.returncode == 0, output
-            assert 'TASK102_ADA_REAL_LOG_COMPLETE handlers= 7 rejected= 3' in output
+            assert 'TASK102_ADA_REAL_LOG_COMPLETE handlers= 7 rejected= 0' in output
             assert 'TASK102_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1' in output
             assert 'TASK102_CLEANUP_COMPLETE' in output
             published = [line.removeprefix('TASK102_PUBLISHED ') for line in output.splitlines() if line.startswith('TASK102_PUBLISHED ')]
@@ -133,10 +133,12 @@ def execute(checkout, consumer, schema, release, directory):
                     assert data == data.upper() and bytes.fromhex(data) == bytes.fromhex(expected['MessageData']['Data'])
             received = [json.loads(line.removeprefix('TASK102_WIRE_RECEIVED '))
                         for line in output.splitlines() if line.startswith('TASK102_WIRE_RECEIVED ')]
-            assert len(received) == 11 and all(set(doc) == {'Log'} for doc in received)
-            assert [doc['Log'] for doc in received[:3]] == [doc for _, doc in cases.decoder_invalid(release)]
-            assert received[3]['Log'] == positives[0][1]
-            assert [doc['Log'] for doc in received[4:10]] == [expected for _, _, expected in positives]
+            # Malformed hex never reaches this subscriber with corrected Sleet:
+            # recovery + six authored publications + unsubscribe witness.
+            assert len(received) == 8 and all(set(doc) == {'Log'} for doc in received)
+            assert received[0]['Log'] == positives[0][1]
+            assert [doc['Log'] for doc in received[1:7]] == [expected for _, _, expected in positives]
+            assert received[7]['Log'] == positives[0][1]
             # Publish lexical variants independently, without canonicalizing via
             # the Ada encoder first. Observe broker admission and wire spelling.
             with connect(url, subprotocols=['owp']) as lexical:
@@ -182,10 +184,10 @@ def execute(checkout, consumer, schema, release, directory):
         probe.settimeout(1)
         assert probe.connect_ex(('127.0.0.1', port)) != 0, 'broker socket retained'
     result = dict(completed=True, release=release, revision=REV, tree=TREE, handlers=7,
-                  witness_handlers=1, decode_rejected=3, published=6, broker_rejected=10,
+                  witness_handlers=1, decode_rejected=0, published=6, broker_rejected=13,
                   consumer_exit=0, server_exit=0, cleanup=True)
     (directory / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
-    print('TASK102_REAL_SLEET_CELL_COMPLETE', release, 'handlers=7 decode_rejected=3 witness=1', flush=True)
+    print('TASK102_REAL_SLEET_CELL_COMPLETE', release, 'handlers=7 decode_rejected=0 witness=1', flush=True)
 
 
 if __name__ == '__main__':
