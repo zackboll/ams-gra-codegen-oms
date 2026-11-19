@@ -291,17 +291,29 @@ class RawPeer:
         return await self.publish(body, name='SurvivabilityRiskLevel', topic=SURVIVABILITY_TOPIC)
 
 
+# PY-OMS-023: when set (only by the installed-application suites, for the
+# duration of their module), run_cli launches this installed console script
+# instead of the source file. It provides `command()`, `environment(extra)`
+# and `cwd`. None keeps the original source-file launcher unchanged.
+LAUNCHER = None
+
+
 async def run_cli(arguments, *, until=None, timeout=60, env=None):
     """Execute the real CLI as a subprocess. Returns (code, stdout, stderr).
 
     `until(line)` is awaited for every stdout line, letting a test drive the
     independent publisher at protocol-meaningful points (e.g. after SUBSCRIBED).
     """
+    if LAUNCHER is None:
+        command = [sys.executable, *(['-O'] if sys.flags.optimize else []),
+                   str(APP / 'python_uci_client.py')]
+        environment, cwd = {**os.environ, 'PYTHONDONTWRITEBYTECODE': '1', **(env or {})}, None
+    else:
+        command, environment, cwd = LAUNCHER.command(), LAUNCHER.environment(env), LAUNCHER.cwd
     process = await asyncio.create_subprocess_exec(
-        sys.executable, *(['-O'] if sys.flags.optimize else []),
-        str(APP / 'python_uci_client.py'), *map(str, arguments),
+        *command, *map(str, arguments),
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1', **(env or {})})
+        env=environment, cwd=cwd)
     lines = []
     try:
         async with asyncio.timeout(timeout):

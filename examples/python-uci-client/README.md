@@ -40,6 +40,7 @@ schemas nor generated UCI source are committed.
 | File | Purpose |
 | --- | --- |
 | `python_uci_client.py` | CLI and reusable `run_client()` API |
+| `pyproject.toml` | Installable wheel `ams-gra-oms-python-uci-client` with the `python-uci-client` command (PY-OMS-023, [section 7](#7-installed-deployment-python-uci-client-command)) |
 | `generate_bindings.py` | Generates one release into external build storage |
 | `contracts/uci25-service.yaml`, `contracts/uci26-service.yaml` | Receive-only RDMA contracts derived from `tests/fixtures/task103` |
 | `contracts/uci25-rdma-log-service.yaml`, `contracts/uci26-rdma-log-service.yaml` | Receive-only RDMA + Log contracts (`--with-log`); Log as in `tests/fixtures/task102` |
@@ -583,6 +584,8 @@ export AMS_GRA_SLEET_BIN=/path/to/clean/sleet/checkout/target/release/sleet
 | `test_survivability.py` (11) | Three subscriptions on one connection: interleaved typed delivery, per-subscription order, exact output, cross-SID and payload-name envelope rejection, Survivability decoder failure with recovery, per-family callback failure, rejected first/second/third SUB, connection loss during the third SUB, cancellation between each SUB pair, failure after the final ack, shutdown with queued data of all three families, combined `--max-messages`, mode/bindings mismatch |
 | `test_real_sleet_with_survivability.py` (4) | Real Sleet three-message mode, UCI 2.5 and 2.6: three SUB acks and distinct SIDs, interleaved independent publication of all three families witnessed on the wire and at the typed callback, broker vs decoder rejection, three UNSUBs, one broker connection, no delivery after teardown; unauthorized `uci.survivability` releases RDMA and Log; SIGTERM releases all three |
 | `test_wss_survivability.py` (2) | Verified WSS three-message reception for both releases; untrusted CA and wrong hostname still rejected |
+| `test_installed_cli.py` (8) | PY-OMS-023: wheel contents and metadata, offline install into a fresh environment, import origin, import audit (nothing from the checkout), installed `--help` and usage errors, all six deployed binding sets (formats 1/2/3, UCI 2.5/2.6), modified/wrong-release/wrong-mode refusal, `PYTHONOPTIMIZE=1` |
+| `test_installed_real_sleet.py` (6) | PY-OMS-023: the **installed** `python-uci-client` against real Sleet: three-message mode for UCI 2.5 and 2.6, modes A and B, unauthorized third SUB (exit `5`), SIGTERM (exit `143`), verified WSS with a hostname-mismatch control |
 
 The real-Sleet and WSS tests use an independent raw-`websockets` OWP
 publisher/observer, not this application or `oms_lacal`. They publish edits of
@@ -592,7 +595,211 @@ broker-side debug evidence (INIT, subscription registered/removed). In CI these
 suites run through `python/qualification/sleet/test_python_uci_client.py` in
 the existing pinned-Sleet lane.
 
-## Known limitations
+## 7. Installed deployment (`python-uci-client` command)
+
+PY-OMS-023 packages the same `python_uci_client.py`, unmodified, as the wheel
+**`ams-gra-oms-python-uci-client`**. The wheel provides the console command
+**`python-uci-client`**, which calls `python_uci_client:main`. The installed
+command has the same three modes, flags, output, exit statuses, typed
+callback API and TLS verification as the source file. Generated code stays
+outside the wheel: a deployed client always takes previously generated
+bindings through `--bindings`.
+
+| Needed on the build machine | Needed on the deployment machine |
+| --- | --- |
+| This checkout, Rust/Cargo, the generator, the pinned UCI XSDs, Python ≥ 3.11 with `pip` | Python ≥ 3.11, the three wheels, the generated binding directories, network access to Sleet (and a CA file for private `wss://`) |
+
+The deployment machine needs **no** checkout, Rust, Cargo, generator or
+UCI XSD.
+
+### A. Developer/source-checkout usage
+
+Unchanged. The source file still runs directly with an interpreter that has
+the runtime installed (section 1):
+
+```bash
+"$PY" examples/python-uci-client/python_uci_client.py --help
+```
+
+### B. Building a client wheel
+
+From the repository root, with any Python ≥ 3.11 that has `pip`. `pip wheel`
+uses the setuptools backend declared in each `pyproject.toml`; it fetches
+setuptools into an isolated build environment unless one is already
+available. Write all output outside the repository:
+
+```bash
+export WHEELHOUSE="$CLIENT_SCRATCH/wheelhouse"
+cp -r python/oms-lacal-runtime examples/python-uci-client "$CLIENT_SCRATCH/"
+"$PY" -m pip wheel --no-deps --wheel-dir "$WHEELHOUSE" \
+  "$CLIENT_SCRATCH/oms-lacal-runtime" "$CLIENT_SCRATCH/python-uci-client"
+"$PY" -m pip download --no-deps --only-binary=:all: --dest "$WHEELHOUSE" websockets==17.2
+ls "$WHEELHOUSE"
+# ams_gra_oms_lacal_runtime-0.1.0-py3-none-any.whl
+# ams_gra_oms_python_uci_client-0.1.0-py3-none-any.whl
+# websockets-17.2-<platform tags>.whl
+```
+
+`websockets==17.2` is the runtime's own pin. `websockets` publishes
+platform-specific wheels, so download it for the deployment platform; for
+example add `--platform`/`--python-version` when building on another machine.
+
+The application wheel contains exactly `python_uci_client.py` and its
+`.dist-info` metadata (`METADATA`, `WHEEL`, `entry_points.txt`,
+`top_level.txt`, `RECORD`). It contains no generated `model.py`,
+`service_api.py` or `service_codec.py`, no contracts, no schemas, no
+`generate_bindings.py`, no tests and no certificates. Check it with:
+
+```bash
+"$PY" -m zipfile -l "$WHEELHOUSE"/ams_gra_oms_python_uci_client-0.1.0-py3-none-any.whl
+```
+
+The package declares `Private :: Do Not Upload`, so PyPI refuses it. It is
+distributed only as a locally built wheel. Like the runtime, it is not
+published on any index.
+
+The copies keep setuptools' `build/` and `*.egg-info` output out of the
+checkout. An in-place build works too, and those directories are
+git-ignored.
+
+### C. Installing the runtime and client wheels
+
+On the deployment machine, into a fresh virtual environment, strictly from
+the wheelhouse (no index, no network):
+
+```bash
+python3.11 -m venv /opt/python-uci-client
+/opt/python-uci-client/bin/python -m pip install --no-index --find-links /srv/wheelhouse \
+  ams-gra-oms-python-uci-client==0.1.0
+/opt/python-uci-client/bin/python-uci-client --help
+```
+
+pip resolves `ams-gra-oms-lacal-runtime==0.1.0` and `websockets==17.2` from
+the same wheelhouse. Nothing else is installed.
+
+### D. Preparing generated bindings on the build machine
+
+Generation remains a build-time step on the machine with the checkout,
+generator and pinned schemas (section 2). For example, UCI 2.6 three-message
+bindings:
+
+```bash
+"$PY" examples/python-uci-client/generate_bindings.py --with-log --with-survivability \
+  --schema-release 2.6 --schema "$UCI26" --output "$CLIENT_SCRATCH/rdma-log-surv-2.6"
+```
+
+Each output directory holds `model.py`, `service_api.py`, `service_codec.py`
+and `python-uci-client-build.json`. Generate one directory per release and
+mode you deploy (format 1, 2 or 3).
+
+### E. Deploying those bindings to another machine
+
+Copy each output directory **as is**, for example with `rsync -a` or a tar
+archive, to any path on the deployment machine. The directory does not need
+to be importable or on `PYTHONPATH`. Only these four files are needed, and no
+schemas. The client verifies the manifest's release, mode, message inventory
+and the SHA-256 of all three generated files before executing them. It
+refuses, with exit `3`:
+
+- a modified or missing file;
+- a release that differs from `--schema-release`;
+- bindings of another mode.
+
+Regenerate on the build machine instead of editing a deployed copy.
+
+### F. Running the installed console command
+
+`python-uci-client` takes exactly the arguments of section 3. Mode A:
+
+```bash
+python-uci-client --url ws://sleet.example.test:9000 --service-id python-uci-client \
+  --schema-release 2.5 --bindings /srv/uci-bindings/rdma-2.5
+```
+
+Mode B:
+
+```bash
+python-uci-client --url ws://sleet.example.test:9000 --service-id python-uci-client \
+  --schema-release 2.6 --bindings /srv/uci-bindings/rdma-log-2.6 --with-log
+```
+
+Mode C:
+
+```bash
+python-uci-client --url ws://sleet.example.test:9000 --service-id python-uci-client \
+  --schema-release 2.6 --bindings /srv/uci-bindings/rdma-log-surv-2.6 \
+  --with-log --with-survivability --duration-seconds 60
+```
+
+Use the absolute path (`/opt/python-uci-client/bin/python-uci-client`) or
+activate the environment. Output and exit statuses (`0`, `2`–`7`, `130`,
+`143`) are identical to the source-file usage. Setting `PYTHONOPTIMIZE=1` is
+supported and qualified.
+
+The typed API remains importable from the installed environment:
+`import python_uci_client` and then `python_uci_client.run_client(...)`, as in
+section 4.
+
+### G. Verified WSS configuration
+
+Identical to section 5. Verification cannot be disabled; `--ca-file` only
+adds trust anchors:
+
+```bash
+python-uci-client --url wss://sleet.example.test:9443 --service-id python-uci-client \
+  --schema-release 2.6 --bindings /srv/uci-bindings/rdma-log-surv-2.6 \
+  --with-log --with-survivability --ca-file /etc/pki/deployment-ca.pem
+```
+
+Distribute the CA certificate through your normal configuration management.
+Never ship private keys or credentials with the wheel or the bindings.
+
+### Complete example: checkout → wheel → installed client outside the checkout
+
+```bash
+# --- Build machine, inside the checkout ---------------------------------
+cd /path/to/ams-gra-codegen-oms
+export CLIENT_SCRATCH="$(mktemp -d)"            # all output outside the repository
+python3.11 -m venv "$CLIENT_SCRATCH/build-venv"
+export PY="$CLIENT_SCRATCH/build-venv/bin/python"
+cargo build --release --locked -p ams-gra-codegen-oms
+UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$CLIENT_SCRATCH/uci-2.6")"
+"$PY" examples/python-uci-client/generate_bindings.py --with-log --with-survivability \
+  --schema-release 2.6 --schema "$UCI26" --output "$CLIENT_SCRATCH/deploy/rdma-log-surv-2.6"
+# Build from a copy so setuptools' build/ and *.egg-info stay out of the checkout.
+cp -r python/oms-lacal-runtime examples/python-uci-client "$CLIENT_SCRATCH/"
+"$PY" -m pip wheel --no-deps --wheel-dir "$CLIENT_SCRATCH/deploy/wheelhouse" \
+  "$CLIENT_SCRATCH/oms-lacal-runtime" "$CLIENT_SCRATCH/python-uci-client"
+"$PY" -m pip download --no-deps --only-binary=:all: \
+  --dest "$CLIENT_SCRATCH/deploy/wheelhouse" websockets==17.2
+tar -C "$CLIENT_SCRATCH" -czf "$CLIENT_SCRATCH/python-uci-client-deploy.tgz" deploy
+
+# --- Deployment machine (or any directory outside the checkout) ---------
+mkdir -p /srv/python-uci-client && cd /srv/python-uci-client
+tar -xzf python-uci-client-deploy.tgz           # deploy/wheelhouse, deploy/rdma-log-surv-2.6
+python3.11 -m venv venv                         # same Python version as the websockets wheel
+venv/bin/python -m pip install --no-index --find-links deploy/wheelhouse \
+  ams-gra-oms-python-uci-client==0.1.0
+venv/bin/python-uci-client --url ws://sleet.example.test:9000 --service-id python-uci-client \
+  --schema-release 2.6 --bindings deploy/rdma-log-surv-2.6 \
+  --with-log --with-survivability --duration-seconds 30
+```
+
+### H. Known limitations of the installed deployment
+
+- The wheel holds no generated code, so the deployment must ship bindings
+  that match its release and mode. There is no schema discovery and no
+  on-target generation.
+- `websockets` wheels are platform- and Python-version-specific
+  (`cp311`, `cp313`, …). Download the one matching the deployment
+  interpreter, or add `--python-version`/`--platform` to `pip download`.
+- Not published to PyPI or any index; the version is fixed at `0.1.0` like
+  the runtime's.
+- The command name and behavior are the source CLI's. There is no new
+  configuration file, service mode, reconnect, retry or replay.
+- `python-uci-client` only installs into an environment with Python ≥ 3.11.
+  Qualified on 3.11 and 3.13, normal and `PYTHONOPTIMIZE=1`.
+
 
 - Receives `RDMA_InitializeSetup` on `uci.rdma`, with `--with-log` also `Log`
   on `uci.log`, and with `--with-log --with-survivability` also
@@ -615,3 +822,5 @@ the existing pinned-Sleet lane.
   Gregorian date, for RDMA, Log and SurvivabilityRiskLevel).
 - Deployment authentication (beyond TLS server verification) and client
   certificates are not supported by the runtime and are not added here.
+- The installed wheel is not published to any package index. See section 7H
+  for the deployment-specific limitations.
