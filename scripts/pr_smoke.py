@@ -101,6 +101,16 @@ CPP_STRUCTURED_ASCII_FIXTURE = "service-generate/codec-structured-ascii"
 CPP_STRUCTURED_ASCII_MARKER = "CPP_OMS_006_STRUCTURED_ASCII checks=323 rejections=166"
 
 
+# CPP-OMS-008: offline unit test of the standalone C++ UCI Log receiver
+# (examples/cpp-uci-client): CLI validation before any connection, explicit
+# native-WSS refusal, the bounded ordered queue, and runtime-outcome/exit
+# mapping. Compiled with CPP_STRICT against the runtime's public headers and
+# sources; no UCI schema, generated UCI type, network or Sleet (those stay in
+# scripts/check-cpp-oms-008-log-client.sh).
+CPP_CLIENT_UNIT_SOURCE = "examples/cpp-uci-client/tests/unit_test.cpp"
+CPP_CLIENT_UNIT_MARKER = "CPP_OMS_008_CLIENT_UNIT_COMPLETE checks=129"
+
+
 def cpp_shape_marker(shape, checks, rejections):
     return f"CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks={checks} rejections={rejections}"
 
@@ -152,8 +162,9 @@ def classify(paths):
                   and "/" not in path.removeprefix("scripts/") and path.endswith(".py"))):
             selected.add("ada")
         elif (path.startswith(("crates/backend-cpp/", "tests/cpp-codec/", "tests/fixtures/cpp-codec/",
-                               "cpp/oms-lacal-runtime/", "tests/cpp-lacal/"))
+                               "cpp/oms-lacal-runtime/", "tests/cpp-lacal/", "examples/cpp-uci-client/"))
               or path in ("crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
+                          "scripts/check-cpp-oms-008-log-client.sh",
                           "scripts/check-cpp-oms-001-parity.sh",
                           "scripts/check-cpp-oms-002-real-log.sh",
                           "scripts/check-cpp-oms-003-runtime.sh",
@@ -279,6 +290,14 @@ def cpp_runtime_smoke(out):
         if marker not in checked([binary]).splitlines():
             raise RuntimeError(f"C++ smoke: {binary_name} did not report exactly: {marker}")
     print("CPP OMS-003 RUNTIME PASSED", flush=True)
+    # CPP-OMS-008: the standalone client's release-agnostic logic, same runtime build.
+    binary = out / "cpp-uci-client-unit"
+    checked(["g++", *CPP_STRICT, "-pthread", "-I", ROOT / "cpp/oms-lacal-runtime/include",
+             "-I", ROOT / "examples/cpp-uci-client/src", ROOT / CPP_CLIENT_UNIT_SOURCE,
+             *(ROOT / source for source in CPP_RUNTIME_SOURCES), "-o", binary])
+    if CPP_CLIENT_UNIT_MARKER not in checked([binary]).splitlines():
+        raise RuntimeError(f"C++ smoke: cpp-uci-client-unit did not report exactly: {CPP_CLIENT_UNIT_MARKER}")
+    print("CPP OMS-008 CLIENT UNIT PASSED", flush=True)
 
 
 def cpp_float64_smoke(out):

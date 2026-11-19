@@ -300,6 +300,19 @@ class Routing(unittest.TestCase):
                                "docs/task-cpp-oms-001-cpp-oms-json-codecs.md"], ["cpp"])
         self.assert_execution(["crates/backend-cpp/src/lib.rs", ".github/workflows/pr-smoke.yml"], ["cpp"], True)
 
+    def test_cpp_uci_client_only_and_boundaries(self):
+        for path in ("examples/cpp-uci-client/src/main.cpp", "examples/cpp-uci-client/src/client.hpp",
+                     "examples/cpp-uci-client/build.sh", "examples/cpp-uci-client/README.md",
+                     "examples/cpp-uci-client/contracts/uci26-service.yaml",
+                     "examples/cpp-uci-client/tests/unit_test.cpp", "examples/cpp-uci-client/tests/wire_peer.cpp",
+                     "scripts/check-cpp-oms-008-log-client.sh"):
+            with self.subTest(path=path):
+                self.assert_execution([path], ["cpp"])
+        for path in ("examples/cpp-uci-client-other/main.cpp", "examples/cpp-uci-client.cpp",
+                     "scripts/check-cpp-oms-008.sh", "scripts/check-cpp-oms-008-log-client.sh.bak"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_cpp_ownership_boundaries(self):
         for path in ("crates/backend-cpp-other/src/lib.rs", "crates/backend-cppx/a.rs",
                      "tests/cpp-codec-other/a.cpp", "tests/cpp-codecs/a.cpp",
@@ -447,6 +460,8 @@ class Execution(unittest.TestCase):
                 for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES:
                     if Path(str(command[0])).name == binary:
                         return marker + "\n"
+                if Path(str(command[0])).name == "cpp-uci-client-unit":
+                    return smoke.CPP_CLIENT_UNIT_MARKER + "\n"
                 return ""
             with patch.object(smoke, "checked", side_effect=checked):
                 smoke.execute({backend}, False)
@@ -474,6 +489,7 @@ class Execution(unittest.TestCase):
                     self.assertIn(f"-DSHAPE_{shape}", joined)
                 for _, source, _, _ in smoke.CPP_RUNTIME_SUITES:
                     self.assertIn(source, joined)
+                self.assertIn(smoke.CPP_CLIENT_UNIT_SOURCE, joined)
                 self.assertIn("cpp/oms-lacal-runtime/src/runtime.cpp", joined)
                 self.assertIn("tests/fixtures/service-generate/runtime-test.xsd", joined)
                 self.assertIn("tests/fixtures/cpp-codec/float64/float64.xsd", joined)
@@ -511,8 +527,9 @@ class Execution(unittest.TestCase):
         shape_outputs = dict({shape: smoke.cpp_shape_marker(shape, checks, rejections) + "\n"
                               for _, shape, checks, rejections in smoke.CPP_SHAPES},
                              **(shape_outputs or {}))
-        runtime_outputs = dict({binary: marker + "\n" for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES},
-                               **(runtime_outputs or {}))
+        runtime_outputs = {**{binary: marker + "\n" for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES},
+                           "cpp-uci-client-unit": smoke.CPP_CLIENT_UNIT_MARKER + "\n",
+                           **(runtime_outputs or {})}
         seen = []
         def checked(command, **kwargs):
             seen.append((list(map(str, command)), kwargs))
@@ -547,7 +564,7 @@ class Execution(unittest.TestCase):
         seen = self.run_cpp_smoke()
         commands = [" ".join(command) for command, _ in seen]
         self.assertEqual([c.split()[0] for c in commands if c.startswith(("g++", "cargo"))].count("g++"),
-                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1 + 1 + 1)
+                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1 + 1 + 1 + 1)
         cargo = [kwargs for command, kwargs in seen if command[0] == "cargo"][0]
         self.assertTrue(cargo["tests"])
         self.assertIn("3 passed; 0 failed", cargo["marker"])
@@ -597,6 +614,17 @@ class Execution(unittest.TestCase):
             self.assertEqual("/runtime-test" in compile_command.split(" -o ")[0], needs_generated)
             order.append(commands.index(compile_command))
             order.append(next(i for i, c in enumerate(commands) if c.endswith(f"/{binary}") and " " not in c))
+        # CPP-OMS-008 standalone client unit test: strict compile with the
+        # runtime sources and the client headers (no generated UCI), then run.
+        compile_command = next(c for c in commands if smoke.CPP_CLIENT_UNIT_SOURCE in c)
+        self.assertTrue(compile_command.startswith("g++ "))
+        for flag in (*smoke.CPP_STRICT, "-pthread"):
+            self.assertIn(flag, compile_command.split())
+        for needle in ("cpp/oms-lacal-runtime/include", "examples/cpp-uci-client/src", *smoke.CPP_RUNTIME_SOURCES):
+            self.assertIn(needle, compile_command)
+        self.assertNotIn("/runtime-test", compile_command)
+        order.append(commands.index(compile_command))
+        order.append(next(i for i, c in enumerate(commands) if c.endswith("/cpp-uci-client-unit") and " " not in c))
         # CPP-OMS-004 Float64: generated after the runtime suites; corpus,
         # oracle self-test, strict compile, the three consumer modes, and the
         # oracle check of the encoder tokens comes last.
@@ -682,6 +710,15 @@ class Execution(unittest.TestCase):
                            marker.replace("COMPLETE", "FAILED") + "\n"):
                 with self.subTest(binary=binary, output=output), self.assertRaises(RuntimeError):
                     self.run_cpp_smoke(runtime_outputs={binary: output})
+        # CPP-OMS-008 client unit test: a failing binary, or any summary other
+        # than the exact one, fails the smoke.
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.run_cpp_smoke(failing="cpp-uci-client-unit")
+        marker = smoke.CPP_CLIENT_UNIT_MARKER
+        fewer = re.sub(r"checks=(\d+)", lambda m: f"checks={int(m.group(1)) - 1}", marker)
+        for output in ("", "no summary\n", fewer + "\n", marker + " trailing\n", "1 of 129 checks failed\n"):
+            with self.subTest(client_unit=output), self.assertRaises(RuntimeError):
+                self.run_cpp_smoke(runtime_outputs={"cpp-uci-client-unit": output})
         # CPP-OMS-004 Float64: a failing consumer, or any step whose summary
         # is not exactly the expected one (including any mismatch count).
         with self.assertRaises(subprocess.CalledProcessError):
