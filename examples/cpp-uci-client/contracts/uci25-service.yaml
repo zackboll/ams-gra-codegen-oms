@@ -1,0 +1,25 @@
+# CPP-OMS-008: receive-only application contract for the standalone C++ UCI
+# Log receiver, authentic UCI 2.5. One input exchange: the global message `Log`
+# (payload LogMT) on the application topic `uci.log`. No output exchange.
+contract_version: "0.1"
+service:
+  name: cpp-uci-client
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: log
+    name: Log
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: Log
+        topic: uci.log
+        timing:
+          kind: asynchronous
