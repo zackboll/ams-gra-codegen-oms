@@ -338,68 +338,49 @@ TEST_CASE(pinned_sleet_float64_roundtrip_rejections_and_recovery) {
         std::string name;
         std::string from;
         std::string to;
-        bool sleet_delivers;     // the pinned Sleet admits it (no facet check on special strings)
-        std::string diagnostic;  // codec path suffix (delivered) or -ERR fragment (rejected)
+        std::string diagnostic;  // broker diagnostic fragment
     };
     const std::string inertial = "PositionReportMT.MessageData.InertialState.";
     const std::vector<Bad> bad = {
-        // Sleet delivers: the generated model's domain check rejects on the client.
-        {"Latitude NaN", R"("Latitude":1.5707963267948966)", R"("Latitude":"NaN")", true, inertial + "Position.Latitude"},
-        {"Latitude Infinity", R"("Latitude":1.5707963267948966)", R"("Latitude":"Infinity")", true,
-         inertial + "Position.Latitude"},
-        {"Altitude -Infinity", R"("Altitude":-6378237)", R"("Altitude":"-Infinity")", true,
-         inertial + "Position.Altitude"},
-        {"SemiMajorAxisLength -Infinity", R"("SemiMajorAxisLength":1e+21)", R"("SemiMajorAxisLength":"-Infinity")", true,
-         inertial + "PositionUncertainty.UncertaintyEllipse.SemiMajorAxisLength"},
-        {"WanderAngle Infinity", R"("WanderAngle":0.9999999999999999)", R"("WanderAngle":"Infinity")", true,
-         "PositionReportMT.MessageData.WanderAngle"},
+        // Corrected Sleet applies numeric facets to special float strings too.
+        {"Latitude NaN", R"("Latitude":1.5707963267948966)", R"("Latitude":"NaN")", "FacetViolation"},
+        {"Latitude Infinity", R"("Latitude":1.5707963267948966)", R"("Latitude":"Infinity")",
+         "FacetViolation"},
+        {"Altitude -Infinity", R"("Altitude":-6378237)", R"("Altitude":"-Infinity")",
+         "FacetViolation"},
+        {"SemiMajorAxisLength -Infinity", R"("SemiMajorAxisLength":1e+21)", R"("SemiMajorAxisLength":"-Infinity")",
+         "FacetViolation"},
+        {"WanderAngle Infinity", R"("WanderAngle":0.9999999999999999)", R"("WanderAngle":"Infinity")",
+         "FacetViolation"},
         // Sleet rejects: -ERR to the publisher, nothing delivered.
-        {"Latitude one ulp above pi/2", R"("Latitude":1.5707963267948966)", R"("Latitude":1.5707963267948968)", false,
+        {"Latitude one ulp above pi/2", R"("Latitude":1.5707963267948966)", R"("Latitude":1.5707963267948968)",
          "maxInclusive"},
-        {"Longitude one ulp below -pi", R"("Longitude":-3.141592653589793)", R"("Longitude":-3.1415926535897936)", false,
+        {"Longitude one ulp below -pi", R"("Longitude":-3.141592653589793)", R"("Longitude":-3.1415926535897936)",
          "minInclusive"},
-        {"Altitude below the bound", R"("Altitude":-6378237)", R"("Altitude":-6378237.000000001)", false,
+        {"Altitude below the bound", R"("Altitude":-6378237)", R"("Altitude":-6378237.000000001)",
          "minInclusive"},
-        {"negative subnormal distance", R"("SemiMinorAxisLength":5e-324)", R"("SemiMinorAxisLength":-5e-324)", false,
+        {"negative subnormal distance", R"("SemiMinorAxisLength":5e-324)", R"("SemiMinorAxisLength":-5e-324)",
          "SemiMinorAxisLength"},
-        {"lowercase nan", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":"nan")", false,
+        {"lowercase nan", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":"nan")",
          "number-or-special-float-string"},
-        {"quoted number", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":"1.5")", false,
+        {"quoted number", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":"1.5")",
          "number-or-special-float-string"},
-        {"boolean", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":true)", false,
+        {"boolean", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":true)",
          "number-or-special-float-string"},
-        {"null", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":null)", false,
+        {"null", R"("NorthSpeed":2.2250738585072014e-308)", R"("NorthSpeed":null)",
          "number-or-special-float-string"},
-        {"decimal overflow", R"("NorthAcceleration":9.80665)", R"("NorthAcceleration":1e309)", false,
+        {"decimal overflow", R"("NorthAcceleration":9.80665)", R"("NorthAcceleration":1e309)",
          "number out of range"},
-        {"missing Latitude", R"("Latitude":1.5707963267948966,)", "", false, "Latitude"},
+        {"missing Latitude", R"("Latitude":1.5707963267948966,)", "", "Latitude"},
     };
-    std::uint64_t decode_errors = 0;
     for (const Bad& item : bad) {
         const std::string document = envelope(pr::with(pr::kFull, item.from, item.to));
         const std::string status = publisher.command("PUB " + kTopic + " " + document);
-        if (item.sleet_delivers) {
-            CHECK_EQ(status, std::string("+OK"));
-            CHECK_EQ(observe(), document);  // the MSG really crossed Sleet
-            auto event = runtime.poll_event(kWait);
-            CHECK(event.has_value() && event->kind == lacal::EventKind::decode_error);
-            if (event) {
-                ++decode_errors;
-                CHECK(event->error.kind == lacal::ErrorKind::codec);  // subscription decode error, not broker
-                CHECK_EQ(event->message_name, std::string("PositionReport"));
-                CHECK_EQ(event->sid, subscription->id());
-                CHECK_EQ(event->error.codec_path, item.diagnostic);
-                CHECK(event->error.message.find("domain check") != std::string::npos);
-                say(item.name + ": Sleet MSG -> generated decoder rejected at " + event->error.codec_path + ": " +
-                    event->error.message);
-            }
-        } else {
-            CHECK(status.rfind("-ERR Invalid-Message", 0) == 0);
-            CHECK(status.find(item.diagnostic) != std::string::npos);
-            CHECK(!observer.receive(kQuiet).has_value());
-            CHECK(!runtime.poll_event(kQuiet).has_value());
-            say(item.name + ": Sleet rejected: " + status.substr(0, 150));
-        }
+        CHECK(status.rfind("-ERR Invalid-Message", 0) == 0);
+        CHECK(status.find(item.diagnostic) != std::string::npos);
+        CHECK(!observer.receive(kQuiet).has_value());
+        CHECK(no_event());
+        say(item.name + ": Sleet rejected: " + status.substr(0, 200));
         CHECK(!inbox.take(kQuiet).has_value());  // never a typed delivery
         recover(item.name);
     }
@@ -449,8 +430,7 @@ TEST_CASE(pinned_sleet_float64_roundtrip_rejections_and_recovery) {
     const lacal::Stats stats = runtime.stats();
     // 3 typed + 2 raw + one recovery per malformed case (15 + wrong element) + runtime-level.
     CHECK_EQ(stats.delivered, 3U + 2U + bad.size() + 1U + 1U);
-    CHECK_EQ(stats.decode_errors, decode_errors);
-    CHECK_EQ(decode_errors, 5U);
+    CHECK_EQ(stats.decode_errors, 0U);
     CHECK_EQ(stats.unknown_subscription, 0U);
     CHECK_EQ(stats.handler_exceptions, 0U);
     say("SLEET AND RECOVERY: PASSED");

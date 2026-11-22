@@ -8,8 +8,8 @@ from pathlib import Path
 
 JOB = 'ada-real-uci-survivability-sleet'
 PINS = {'25': 'ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27'}
-REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 INCLUDES = {'25': '4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b',
             '26': 'ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88'}
 ROOT = Path(__file__).resolve().parents[1]

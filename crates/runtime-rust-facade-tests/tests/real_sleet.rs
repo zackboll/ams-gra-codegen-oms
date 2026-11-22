@@ -1,6 +1,6 @@
 //! Task 049: GENERATED Rust façade -> runtime-rust -> pinned sleet-client ->
 //! the UNMODIFIED pinned Sleet server
-//! (open-arsenal/ams-gra-hello-world-sk-infra-sleet @ e38f61d8).
+//! (GitLab reviewed Sleet candidate @ 94796daf).
 //!
 //! Needs a Sleet binary: set `AMS_GRA_SLEET_BIN` (see
 //! `scripts/run-real-sleet-test.sh`, which builds it from a fresh checkout

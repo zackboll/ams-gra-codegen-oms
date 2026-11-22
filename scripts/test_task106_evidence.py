@@ -131,7 +131,7 @@ class CellControls(unittest.TestCase):
         return verify_cell(lambda name: files[name], 'cell')
 
     def test_synthetic_healthy_is_not_interoperability_evidence(self):
-        self.assertEqual(self.verify(synthetic_cell())['counts'], {'log': 17, 'rdma': 19, 'survivability': 19})
+        self.assertEqual(self.verify(synthetic_cell())['counts'], {'log': 14, 'rdma': 16, 'survivability': 16})
 
     def test_missing_duplicate_wrong_routing_isolation_and_cleanup(self):
         mutations = {
@@ -143,8 +143,8 @@ class CellControls(unittest.TestCase):
             'wrong-handler': ('TASK106_HANDLER rdma 1\n', 'TASK106_HANDLER log 99\n'),
             'missing-isolation': ('TASK106_DONE 38 ', 'MISSING_DONE 38 '),
             'missing-recovery': ('TASK106_HANDLER survivability 13\n', ''),
-            'missing-error': ('TASK106_DECODE_ERROR 1 Log\n', ''),
-            'wrong-error-sid': ('TASK106_DECODE_ERROR 1 Log', 'TASK106_DECODE_ERROR 2 Log'),
+            'missing-error': ('TASK106_DECODE_ERROR 2 RDMA_InitializeSetup\n', ''),
+            'wrong-error-sid': ('TASK106_DECODE_ERROR 2 RDMA_InitializeSetup', 'TASK106_DECODE_ERROR 1 RDMA_InitializeSetup'),
             'lost-events': ('lost_events=0', 'lost_events=1'),
             'cleanup': ('TASK106_CLEANUP_COMPLETE', 'NO_CLEANUP'),
             'unexpected-event': ('TASK106_EVENT INITIALIZED', 'TASK106_EVENT PROTOCOL_ERROR'),

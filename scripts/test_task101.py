@@ -62,23 +62,27 @@ def bundle(compiler='14'):
     for release, policy, optimization in expected:
         prefix = f'campaign/uci{release}-{policy}-O{optimization}/sleet/'
         put(prefix + 'result.json', dict(completed=True, release=release, revision=evidence.REV, tree=evidence.TREE,
-            handlers=11, witness_handlers=1, decode_rejected=1, published=10, broker_rejected=10,
+            handlers=11, witness_handlers=1, decode_rejected=0, published=10, broker_rejected=11,
             consumer_exit=0, server_exit=0, cleanup=True))
         put(prefix + 'sleet-source.txt', evidence.REV + '\n' + evidence.TREE + '\n')
         put(prefix + 'sleet-binary.sha256', 'd'*64)
         for phase in ('consumer', 'server'):
             put(prefix + phase + '.exit', '0\n')
         put(prefix + 'consumer.stdout', '\n'.join([
-            'TASK101_ADA_REAL_DLZ_COMPLETE handlers= 11 rejected= 1',
+            'TASK101_ADA_REAL_DLZ_COMPLETE handlers= 11 rejected= 0',
             'TASK101_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1', 'TASK101_CLEANUP_COMPLETE',
-            'TASK101_DECODE_RECOVERY_COMPLETE', 'TASK101_UNKNOWN_BINDING_SID_REJECTED',
+            'TASK101_BROKER_REJECTION_RECOVERY_COMPLETE', 'TASK101_UNKNOWN_BINDING_SID_REJECTED',
             'TASK101_UPGRADE_OWP_COMPLETE', 'TASK101_INFO_VALIDATED', 'TASK101_SUB_ACCEPTED DLZ task098-dlz',
-            'TASK101_EVENT DECODE_ERROR invalid named Time',
+            *['TASK101_WIRE_RECEIVED {}']*12,
             *['TASK101_TYPED_HANDLER ' + str(n) for n in range(11)], 'TASK101_WITNESS_HANDLER 1',
             *['TASK101_PUBLISHED {}']*10]) + '\n')
         put(prefix + 'wire.json', [dict(label=label, response='-ERR ' + code + ' ' + detail)
-                                 for label, (code, detail) in evidence.BROKER_ERRORS.items()]
-            + [dict(label=label, response='+OK') for label in ('broker-accepted-codec-invalid-time', 'duplicate-valid-last-recovery')]
+                                 for label, (code, detail) in evidence.BROKER_ERRORS.items()
+                                 if label != 'broker-rejected-invalid-time']
+            + [dict(label='broker-rejected-invalid-time', response='-ERR Invalid-Message TimeOfIntercept lexicalRepresentation')]
+            + [dict(label=label, response='+OK') for label in
+               ('negative-observer-sub', 'negative-observer-unsub', 'duplicate-valid-last-recovery')]
+            + [dict(label='no-malformed-msg', detail='observer timeout')]
             + [dict(label='wrong-service-closed')])
         put(prefix + 'server.stdout', 'schema loaded\nroute PUB message\nshutdown complete\n')
     return files
@@ -228,6 +232,18 @@ class EvidenceTests(unittest.TestCase):
         for path, value in mutations:
             with self.subTest(path=path), self.assertRaises(ValueError):
                 self.verify(dict(files, **{path: value}))
+        path = 'campaign/uci25-Normal-O0/sleet/consumer.stdout'
+        for invalid in (b'TASK101_EVENT DECODE_ERROR invalid named Time\n',
+                        b'TASK101_WIRE_RECEIVED not-a-timeZ\n',
+                        b'TASK101_TYPED_HANDLER 12\n'):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                self.verify(dict(files, **{path: files[path] + invalid}))
+        path = 'campaign/uci25-Normal-O0/sleet/wire.json'
+        for label in ('no-malformed-msg', 'broker-rejected-invalid-time',
+                      'negative-observer-sub', 'negative-observer-unsub', 'duplicate-valid-last-recovery'):
+            wire = [item for item in json.loads(files[path]) if item.get('label') != label]
+            with self.subTest(missing=label), self.assertRaises(ValueError):
+                self.verify(dict(files, **{path: json.dumps(wire).encode()}))
         for field in ('sha', 'tree', 'run_id', 'run_attempt', 'compiler'):
             mutated = dict(files)
             identity = json.loads(mutated['integration-identity.json'])

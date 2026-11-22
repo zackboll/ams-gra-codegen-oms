@@ -664,7 +664,7 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 [[package]]
 name = "sleet-client"
 version = "0.1.0"
-source = "git+https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet?rev=e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b#e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
+source = "git+https://gitlab.com/zackboll/sleet.git?rev=94796daf55ebd1134dce0925e6a204a05ad3423b#94796daf55ebd1134dce0925e6a204a05ad3423b"
 dependencies = [
  "futures-util",
  "serde",
@@ -677,7 +677,7 @@ dependencies = [
 [[package]]
 name = "sleet-types"
 version = "0.1.0"
-source = "git+https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet?rev=e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b#e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
+source = "git+https://gitlab.com/zackboll/sleet.git?rev=94796daf55ebd1134dce0925e6a204a05ad3423b#94796daf55ebd1134dce0925e6a204a05ad3423b"
 dependencies = [
  "serde",
  "serde_json",

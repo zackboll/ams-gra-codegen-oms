@@ -20,8 +20,8 @@ PINS = {
     'UCI_MessageDefinitions_v2_5_0.xsd': 'ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27',
     'UCI_SecurityMarkings_v2_5_0.xsd': '4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b',
 }
-REV = 'e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b'
-TREE = '7e705f4eb5f658957bd414b4abc8207311f3c1e4'
+REV = '94796daf55ebd1134dce0925e6a204a05ad3423b'
+TREE = '47da595b9078cac1a9351e8290d1ae7f3976367f'
 
 
 def required_steps():

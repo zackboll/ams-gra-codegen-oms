@@ -205,7 +205,7 @@ impl fmt::Display for RouteError {
 
 impl std::error::Error for RouteError {}
 
-/// Exact pinned sleet-types/src/owp.rs identifier class (e38f61d).
+/// Exact pinned sleet-types/src/owp.rs identifier class (94796daf).
 pub fn is_sleet_identifier(value: &str) -> bool {
     !value.is_empty()
         && value

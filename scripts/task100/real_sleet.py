@@ -11,7 +11,8 @@ import time
 import ssl
 import threading
 
-REV = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
+REV = "94796daf55ebd1134dce0925e6a204a05ad3423b"
+TREE = "47da595b9078cac1a9351e8290d1ae7f3976367f"
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -27,7 +28,7 @@ def main():
     evidence = args.evidence.resolve()
     evidence.mkdir(parents=True, exist_ok=False)
     identity = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD", "HEAD^{tree}"], text=True)
-    assert identity.splitlines()[0] == REV
+    assert identity.splitlines() == [REV, TREE]
     assert not subprocess.check_output(["git", "-C", str(checkout), "status", "--porcelain"], text=True)
     (evidence / "sleet-source.txt").write_text(identity)
     binary = checkout / "target/release/sleet"

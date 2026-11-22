@@ -253,7 +253,7 @@ fn negatives() -> Vec<(&'static str, Value, &'static str, bool)> {
         (
             "timestamp",
             "/MessageHeader/Timestamp",
-            json!("not-a-dateZ"),
+            json!("2023-02-29T00:00:00Z"),
             "Timestamp",
             true,
         ),
@@ -307,7 +307,7 @@ fn golden_choices_and_rejections() {
     assert!(m::UCISchemaVersionStringType::new("002.5").is_none());
     assert!(m::IPv4AddressType::new("999.0.0.1").is_none());
     assert!(m::IPv6AddressType::new("not-an-ipv6").is_none());
-    assert!(m::DateTimeType::new("not-a-dateZ").is_none());
+    assert!(m::DateTimeType::new("2023-02-29T00:00:00Z").is_none());
     eprintln!("RUST-OMS-002 {VERSION} GOLDEN: PASSED");
 }
 

@@ -84,11 +84,11 @@ def execute(campaign, release, schema, generator, sleet, compiler):
                 for octets in (32, 16, 31, 33):
                     doc = {'BinaryNotice': {'Data': '0080FF', 'SHA_2_Hash': '0080FF' + '00' * (octets - 3)}}
                     exchange(client, f'hash-{octets}-octets', 'PUB task102-constrained ' + json.dumps(doc),
-                             '+OK' if octets == 16 else '-ERR Invalid-Message', '' if octets == 16 else 'FacetViolation')
-                    if octets == 16:
+                             '+OK' if octets == 32 else '-ERR Invalid-Message', '' if octets == 32 else 'FacetViolation')
+                    if octets == 32:
                         delivered = client.recv(timeout=5)
                         assert delivered.startswith('MSG 1 ') and json.loads(delivered.split(' ', 2)[2]) == doc
-                        wire.append(dict(label='hash-16-delivered', response=delivered))
+                        wire.append(dict(label='hash-32-delivered', response=delivered))
                 exchange(client, 'unsub', 'UNSUB 1', '+OK')
         finally:
             (directory / 'wire.json').write_text(json.dumps(wire, indent=2) + '\n')
@@ -105,5 +105,5 @@ def execute(campaign, release, schema, generator, sleet, compiler):
         assert probe.connect_ex(('127.0.0.1', port)) != 0
     (directory / 'result.json').write_text(json.dumps(dict(
         scope='unchanged extracted authentic Binary declarations; synthetic envelope, NOT Log',
-        ada_accepts_octets=32, broker_accepts_octets=16, broker_rejects_octets=[32, 31, 33],
+        ada_accepts_octets=32, broker_accepts_octets=32, broker_rejects_octets=[16, 31, 33],
         server_exit=0, cleanup=True), indent=2) + '\n')

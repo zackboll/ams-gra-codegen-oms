@@ -375,41 +375,60 @@ fn single_connection_three_families() {
             body["MessageData"]["Data"] = json!("0G");
             "Data"
         } else {
-            body["MessageHeader"]["Timestamp"] = json!("not-a-dateZ");
+            body["MessageHeader"]["Timestamp"] = json!("2023-02-29T00:00:00Z");
             "Timestamp"
         };
         let document = json!({MESSAGES[failed]: body});
-        live.executor
-            .block_on(raw_publish(&mut live.publisher, TOPICS[failed], &document))
-            .expect("broker-admitted decoder negative");
-        wire(
-            &live.executor,
-            &mut live.observer,
-            WITNESSES[failed],
-            &document,
-        );
-        match live
-            .runtime
-            .recv_event_timeout(WAIT)
-            .expect("decoder event")
-        {
-            RuntimeEvent::SubscriptionDecodeError {
-                sid,
-                message_name,
-                error: MessageDecodeError::Codec(error),
-            } => {
-                assert_eq!(sid, ids[failed]);
-                assert_eq!(message_name, MESSAGES[failed]);
-                assert!(error.to_string().contains(diagnostic), "{error}");
+        let publication =
+            live.executor
+                .block_on(raw_publish(&mut live.publisher, TOPICS[failed], &document));
+        if failed == 0 {
+            let error = publication.expect_err("broker rejects malformed hex before delivery");
+            assert!(matches!(error, ClientError::Server { .. }), "{error}");
+            assert!(error.to_string().contains(diagnostic), "{error}");
+            live.executor.block_on(async {
                 assert!(
-                    error
-                        .to_string()
-                        .contains(if failed == 0 { "hexBinary" } else { "DateTime" }),
-                    "{error}"
+                    tokio::time::timeout(QUIET, live.observer.recv())
+                        .await
+                        .is_err()
                 );
-                eprintln!("RUST-OMS-004 {VERSION} decoder-negative {message_name}/{sid}: {error}");
+            });
+            assert!(live.runtime.recv_event_timeout(QUIET).is_none());
+        } else {
+            publication.expect("broker-admitted independent timestamp decoder negative");
+            wire(
+                &live.executor,
+                &mut live.observer,
+                WITNESSES[failed],
+                &document,
+            );
+            match live
+                .runtime
+                .recv_event_timeout(WAIT)
+                .expect("decoder event")
+            {
+                RuntimeEvent::SubscriptionDecodeError {
+                    sid,
+                    message_name,
+                    error: MessageDecodeError::Codec(error),
+                } => {
+                    assert_eq!(sid, ids[failed]);
+                    assert_eq!(message_name, MESSAGES[failed]);
+                    assert!(error.to_string().contains(diagnostic), "{error}");
+                    assert!(
+                        error.to_string().contains(if failed == 0 {
+                            "hexBinary"
+                        } else {
+                            "DateTime"
+                        }),
+                        "{error}"
+                    );
+                    eprintln!(
+                        "RUST-OMS-004 {VERSION} decoder-negative {message_name}/{sid}: {error}"
+                    );
+                }
+                other => panic!("wrong failure boundary: {other:?}"),
             }
-            other => panic!("wrong failure boundary: {other:?}"),
         }
         live.quiet();
         // BOTH unaffected families first, then recovery of the failed family.
