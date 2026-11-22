@@ -255,13 +255,23 @@ int connections_to(const std::string& port) {
     return count;
 }
 
-lacal::Runtime connect_runtime(const std::string& url) {
+lacal::Runtime connect_runtime(const std::string& url, const char* ca) {
     lacal::Config config;
     config.url = url;
     config.service_id = kTopic;
     config.schema_version = kVersion;
     config.connect_timeout = kWait;
     config.operation_timeout = kWait;
+    if (ca != nullptr) {
+        config.tls_ca_file = ca;
+        auto runtime = lacal::Runtime::connect(config);
+        if (!runtime) {
+            std::cerr << "Verified WSS connect failed: " << lacal::to_string(runtime.error().kind) << ": "
+                      << runtime.error().message << '\n';
+            std::exit(2);
+        }
+        return std::move(runtime).value();
+    }
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
     for (;;) {
         auto runtime = lacal::Runtime::connect(config);
@@ -298,7 +308,10 @@ TEST_CASE(golden_and_generated_identity) {
 TEST_CASE(pinned_sleet_roundtrip_rejections_and_recovery) {
     const std::string url = env("CPP_OMS_003_SLEET_URL");
     const Url where = split(url);
-    lacal::Runtime runtime = connect_runtime(url);
+    const char* ca = std::getenv("CPP_OMS_011_CA");
+    const std::string runtime_url = ca != nullptr ? env("CPP_OMS_011_WSS_URL") : url;
+    const std::string runtime_port = split(runtime_url).port;
+    lacal::Runtime runtime = connect_runtime(runtime_url, ca);
     CHECK(runtime.server_info().find("\"version\":\"1.0\"") != std::string::npos);
 
     Inbox inbox;
@@ -314,7 +327,7 @@ TEST_CASE(pinned_sleet_roundtrip_rejections_and_recovery) {
     raw::Client observer(where.host, where.port, kTopic, kVersion, kWait);
     raw::Client publisher(where.host, where.port, kTopic, kVersion, kWait);
     CHECK_EQ(observer.command("SUB wire Log " + kTopic), std::string("+OK"));
-    CHECK_EQ(connections_to(where.port), 3);
+    CHECK_EQ(connections_to(where.port), ca != nullptr ? 2 : 3);
 
     const auto observe = [&]() -> std::string {
         auto frame = observer.receive();
@@ -465,12 +478,37 @@ TEST_CASE(pinned_sleet_roundtrip_rejections_and_recovery) {
     CHECK_EQ(observe(), "{\"Log\":" + kGolden + "}");
     CHECK(!inbox.take(kQuiet).has_value());  // no callback after UNSUB
     CHECK(no_event());
-    CHECK(runtime.close().ok());
+    if (ca != nullptr) {
+        // A genuine independent publisher drives a valid typed callback as
+        // well as the runtime's generated PUBs above. SUB and UNSUB both
+        // require broker acknowledgments on the same verified WSS session.
+        auto witness = svc::exchange_receive::subscribe(runtime, [&](const auto& received) { inbox.add(received); });
+        CHECK(witness.ok());
+        CHECK_EQ(publisher.command("PUB " + kTopic + " {\"Log\":" + kGolden + "}"), std::string("+OK"));
+        CHECK_EQ(observe(), "{\"Log\":" + kGolden + "}");
+        const auto received = inbox.take(kWait);
+        CHECK(received.has_value());
+        if (received) {
+            CHECK_EQ(encode(*received), kGolden);
+        }
+        if (witness) {
+            CHECK(witness->unsubscribe().ok());
+        }
+        CHECK_EQ(connections_to(runtime_port), 1);
+        // This Sleet pin drops the connection without replying to WS Close.
+        // No relay-generated WS response: report the incomplete handshake.
+        const auto closed = runtime.close();
+        CHECK(closed.error().kind == lacal::ErrorKind::connection_closed);
+        CHECK(closed.error().message.find("WebSocket/TLS shutdown failed") != std::string::npos);
+        CHECK_EQ(connections_to(runtime_port), 0);
+    } else {
+        CHECK(runtime.close().ok());
+    }
     CHECK(check::threads_named("ams-lacal") == 0);
     CHECK(check::eventually([&] { return connections_to(where.port) == 2; }));  // only the raw clients remain
     CHECK_EQ(observer.command("UNSUB wire"), std::string("+OK"));
     const lacal::Stats stats = runtime.stats();
-    CHECK_EQ(stats.delivered, 3U + 13U);  // three states + one recovery per case and after rejections
+    CHECK_EQ(stats.delivered, 3U + 13U + (ca != nullptr ? 1U : 0U));
     CHECK_EQ(stats.decode_errors, 3U);
     CHECK_EQ(stats.unknown_subscription, 0U);
     std::cout << "CPP-OMS-003 " << kVersion << " SLEET AND RECOVERY: PASSED" << std::endl;

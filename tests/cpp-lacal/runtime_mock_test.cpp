@@ -277,9 +277,14 @@ TEST_CASE(connect_input_errors_are_local) {
         CHECK(runtime.error().kind == kind);
         CHECK(runtime.error().message.find(fragment) != std::string::npos);
     };
-    lacal::Config wss = config_for(peer.url());
-    wss.url = "wss://127.0.0.1:" + std::to_string(peer.port());
-    expect(wss, ErrorKind::unsupported_scheme, "TLS");
+    lacal::Config trust = config_for(peer.url());
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+    trust.tls_ca_file = "not permitted on plaintext.pem";
+    expect(trust, ErrorKind::invalid_argument, "tls_ca_file");
+#else
+    trust.url = "wss://127.0.0.1:" + std::to_string(peer.port());
+    expect(trust, ErrorKind::unsupported_scheme, "TLS");
+#endif
     lacal::Config http = config_for(peer.url());
     http.url = "http://127.0.0.1:" + std::to_string(peer.port());
     expect(http, ErrorKind::unsupported_scheme, "http");

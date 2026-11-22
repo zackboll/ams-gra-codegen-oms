@@ -462,6 +462,8 @@ class Execution(unittest.TestCase):
                         return marker + "\n"
                 if Path(str(command[0])).name == "cpp-uci-client-unit":
                     return smoke.CPP_CLIENT_UNIT_MARKER + "\n"
+                if "--smoke" in command:
+                    return smoke.CPP_WSS_SMOKE_MARKER + "\n"
                 return ""
             with patch.object(smoke, "checked", side_effect=checked):
                 smoke.execute({backend}, False)
@@ -529,6 +531,7 @@ class Execution(unittest.TestCase):
                              **(shape_outputs or {}))
         runtime_outputs = {**{binary: marker + "\n" for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES},
                            "cpp-uci-client-unit": smoke.CPP_CLIENT_UNIT_MARKER + "\n",
+                           "verified_wss.py": smoke.CPP_WSS_SMOKE_MARKER + "\n",
                            **(runtime_outputs or {})}
         seen = []
         def checked(command, **kwargs):
@@ -551,6 +554,8 @@ class Execution(unittest.TestCase):
                 return structured_ascii_output
             if name in runtime_outputs:
                 return runtime_outputs[name]
+            if "--smoke" in command:
+                return runtime_outputs["verified_wss.py"]
             if float64_key(command) in float64_outputs:
                 return float64_outputs[float64_key(command)]
             if float64_output(command) is not None:
@@ -564,7 +569,11 @@ class Execution(unittest.TestCase):
         seen = self.run_cpp_smoke()
         commands = [" ".join(command) for command, _ in seen]
         self.assertEqual([c.split()[0] for c in commands if c.startswith(("g++", "cargo"))].count("g++"),
-                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1 + 1 + 1 + 1)
+                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1 + 1 + 1 + 1 + 1)
+        tls = next(c for c in commands if "runtime_tls_probe.cpp" in c)
+        for flag in (*smoke.CPP_STRICT, "-O1", "-DAMS_GRA_LACAL_ENABLE_TLS=1", "-lssl", "-lcrypto"):
+            self.assertIn(flag, tls.split())
+        self.assertTrue(any("verified_wss.py offline" in c and c.endswith("--smoke") for c in commands))
         cargo = [kwargs for command, kwargs in seen if command[0] == "cargo"][0]
         self.assertTrue(cargo["tests"])
         self.assertIn("3 passed; 0 failed", cargo["marker"])
@@ -719,6 +728,9 @@ class Execution(unittest.TestCase):
         for output in ("", "no summary\n", fewer + "\n", marker + " trailing\n", "1 of 129 checks failed\n"):
             with self.subTest(client_unit=output), self.assertRaises(RuntimeError):
                 self.run_cpp_smoke(runtime_outputs={"cpp-uci-client-unit": output})
+        for output in ("", smoke.CPP_WSS_SMOKE_MARKER + " trailing\n"):
+            with self.subTest(wss=output), self.assertRaises(RuntimeError):
+                self.run_cpp_smoke(runtime_outputs={"verified_wss.py": output})
         # CPP-OMS-004 Float64: a failing consumer, or any step whose summary
         # is not exactly the expected one (including any mismatch count).
         with self.assertRaises(subprocess.CalledProcessError):
@@ -782,12 +794,12 @@ class Execution(unittest.TestCase):
         self.assertEqual(pr.count("runs-on:"), 1)
         self.assertIn("      - name: C++ smoke\n        if: steps.route.outputs.cpp == 'true'\n"
                       "        run: python3 scripts/pr_smoke.py run cpp", pr)
-        # CPP-OMS-003: the only package installation is Boost headers, gated by
+        # C++ LA-CAL: the only package installation is Boost/OpenSSL, gated by
         # the C++ route, immediately before the C++ smoke in the same job.
-        boost = pr.split("      - name: Install Boost.Beast headers for the C++ LA-CAL runtime smoke\n", 1)[1]
+        boost = pr.split("      - name: Install Boost.Beast and OpenSSL for the C++ LA-CAL runtime smoke\n", 1)[1]
         boost = boost.split("      - name:", 1)
         self.assertTrue(boost[0].startswith("        if: steps.route.outputs.cpp == 'true'\n"))
-        self.assertIn("sudo apt-get install --no-install-recommends -y libboost-dev\n", boost[0])
+        self.assertIn("sudo apt-get install --no-install-recommends -y libboost-dev libssl-dev openssl\n", boost[0])
         self.assertTrue(boost[1].startswith(" C++ smoke\n"))
         self.assertEqual(pr.count("apt-get install"), 1)
         toolchain = pr.split("dtolnay/rust-toolchain", 1)[1].split("\n", 2)[1]

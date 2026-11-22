@@ -56,6 +56,7 @@ CPP_RUNTIME_SUITES = (
     ("lacal-shutdown", "tests/cpp-lacal/runtime_shutdown_test.cpp", True,
      "CPP_OMS_003_SHUTDOWN_COMPLETE tests=12 checks=217"),
 )
+CPP_WSS_SMOKE_MARKER = "CPP_OMS_011_WSS_SMOKE_COMPLETE"
 
 
 # CPP-OMS-004: offline Float64 numerical regression. The synthetic Float64
@@ -169,6 +170,7 @@ def classify(paths):
                           "scripts/check-cpp-oms-002-real-log.sh",
                           "scripts/check-cpp-oms-003-runtime.sh",
                           "scripts/check-cpp-oms-003-real-log-sleet.sh",
+                          "scripts/check-cpp-oms-011-verified-wss.sh",
                           "scripts/check-cpp-oms-004-position-report.sh",
                           "scripts/check-cpp-oms-005-amti-settings.sh",
                           "scripts/check-cpp-oms-006-file-metadata.sh",
@@ -298,6 +300,15 @@ def cpp_runtime_smoke(out):
     if CPP_CLIENT_UNIT_MARKER not in checked([binary]).splitlines():
         raise RuntimeError(f"C++ smoke: cpp-uci-client-unit did not report exactly: {CPP_CLIENT_UNIT_MARKER}")
     print("CPP OMS-008 CLIENT UNIT PASSED", flush=True)
+    # CPP-OMS-011: compile the native TLS variant, then require a verified
+    # loopback session and a wrong-SAN rejection, without UCI or Sleet.
+    binary = out / "lacal-tls-probe"
+    checked(["g++", *CPP_STRICT, "-O1", "-pthread", "-DAMS_GRA_LACAL_ENABLE_TLS=1",
+             "-I", ROOT / "cpp/oms-lacal-runtime/include", ROOT / "tests/cpp-lacal/runtime_tls_probe.cpp",
+             *(ROOT / source for source in CPP_RUNTIME_SOURCES), "-Wl,--wrap=getaddrinfo", "-lssl", "-lcrypto", "-o", binary])
+    output = checked([sys.executable, ROOT / "tests/cpp-lacal/verified_wss.py", "offline", binary, out / "wss", "--smoke"])
+    if CPP_WSS_SMOKE_MARKER not in output.splitlines():
+        raise RuntimeError(f"C++ smoke: WSS probe did not report exactly: {CPP_WSS_SMOKE_MARKER}")
 
 
 def cpp_float64_smoke(out):
