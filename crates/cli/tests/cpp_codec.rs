@@ -37,11 +37,6 @@ const STRICT: &[&str] = &[
     "-Wformat=2",
 ];
 
-// Match the existing Task 062 carrier compiler gate. The unchanged IPv6
-// model uses char-to-unsigned-char conversions in its scanner, so the
-// additional -Wsign-conversion in STRICT is not supported by that model.
-const ADDRESS_STRICT: &[&str] = &["-std=c++17", "-Wall", "-Wextra", "-Werror", "-pedantic"];
-
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -629,6 +624,8 @@ fn address_case() -> Case {
 
 #[test]
 fn cpp_oms_009a_real_log_rdma_generated_codec() {
+    let mut flags = STRICT.to_vec();
+    flags.push("-O1");
     for (version, variable, model, codec, digest) in [
         (
             25,
@@ -696,7 +693,7 @@ fn cpp_oms_009a_real_log_rdma_generated_codec() {
         {
             let output = compile_and_run_with_args(
                 compiler,
-                ADDRESS_STRICT,
+                &flags,
                 &generated,
                 &[root().join("tests/cpp-codec/rdma_consumer.cpp")],
                 &format!("{label}-{compiler}"),
@@ -776,13 +773,15 @@ fn cpp_oms_009a_address_codec_round_trips_existing_lexical_corpora() {
         }
         std::fs::write(file, rows).unwrap();
     }
+    let mut flags = STRICT.to_vec();
+    flags.push("-O1");
     for compiler in ["g++", "clang++"]
         .into_iter()
         .filter(|cc| *cc == "g++" || compiler_available(cc))
     {
         let summary = compile_and_run_with_args(
             compiler,
-            ADDRESS_STRICT,
+            &flags,
             &dir,
             &[root().join("tests/cpp-codec/address_consumer.cpp")],
             &format!("addresses-{compiler}"),

@@ -19,7 +19,7 @@ private:
     }
     static bool hex_group(std::string_view text) {
         if (text.size() > 4) return false;
-        for (const unsigned char b : text) if (!hex_byte(b)) return false;
+        for (const char c : text) if (!hex_byte(static_cast<unsigned char>(c))) return false;
         return true;
     }
     static std::optional<std::size_t> hex_colon(std::string_view text, std::size_t start) {
@@ -31,7 +31,8 @@ private:
     static bool ipv4_octet(std::string_view text) {
         if (text.empty() || text.size() > 3) return false;
         unsigned value = 0;
-        for (const unsigned char b : text) {
+        for (const char c : text) {
+            const auto b = static_cast<unsigned char>(c);
             if (b < '0' || b > '9') return false;
             value = value * 10 + (b - '0');
         }
