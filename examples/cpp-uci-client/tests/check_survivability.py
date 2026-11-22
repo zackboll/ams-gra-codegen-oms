@@ -78,8 +78,8 @@ def executable(build, v, suffix="-log-rdma-survivability"):
     return build / "bin" / f"cpp-uci-client-uci{v}{suffix}"
 
 
-def broker_tests(args, cell, v, root):
-    plan, core, rejected_count, invalid_bytes = plans(cell, v)
+@contextmanager
+def broker(args, cell, v, root):
     schema = f"002.{v[1]}.0"
     services = cell / "services"
     services.mkdir()
@@ -102,6 +102,13 @@ def broker_tests(args, cell, v, root):
     with launch([args.sleet / "target/release/sleet", config], slog,
                 env=dict(os.environ, RUST_LOG="sleet=debug", NO_COLOR="1")) as sleet:
         wait_line(slog, rf"listening.*addr=127\.0\.0\.1:{port}", sleet, 60)
+        yield sleet, slog, port
+
+
+def broker_tests(args, cell, v, root):
+    plan, core, rejected_count, invalid_bytes = plans(cell, v)
+    schema = f"002.{v[1]}.0"
+    with broker(args, cell, v, root) as (sleet, slog, port):
         url = f"ws://127.0.0.1:{port}"
 
         @contextmanager

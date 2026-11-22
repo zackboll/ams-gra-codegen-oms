@@ -104,12 +104,12 @@ CPP_STRUCTURED_ASCII_MARKER = "CPP_OMS_006_STRUCTURED_ASCII checks=323 rejection
 
 # CPP-OMS-008: offline unit test of the standalone C++ UCI Log receiver
 # (examples/cpp-uci-client): CLI validation before any connection, explicit
-# native-WSS refusal, the bounded ordered queue, and runtime-outcome/exit
+# verified-WSS options and plaintext refusal, the bounded queue, runtime-outcome/exit
 # mapping. Compiled with CPP_STRICT against the runtime's public headers and
 # sources; no UCI schema, generated UCI type, network or Sleet (those stay in
 # scripts/check-cpp-oms-008-log-client.sh).
 CPP_CLIENT_UNIT_SOURCE = "examples/cpp-uci-client/tests/unit_test.cpp"
-CPP_CLIENT_UNIT_MARKER = "CPP_OMS_008_CLIENT_UNIT_COMPLETE checks=129"
+CPP_CLIENT_UNIT_MARKER = "CPP_OMS_008_CLIENT_UNIT_COMPLETE checks=141"
 
 
 def cpp_shape_marker(shape, checks, rejections):

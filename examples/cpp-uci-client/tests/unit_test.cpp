@@ -95,6 +95,19 @@ void cli_urls() {
     // Native WSS: an explicit, distinct refusal; never downgraded to ws://.
     CHECK(url("wss://127.0.0.1:4443", "native wss:// (TLS) is not supported"));
     CHECK(url("WSS://broker.example/owp", "native wss:// (TLS) is not supported"));
+    CHECK(rejected({"--url", "ws://h", "--service-id", "s", "--ca-file", "ca.pem"}, "requires a TLS-enabled build"));
+    const auto tls = [](std::vector<std::string_view> args) { return app::parse_arguments(args, true, true, true); };
+    const auto secure = tls({"--ca-file", "private CA.pem", "--url", "WSS://localhost:9443/owp?x=%2B", "--service-id", "s"});
+    CHECK(secure.kind == Kind::run && secure.options.ca_file == "private CA.pem");
+    const auto default_trust = tls({"--url", "wss://[::1]/owp", "--service-id", "s"});
+    CHECK(default_trust.kind == Kind::run && !default_trust.options.ca_file);
+    CHECK(tls({"--url", "ws://h", "--service-id", "s", "--ca-file", "ca.pem"}).error.find("requires a wss://") != std::string::npos);
+    CHECK(tls({"--url", "wss://h", "--service-id", "s", "--ca-file", "one", "--ca-file", "two"}).error.find("only once") != std::string::npos);
+    CHECK(tls({"--url", "wss://h", "--service-id", "s", "--ca-file"}).kind == Kind::error);
+    CHECK(tls({"--url", "wss://h", "--service-id", "s", "--ca-file", ""}).kind == Kind::error);
+    CHECK(tls({"--url", "wss://h/owp?x=%ZZ", "--service-id", "s"}).kind == Kind::error);
+    CHECK(tls({"--url", "wss://h", "--service-id", "s", "--insecure"}).kind == Kind::error);
+    CHECK(app::help_text("client", "2.6", "002.6.0", "Log", "uci.log", true, true, true).find("--ca-file") != std::string::npos);
     CHECK(url("http://h:1", "unsupported URL scheme 'http://'"));
     CHECK(url("https://h:1", "unsupported URL scheme"));
     CHECK(url("h:1", "must start with ws://"));
@@ -224,6 +237,8 @@ void outcomes() {
     using K = lacal::ErrorKind;
     // Connect failures keep the runtime's own classification in the report.
     CHECK(app::connect_exit_status(error(K::connect_failed, "TCP connect failed")) == status::connect);
+    CHECK(app::connect_exit_status(error(K::tls_verification_failed, "wrong SAN")) == status::connect);
+    CHECK(app::connect_exit_status(error(K::tls_handshake_failed, "TLS negotiation failed")) == status::connect);
     CHECK(app::connect_exit_status(error(K::handshake_rejected, "no owp")) == status::connect);
     CHECK(app::connect_exit_status(error(K::broker_rejected, "INIT", "Unsupported-Schema")) == status::connect);
     CHECK(app::connect_exit_status(error(K::timeout, "connect")) == status::connect);

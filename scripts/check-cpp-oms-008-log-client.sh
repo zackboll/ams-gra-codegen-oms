@@ -314,8 +314,8 @@ for release in $releases; do
     (( SECONDS - started <= 15 )) || fail "$1: not bounded ($((SECONDS - started)) s)"
     kill "$peer" 2>/dev/null || true; wait "$peer" 2>/dev/null || true
   }
-  negative no-owp 3 "^CONNECT-FAILED kind=handshake_rejected .*did not select subprotocol 'owp' \\(got ''\\)"
-  negative wrong-owp 3 "^CONNECT-FAILED kind=handshake_rejected .*\\(got 'not-owp'\\)"
+  negative no-owp 3 "^CONNECT-FAILED kind=handshake_rejected .*did not select subprotocol 'owp' exactly once"
+  negative wrong-owp 3 "^CONNECT-FAILED kind=handshake_rejected .*did not select subprotocol 'owp' exactly once"
   negative reject-400 3 '^CONNECT-FAILED kind=handshake_rejected .*HTTP 400'
   negative never-upgrade 3 '^CONNECT-FAILED kind=timeout '
   negative silent-sub 5 '^SUBSCRIBE-FAILED kind=timeout '

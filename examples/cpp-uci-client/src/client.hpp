@@ -4,7 +4,7 @@
 // with the production-GENERATED receive endpoint and codec. It adds no
 // transport, codec or protocol logic of its own:
 //
-//   connect()    Runtime::connect: TCP, WebSocket upgrade offering `owp`
+//   connect()    Runtime::connect: TCP, optional verified TLS, WebSocket upgrade offering `owp`
 //                (response must select exactly `owp`), verbose INIT, +OK, INFO.
 //   subscribe()  Generated receive endpoints: one SUB per call, +OK / -ERR.
 //   next()       one typed summary (FIFO), one runtime event, or idle.
@@ -73,14 +73,15 @@ inline constexpr std::string_view message_name(Family family) noexcept {
     return {};
 }
 
-/// Fixed, bounded runtime settings (only url/service_id come from the CLI).
+/// Fixed, bounded runtime settings (only URL, service ID and CA file come from the CLI).
 struct ClientSettings {
     std::string url;
     std::string service_id;
+    std::optional<std::string> ca_file;
     std::size_t queue_capacity = 64;                     // application hand-off bound
-    std::chrono::milliseconds connect_timeout{5000};     // TCP + upgrade + INIT/+OK/INFO
+    std::chrono::milliseconds connect_timeout{5000};     // DNS/TCP + optional TLS + upgrade + INIT/+OK/INFO
     std::chrono::milliseconds operation_timeout{5000};   // SUB / UNSUB acknowledgment
-    std::chrono::milliseconds close_timeout{2000};       // WebSocket close handshake
+    std::chrono::milliseconds close_timeout{2000};       // WebSocket Close and (WSS) TLS shutdown
     std::size_t max_message_bytes = 1024U * 1024U;       // one incoming frame
     std::size_t max_pending_deliveries = 1024;           // runtime MSG backlog (count)
     std::size_t max_pending_delivery_bytes = 16U * 1024U * 1024U;
@@ -284,6 +285,7 @@ public:
         ::ams_gra::lacal::Config config;
         config.url = settings_.url;
         config.service_id = settings_.service_id;
+        config.tls_ca_file = settings_.ca_file;
         config.schema_version = std::string(release::schema_version);  // never from the command line
         config.connect_timeout = settings_.connect_timeout;
         config.operation_timeout = settings_.operation_timeout;

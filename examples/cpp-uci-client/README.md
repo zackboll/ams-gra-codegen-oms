@@ -62,6 +62,11 @@ runtime's `detail::TestAccess` seam is not used.
   (`BOOST_BEAST_VERSION` 347). On Ubuntu 24.04:
   `sudo apt-get install --no-install-recommends -y libboost-dev`. Headers
   installed elsewhere can be provided with `CPLUS_INCLUDE_PATH`.
+* **Only for `--with-tls`:** OpenSSL development headers and libraries
+  (OpenSSL ≥ 1.1.1; use a maintained release). For Ubuntu 24.04 install
+  `libssl-dev`. The build defines `AMS_GRA_LACAL_ENABLE_TLS=1` for the C++
+  sources and links `-lssl -lcrypto`. The default build links neither library.
+  The WSS qualification script also needs the `openssl` executable.
 * Rust/Cargo for the production generator CLI (`ams-gra-codegen-oms`). Sleet
   pins its own toolchain, Rust 1.95.0.
 
@@ -258,7 +263,8 @@ allowed_messages = ["SurvivabilityRiskLevel"]
 
 ```text
 cpp-uci-client-uci26 --url ws://HOST[:PORT][/PATH] --service-id ID [OPTIONS]
-  --url URL               Sleet endpoint; ws:// only (native wss:// TLS is not supported)
+  --url URL               ws://, or verified wss:// in a TLS-enabled build
+  --ca-file PATH          Optional additional PEM CA bundle; only with wss://
   --service-id ID         OWP service identity authorized for 'Log' on 'uci.log'
   --duration-seconds N    Receive for at most N seconds, 1..3600 (default 30)
   --max-messages N        Stop after N typed Log messages, 1..100000 (default 10)
@@ -280,9 +286,9 @@ Fixed runtime settings (`src/client.hpp`, all inside the runtime's supported
 
 | Setting | Value |
 | --- | --- |
-| Connect (TCP + upgrade + INIT/+OK/INFO) | 5 s |
+| Connect (DNS/TCP + optional TLS + upgrade + INIT/+OK/INFO) | 5 s |
 | Each acknowledged command (SUB, UNSUB) | 5 s |
-| WebSocket close handshake | 2 s |
+| WebSocket Close + TLS shutdown (if WSS) | 2 s |
 | Largest incoming frame | 1 MiB |
 | Runtime MSG backlog | 1024 messages / 16 MiB |
 | Runtime event backlog | 256 events / 256 KiB |
@@ -363,8 +369,8 @@ exceptions have no payload length in the runtime event; free text is withheld.
 | --- | --- |
 | 0 | `--max-messages` or `--duration-seconds` reached; UNSUB acknowledged; runtime closed |
 | 1 | unexpected internal failure |
-| 2 | invalid arguments, including native `wss://` (nothing was connected) |
-| 3 | connect failed: TCP refused, upgrade declined, wrong/missing `owp`, INIT `-ERR` (for example `Unsupported-Schema` or `Unsupported-Service`), INFO invalid, or connect timeout |
+| 2 | invalid arguments, including WSS or `--ca-file` in a plaintext-only build, or invalid CA bundle (nothing was connected) |
+| 3 | connect failed: TCP refused, TLS verification or handshake failed, upgrade declined, wrong/missing `owp`, INIT `-ERR` (for example `Unsupported-Schema` or `Unsupported-Service`), INFO invalid, or connect timeout |
 | 4 | the broker rejected an enabled SUB (`-ERR`, for example `Illegal-State` for an unauthorized topic) |
 | 5 | session failure after connecting: SUB/operation timeout, transport loss, application queue overflow, or a failure inside the typed callback |
 | 6 | the run was otherwise clean, but UNSUB or close did not succeed, or a runtime thread or socket remained |
@@ -418,22 +424,68 @@ exit status, and the normal shutdown still runs.
   outstanding operation returns or times out. A successful pending SUB is
   tracked and unsubscribed; an operation failure keeps its own exit status.
 
-## `ws://` versus `wss://`
+## Verified WSS (`--with-tls`)
 
-The C++ LA-CAL runtime implements **`ws://` only** and refuses native
-`wss://` (`ErrorKind::unsupported_scheme`). This application keeps that
-behavior. It rejects `wss://` URLs before any connection, with exit status 2
-and this message:
+Add `--with-tls` at build time, independently of the message profile. For
+example, build all six TLS variants into the same external build directory:
 
-```text
-ERROR native wss:// (TLS) is not supported: the C++ LA-CAL runtime implements ws:// only and refuses wss:// rather than weakening TLS; use a ws:// endpoint (see examples/cpp-uci-client/README.md)
+```bash
+for release in 2.5 2.6; do
+  schema="$AMS_GRA_UCI_2_5_ROOT"
+  if [[ "$release" == 2.6 ]]; then schema="$AMS_GRA_UCI_2_6_ROOT"; fi
+  build=(examples/cpp-uci-client/build.sh --release "$release" --schema "$schema"
+         --out "$CLIENT_SCRATCH/build" --with-tls)
+  "${build[@]}"
+  "${build[@]}" --with-rdma
+  "${build[@]}" --with-rdma --with-survivability
+done
 ```
 
-It does not downgrade to `ws://`, emulate TLS, or rely on a TLS proxy. A
-deployment that requires WSS needs native TLS (certificate validation,
-hostname verification, a TLS stream under Beast) in the C++ runtime. That is a
-separate, future C++ runtime feature and is out of scope here. Only loopback
-`ws://` is qualified.
+| UCI | A: Log | B: add RDMA | C: add RDMA and Survivability |
+| --- | --- | --- | --- |
+| 2.5 | `cpp-uci-client-uci25-tls` | `cpp-uci-client-uci25-log-rdma-tls` | `cpp-uci-client-uci25-log-rdma-survivability-tls` |
+| 2.6 | `cpp-uci-client-uci26-tls` | `cpp-uci-client-uci26-log-rdma-tls` | `cpp-uci-client-uci26-log-rdma-survivability-tls` |
+
+Build artifacts under `bin/`, `generated/`, and `obj/`, and the build
+manifest and generation log, have a separate `-tls` profile suffix. The
+TLS binary accepts both plaintext `ws://` and verified `wss://`; the original
+binary still accepts only `ws://`. Log remains the default. On a C binary
+add `--with-rdma` for two subscriptions, or `--with-rdma --with-survivability`
+for three, on one runtime connection regardless of transport.
+
+```bash
+"$CLIENT_SCRATCH/build/bin/cpp-uci-client-uci26-log-rdma-survivability-tls" \
+  --url wss://localhost:9443/owp \
+  --service-id cpp-uci-client \
+  --ca-file /path/to/trusted-ca.pem \
+  --with-rdma \
+  --with-survivability \
+  --duration-seconds 30
+```
+
+OpenSSL's default system trust paths are always used. Omit `--ca-file` if
+they already trust the broker's chain. For a private CA, supply a readable
+PEM bundle of additional CA certificates (not a leaf or private key); the
+runtime validates it before dialing. TLS 1.2/1.3 verify chain, validity,
+server purpose, and the original URL host: DNS SAN with SNI for DNS names,
+IP SAN and no SNI for literal addresses. There is no CN fallback, client
+certificate, insecure mode, downgrade, reconnect, retry, or replay.
+
+Verification and TLS handshake failures exit 3, with distinct
+`tls_verification_failed` and `tls_handshake_failed` runtime diagnostics.
+They cannot send the WebSocket upgrade or OWP commands, and the client
+does not report `CONNECTED` or `READY`. A rejected SUB rolls back only
+previously acknowledged SIDs, in reverse order. Required WSS shutdown
+includes reciprocal WebSocket Close and TLS `close_notify`. Otherwise a
+successful session exits 6 even if threads and sockets were all released;
+an earlier failure remains the process outcome.
+
+Pinned Sleet listens on plaintext WebSocket. Qualification through a
+test-only byte-transparent TLS terminator exercises the real broker, but
+this pin does not reciprocate WebSocket Close. Typed reception and all
+SUB/UNSUB acknowledgments can pass with exit 6. The independent peer
+qualifies exit 0 by completing both shutdown handshakes. See
+[CPP-OMS-012](../../docs/task-cpp-oms-012-verified-wss-client.md).
 
 ## Qualification
 
