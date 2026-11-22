@@ -14,6 +14,11 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+#[path = "../../../tests/task060_cases.rs"]
+mod task060_cases;
+#[path = "../../../tests/task062_cases.rs"]
+mod task062_cases;
+
 const STRICT: &[&str] = &[
     "-std=c++17",
     "-Wall",
@@ -31,6 +36,11 @@ const STRICT: &[&str] = &[
     "-Wdouble-promotion",
     "-Wformat=2",
 ];
+
+// Match the existing Task 062 carrier compiler gate. The unchanged IPv6
+// model uses char-to-unsigned-char conversions in its scanner, so the
+// additional -Wsign-conversion in STRICT is not supported by that model.
+const ADDRESS_STRICT: &[&str] = &["-std=c++17", "-Wall", "-Wextra", "-Werror", "-pedantic"];
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -129,6 +139,17 @@ fn compile_and_run(
     sources: &[PathBuf],
     label: &str,
 ) -> String {
+    compile_and_run_with_args(compiler, flags, include, sources, label, &[])
+}
+
+fn compile_and_run_with_args(
+    compiler: &str,
+    flags: &[&str],
+    include: &Path,
+    sources: &[PathBuf],
+    label: &str,
+    args: &[PathBuf],
+) -> String {
     let dir = scratch(&format!("build-{label}"));
     std::fs::create_dir_all(&dir).unwrap();
     let program = dir.join("program");
@@ -146,7 +167,10 @@ fn compile_and_run(
         "{compiler} failed for {label}:\n{}",
         String::from_utf8_lossy(&compiled.stderr)
     );
-    let ran = Command::new(&program).output().expect("program runs");
+    let ran = Command::new(&program)
+        .args(args)
+        .output()
+        .expect("program runs");
     assert!(
         ran.status.success(),
         "{label} failed:\n{}{}",
@@ -524,7 +548,8 @@ int main() {{
 /// CPP-OMS-002 moved DateTime, Duration, hexBinary, Choice and the Log String
 /// profiles into the subset (see `newly_supported_fixtures_*`), CPP-OMS-004
 /// moved Float64, CPP-OMS-005 moved bounded ASCII and CPP-OMS-006 moved
-/// structured ASCII; what remains here is still NOT READY.
+/// structured ASCII. CPP-OMS-009A admits the exact Task 060/062 profiles.
+/// What remains here is still NOT READY.
 #[test]
 fn unsupported_constructs_are_rejected_before_any_output() {
     let cases: &[(&str, &str)] = &[
@@ -545,13 +570,6 @@ fn unsupported_constructs_are_rejected_before_any_output() {
             "codec-ada-hexbinary-combined",
             "length-constrained named hexBinary",
         ),
-        // CPP-OMS-005 moved bounded ASCII and CPP-OMS-006 structured ASCII
-        // into the subset (`codec-bounded-ascii` and `codec-structured-ascii`
-        // are READY, see `bounded_ascii_*` and `structured_ascii_*`); every
-        // other String profile with a model carrier stays NOT READY, whatever
-        // its name.
-        ("codec-alternating-ascii", "alternating ASCII"),
-        ("codec-ipv6", "IPv6 address"),
         ("codec-unicode31", "Unicode 3.1"),
         ("codec-shape", "abstract structural value"),
         ("codec-form-unqualified", "unqualified local element"),
@@ -599,6 +617,281 @@ fn unsupported_constructs_are_rejected_before_any_output() {
         );
         assert_eq!(plain.status.code(), Some(0), "{name}");
     }
+}
+
+fn address_case() -> Case {
+    let dir = fixtures().join("cpp-codec/addresses");
+    Case {
+        schema: dir.join("oam.xsd"),
+        contract: dir.join("service.yaml"),
+    }
+}
+
+#[test]
+fn cpp_oms_009a_real_log_rdma_generated_codec() {
+    for (version, variable, model, codec, digest) in [
+        (
+            25,
+            "AMS_GRA_UCI_2_5_ROOT",
+            55,
+            54,
+            "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        ),
+        (
+            26,
+            "AMS_GRA_UCI_2_6_ROOT",
+            57,
+            56,
+            "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        ),
+    ] {
+        let Some(schema) = std::env::var_os(variable).map(PathBuf::from) else {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_CPP_OMS_009A_UCI").is_none(),
+                "missing {variable}"
+            );
+            eprintln!("SKIPPED {variable}");
+            continue;
+        };
+        let hash = Command::new("sha256sum").arg(&schema).output().unwrap();
+        assert!(hash.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&hash.stdout)
+                .split_whitespace()
+                .next(),
+            Some(digest)
+        );
+        let case = Case {
+            schema,
+            contract: fixtures().join(format!(
+                "cpp-codec/addresses/uci{version}-log-rdma-service.yaml"
+            )),
+        };
+        let check = run("service-check", &case, true, None);
+        let report = String::from_utf8(check.stdout).unwrap();
+        assert_eq!(check.status.code(), Some(0), "{report}");
+        for expected in [
+            "selected oms messages: 2\nrenderable selected oms messages: 2\n".into(),
+            format!(
+                "selected type closure: {model}\nrenderable selected types: {model}\nstatus: READY\n"
+            ),
+            format!(
+                "codec renderable emitted declarations: {codec}/{codec}\ncodec status: READY\n"
+            ),
+        ] {
+            assert!(report.contains(&expected), "{report}");
+        }
+        let label = format!("real-log-rdma-{version}");
+        let generated = generate(&case, true, &label);
+        assert_eq!(
+            listing(&generated),
+            ["oam.hpp", "service_api.hpp", "service_codec.hpp"]
+        );
+        let golden = fixtures().join(format!("service-generate/task092-real-rdma{version}.json"));
+        let expected: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&golden).unwrap()).unwrap();
+        for compiler in ["g++", "clang++"]
+            .into_iter()
+            .filter(|cc| *cc == "g++" || compiler_available(cc))
+        {
+            let output = compile_and_run_with_args(
+                compiler,
+                ADDRESS_STRICT,
+                &generated,
+                &[root().join("tests/cpp-codec/rdma_consumer.cpp")],
+                &format!("{label}-{compiler}"),
+                std::slice::from_ref(&golden),
+            );
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&output).unwrap(),
+                expected
+            );
+            println!("CPP_OMS_009A_REAL_RDMA uci={version} compiler={compiler} PASS");
+        }
+    }
+}
+
+#[test]
+fn cpp_oms_009a_address_codec_round_trips_existing_lexical_corpora() {
+    let cases = [
+        (address_case(), "addresses", 4),
+        (shared_case("codec-alternating-ascii"), "alternating", 4),
+        (shared_case("codec-ipv6"), "ipv6", 2),
+    ];
+    let mut address_headers = None;
+    for (case, label, count) in cases {
+        let check = run("service-check", &case, true, None);
+        let report = String::from_utf8(check.stdout).unwrap();
+        assert_eq!(check.status.code(), Some(0), "{report}");
+        assert!(report.contains(&format!(
+            "codec renderable emitted declarations: {count}/{count}\n"
+        )));
+        assert!(report.ends_with("codec status: READY\n"), "{report}");
+        let generated = generate(&case, true, label);
+        let plain = generate(&case, false, &format!("{label}-plain"));
+        for file in ["oam.hpp", "service_api.hpp"] {
+            assert_eq!(
+                std::fs::read(generated.join(file)).unwrap(),
+                std::fs::read(plain.join(file)).unwrap()
+            );
+        }
+        if label == "addresses" {
+            address_headers = Some(generated);
+        }
+    }
+    let dir = address_headers.unwrap();
+    let ipv4_profile = task060_cases::profiles()
+        .into_iter()
+        .map(|(_, profile)| profile)
+        .find(|profile| {
+            profile.facets == ams_gra_oms_codegen_core::StructuredAsciiFacets::Range(7, 15)
+        })
+        .expect("Task 060 IPv4 row");
+    let mut ipv4 = task060_cases::cases(&ipv4_profile);
+    // Explicit authored positive, in addition to Task 060's octet boundaries
+    // and malformed spellings. No networking parser decides these expectations.
+    ipv4.push(("198.51.100.42".into(), true));
+    let ipv6 = task062_cases::cases();
+    assert!(
+        ipv6.iter()
+            .all(|(text, valid)| task062_cases::independent_accepts(text) == *valid)
+    );
+    let expected = format!(
+        "CPP_OMS_009A_ADDRESSES ipv4={} ipv6={}\n",
+        ipv4.len(),
+        ipv6.len()
+    );
+    let corpora = [dir.join("ipv4.tsv"), dir.join("ipv6.tsv")];
+    for (file, cases) in corpora.iter().zip([ipv4, ipv6]) {
+        use std::fmt::Write;
+        let mut rows = String::new();
+        for (text, valid) in cases {
+            writeln!(
+                rows,
+                "{}\t{}",
+                u8::from(valid),
+                serde_json::to_string(&text).unwrap()
+            )
+            .unwrap();
+        }
+        std::fs::write(file, rows).unwrap();
+    }
+    for compiler in ["g++", "clang++"]
+        .into_iter()
+        .filter(|cc| *cc == "g++" || compiler_available(cc))
+    {
+        let summary = compile_and_run_with_args(
+            compiler,
+            ADDRESS_STRICT,
+            &dir,
+            &[root().join("tests/cpp-codec/address_consumer.cpp")],
+            &format!("addresses-{compiler}"),
+            &corpora,
+        );
+        assert_eq!(summary, expected);
+        print!("{compiler}: {summary}");
+    }
+}
+
+#[test]
+fn cpp_oms_009a_address_near_misses_fail_check_and_generation() {
+    let base = address_case();
+    let xsd = std::fs::read_to_string(base.schema).unwrap();
+    let rejects = [
+        ("25[0-5]", "25[0-6]", "DottedType"),
+        ("{0,5}", "{0,6}", "ColonType"),
+        (
+            r#"maxLength value="15""#,
+            r#"maxLength value="16""#,
+            "DottedType",
+        ),
+        (
+            r#"maxLength value="45""#,
+            r#"maxLength value="46""#,
+            "ColonType",
+        ),
+        (
+            r#"<xs:minLength value="7"/>"#,
+            r#"<xs:whiteSpace value="collapse"/><xs:minLength value="7"/>"#,
+            "DottedType",
+        ),
+        (
+            r#"<xs:minLength value="2"/>"#,
+            r#"<xs:whiteSpace value="preserve"/><xs:minLength value="2"/>"#,
+            "ColonType",
+        ),
+        // The CLI still refuses anonymous field-local String restrictions.
+        (
+            r#"<xs:element name="RequiredIPv4" type="t:DottedType"/>"#,
+            r#"<xs:element name="RequiredIPv4"><xs:simpleType><xs:restriction base="xs:string"><xs:length value="15"/></xs:restriction></xs:simpleType></xs:element>"#,
+            "unsupported XSD construct: xs:anonymous element type",
+        ),
+    ];
+    let dir = scratch("addresses-near-misses");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (index, (before, after, diagnostic)) in rejects.into_iter().enumerate() {
+        assert!(xsd.contains(before));
+        let schema = dir.join(format!("case-{index}.xsd"));
+        std::fs::write(&schema, xsd.replace(before, after)).unwrap();
+        let case = Case {
+            schema,
+            contract: base.contract.clone(),
+        };
+        let check = run("service-check", &case, true, None);
+        assert_eq!(check.status.code(), Some(1), "{check:?}");
+        let report = format!(
+            "{}{}",
+            String::from_utf8_lossy(&check.stdout),
+            String::from_utf8_lossy(&check.stderr)
+        );
+        assert!(report.contains(diagnostic), "{report}");
+        let output = dir.join(format!("output-{index}"));
+        let generated = run("service-generate", &case, true, Some(&output));
+        assert_eq!(generated.status.code(), Some(1), "{generated:?}");
+        assert!(!output.exists());
+    }
+}
+
+#[test]
+fn cpp_oms_009a_exact_address_facets_are_not_admitted_on_direct_fields() {
+    use ams_gra_oms_backend_cpp::CppBackend;
+    use ams_gra_oms_codegen_core::{
+        Backend, BackendLanguage, GenerationWorld, analyze_service_readiness,
+        ipv6_address_constraints, resolve_service_plan,
+    };
+    use ams_gra_oms_ir::{PrimitiveKind, TypeKind, TypeRef};
+
+    let case = address_case();
+    let mut schema = ams_gra_oms_xsd_frontend::load_schema_document(&case.schema).unwrap();
+    let payload = schema
+        .types
+        .iter_mut()
+        .find(|d| d.name.local_name == "AddressPayload")
+        .unwrap();
+    let TypeKind::Record { fields } = &mut payload.kind else {
+        panic!("expected a record payload");
+    };
+    let field = fields
+        .iter_mut()
+        .find(|f| f.name == "RequiredIPv6")
+        .unwrap();
+    field.type_ref = TypeRef::primitive(PrimitiveKind::String);
+    field.constraints = ipv6_address_constraints();
+    let contract =
+        ams_gra_oms_service_contract::parse_yaml(&std::fs::read_to_string(case.contract).unwrap())
+            .unwrap();
+    let plan = resolve_service_plan(&contract, &schema).unwrap();
+    let world = GenerationWorld::ClosedSchemaSet;
+    let readiness = analyze_service_readiness(&plan, &schema, BackendLanguage::Cpp, world).unwrap();
+    assert!(
+        !readiness.is_ready(),
+        "direct constrained String is not a carrier"
+    );
+    let error = CppBackend.generate(&schema, world).unwrap_err();
+    assert!(
+        error.message.contains("field constraints on RequiredIPv6"),
+        "{error:?}"
+    );
 }
 
 /// A service with no OMS exchange needs no codec: no file is written and the
