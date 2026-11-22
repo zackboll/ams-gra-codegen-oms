@@ -387,13 +387,9 @@ def relay_log(pki, ws_port, binary, golden, result_file, schema):
                     with socket.create_connection(("127.0.0.1", ws_port), timeout=5) as plain:
                         tls_open = True
                         while tls_open:
-                            ready, _, _ = select.select([raw, plain], [], [], 0 if peer.tls.pending() else 10)
-                            assert ready or peer.tls.pending(), "relay idle timeout"
-                            if raw in ready:
-                                peer.feed()  # one TCP read, not a blocking SSL application read
-                            # A readable socket can contain only part of a TLS
-                            # record, or only TLS control records. Never wait
-                            # for more bytes here: the broker may be ready too.
+                            # The handshake's final TCP read can already have
+                            # fed application ciphertext into the BIO. pending()
+                            # counts only decoded bytes; drain before polling.
                             while True:
                                 try:
                                     data = peer.tls.read(65536)
@@ -405,6 +401,12 @@ def relay_log(pki, ws_port, binary, golden, result_file, schema):
                                     break
                                 plain.sendall(data)
                                 streams["client"].extend(data)
+                            if not tls_open:
+                                break
+                            ready, _, _ = select.select([raw, plain], [], [], 10)
+                            assert ready, "relay idle timeout"
+                            if raw in ready:
+                                peer.feed()  # one TCP read; the next pass drains the BIO
                             if plain in ready:
                                 data = plain.recv(65536)
                                 if not data:

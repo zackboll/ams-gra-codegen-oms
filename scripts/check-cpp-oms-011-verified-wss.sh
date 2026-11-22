@@ -102,10 +102,12 @@ schema_path = "${roots[$release]}"
 schema_version = "${versions[$release]}"
 services_dir = "$out/services"
 EOF_SERVER
-    RUST_LOG=info "$scratch/sleet-target/release/sleet" "$out/server.toml" > "$out/sleet.log" 2>&1 &
+    NO_COLOR=1 RUST_LOG=info "$scratch/sleet-target/release/sleet" "$out/server.toml" > "$out/sleet.log" 2>&1 &
     sleet_pid=$!
     for ((i=0; i<600; ++i)); do
-        if (exec 3<>"/dev/tcp/127.0.0.1/$sleet_port") 2>/dev/null; then return; fi
+        # The pinned broker logs this only after binding. Don't inject an
+        # incomplete WebSocket handshake before the one-shot WSS client.
+        if grep -qF "listening addr=127.0.0.1:$sleet_port" "$out/sleet.log"; then return; fi
         kill -0 "$sleet_pid" 2>/dev/null || break
         sleep 0.1
     done
