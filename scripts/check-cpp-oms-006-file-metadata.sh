@@ -13,17 +13,12 @@
 #      (tests/fixtures/cpp-codec/structured-ascii, all 27 pinned rows), each
 #      with an exact summary; the negative controls of
 #      tests/cpp-codec/structured_ascii_mutations.py (all must be detected);
-#   3. per release, AUTHENTIC FileMetadata: production `service-check
-#      --with-codec` must report model READY and codec NOT READY with exactly
-#      one remaining codec blocker, the length-constrained hexBinary
-#      SHA_2_256_HashType (FileNameType is no longer a blocker);
-#      `service-generate --with-codec` must write nothing; the plain model is
-#      generated and tests/cpp-codec/file_metadata_model_probe.cpp checks the
-#      authentic checked FileNameType carrier. Because the codec is NOT READY,
-#      FileMetadata codec round trips and pinned-Sleet interoperability are
-#      NOT APPLICABLE in either release and are not run or claimed. If a
-#      future change makes FileMetadata codec READY, this script stops so the
-#      qualification can be added instead of silently passing;
+#   3. per release, AUTHENTIC FileMetadata: CPP-OMS-007 advances this regression
+#      to require codec READY (50/50 and 52/52), generation with --with-codec,
+#      and byte-identical model/API with and without the flag. The model probe
+#      still checks the authentic FileNameType carrier. Independent codec and
+#      real pinned-Sleet qualification live in check-cpp-oms-007-file-metadata.sh;
+#      this script does not claim those behavioral results;
 #   4. per release, the messages that become codec READY through structured
 #      ASCII: exact readiness, model and service API byte-identical with and
 #      without --with-codec, and a strict g++ COMPILE SMOKE of model + API +
@@ -65,7 +60,7 @@ SYNTHETIC_SUMMARY="CPP_OMS_006_STRUCTURED_ASCII checks=323 rejections=166"
 ROWS_SUMMARY="CPP_OMS_006_STRUCTURED_ROWS rows=27 checks=828 rejections=259"
 MUTATION_SUMMARY="CPP_OMS_006_MUTATIONS detected=21/21"
 declare -A FILE_CLOSURE=([25]=52 [26]=54)
-declare -A FILE_CODEC=([25]="49/50" [26]="51/52")
+declare -A FILE_CODEC=([25]="50/50" [26]="52/52")
 declare -A FILE_BEFORE=([25]="48/50" [26]="50/52")
 # message closure codec-after (both releases unless overridden below)
 NEWLY_READY=(
@@ -251,29 +246,21 @@ for release in 2.5 2.6; do
   status=0
   report="$("$cli" service-check --schema "$root" --contract "$contract" --language cpp --world closed-schema \
     --with-codec 2>/dev/null)" || status=$?
-  if ((status == 0)) || grep -qxF "codec status: READY" <<<"$report"; then
-    echo "UCI $release: FileMetadata is now C++ codec READY; add its codec and pinned-Sleet qualification" >&2
-    exit 4
-  fi
+  ((status == 0)) || { echo "$report" >&2; exit 1; }
   expect "$report" "selected type closure: ${FILE_CLOSURE[$version]}" "$release FileMetadata"
   expect "$report" "status: READY" "$release FileMetadata"
   expect "$report" "codec renderable emitted declarations: ${FILE_CODEC[$version]}" "$release FileMetadata"
-  expect "$report" "codec status: NOT READY" "$release FileMetadata"
-  expect "$report" "service codec boundary: SHA_2_256_HashType: length-constrained named hexBinary has no C++ codec mapping" \
-    "$release FileMetadata"
+  expect "$report" "codec status: READY" "$release FileMetadata"
   if grep -q FileNameType <<<"$report"; then echo "FileNameType still reported" >&2; exit 1; fi
-  echo "  AFTER: closure ${FILE_CLOSURE[$version]}, model READY, codec ${FILE_CODEC[$version]} NOT READY;" \
-       "only remaining blocker SHA_2_256_HashType (length-constrained hexBinary, MessageData.SHA_2_Hash)"
+  echo "  AFTER CPP-OMS-007: closure ${FILE_CLOSURE[$version]}, model READY, codec ${FILE_CODEC[$version]} READY"
   gen="$scratch/gen-file-metadata-$version"
   rm -rf "$gen" "$gen-codec"
-  if "$cli" service-generate --schema "$root" --contract "$contract" --language cpp --world closed-schema \
-       --with-codec --output "$gen-codec" >/dev/null 2>&1; then
-    echo "UCI $release: --with-codec generation unexpectedly succeeded" >&2; exit 1
-  fi
-  test ! -e "$gen-codec"
+  "$cli" service-generate --schema "$root" --contract "$contract" --language cpp --world closed-schema \
+       --with-codec --output "$gen-codec" >/dev/null
   "$cli" service-generate --schema "$root" --contract "$contract" --language cpp --world closed-schema \
     --output "$gen" >/dev/null
-  echo "  --with-codec writes nothing; plain model + service API generated"
+  for file in oam.hpp service_api.hpp; do cmp "$gen/$file" "$gen-codec/$file"; done
+  echo "  model and API byte-identical; authentic codec/Sleet qualification is in CPP-OMS-007"
   for entry in "${configs[@]}"; do
     read -r name compiler flavour <<<"$entry"
     [[ "$flavour" == tsan ]] && continue
@@ -286,7 +273,7 @@ for release in 2.5 2.6; do
       || { echo "UCI $release $name: model probe '$summary'" >&2; exit 1; }
     echo "  [$name] $summary"
   done
-  echo "  FileMetadata codec round trip and pinned-Sleet interoperability: NOT APPLICABLE (codec NOT READY); not run, not claimed"
+  echo "  FileMetadata codec/Sleet behavior is qualified separately by CPP-OMS-007; not claimed by this regression"
 
   # ---- 4. newly READY messages: compile smoke ---------------------------------------
   echo "== UCI $release messages made C++ codec READY by structured ASCII (compile smoke only)"
@@ -362,5 +349,5 @@ if ((hard)); then
   echo "CPP-OMS-006 structured ASCII: INCOMPLETE (skips above are not passes)" >&2
   exit 3
 fi
-echo "CPP-OMS-006 structured-ASCII codec: PASS for everything listed above;" \
-     "authentic FileMetadata codec/Sleet NOT APPLICABLE (NOT READY at SHA_2_256_HashType in UCI 2.5 and 2.6)"
+echo "CPP-OMS-006 structured-ASCII regression: PASS for everything listed above;" \
+     "FileMetadata is now READY; see CPP-OMS-007 for independent codec and Sleet results"
