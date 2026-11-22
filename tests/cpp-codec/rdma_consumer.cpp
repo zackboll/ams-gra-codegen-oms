@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <iterator>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -72,7 +72,10 @@ int main(int argc, char** argv) {
     require(argc == 2, "expected authentic RDMA JSON fixture");
     std::ifstream input(argv[1]);
     require(input.is_open(), argv[1]);
-    const std::string json{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+    std::ostringstream fixture;
+    fixture << input.rdbuf();
+    require(fixture.good(), "failed to read RDMA JSON fixture");
+    const std::string json = fixture.str();
     const auto decoded = sc::decode_RDMAInitializeSetupMT(json);
     require(decoded.ok(), decoded.error().message);
     inspect(decoded.value(), "2001:db8::1");
