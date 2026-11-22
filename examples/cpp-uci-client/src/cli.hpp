@@ -20,7 +20,7 @@ namespace exit_status {
 constexpr int ok = 0;                  // bound reached, UNSUB acknowledged, runtime closed
 constexpr int internal = 1;            // unexpected internal failure (exception escaped)
 constexpr int usage = 2;               // invalid arguments; nothing was connected
-constexpr int connect = 3;             // TCP/upgrade/owp/INIT/INFO failed; no session
+constexpr int connect = 3;             // TCP/TLS/upgrade/owp/INIT/INFO failed; no session
 constexpr int subscribe_rejected = 4;  // the broker answered SUB with -ERR
 constexpr int session = 5;             // failure after connecting (timeout, loss, overflow, ...)
 constexpr int shutdown = 6;            // otherwise clean, but UNSUB or close did not succeed
@@ -33,10 +33,16 @@ constexpr std::uint32_t kDefaultMaxMessages = 10;
 constexpr std::uint32_t kMaxMaxMessages = 100000;
 constexpr std::size_t kMaxServiceIdLength = 128;
 constexpr std::size_t kMaxUrlLength = 2048;
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+inline constexpr bool kSupportsTls = true;
+#else
+inline constexpr bool kSupportsTls = false;
+#endif
 
 struct Options {
     std::string url;
     std::string service_id;
+    std::optional<std::string> ca_file;
     unsigned duration_seconds = kDefaultDurationSeconds;
     std::uint32_t max_messages = kDefaultMaxMessages;
     bool with_rdma = false;
@@ -109,10 +115,9 @@ inline std::optional<std::uint32_t> parse_bounded(std::string_view text, std::ui
 
 }  // namespace detail
 
-/// Message explaining why `url` is not acceptable, or nullopt. Native
-/// wss:// is refused explicitly: the C++ LA-CAL runtime implements ws://
-/// only, and this application neither weakens nor emulates TLS.
-inline std::optional<std::string> check_url(std::string_view url) {
+/// CLI checks; the runtime also validates the authority before dialing and
+/// uses the original URL identity for certificate verification.
+inline std::optional<std::string> check_url(std::string_view url, bool supports_tls = kSupportsTls) {
     if (url.empty()) {
         return std::string("--url must not be empty");
     }
@@ -127,22 +132,22 @@ inline std::optional<std::string> check_url(std::string_view url) {
     }
     const std::size_t separator = url.find("://");
     if (separator == std::string_view::npos) {
-        return std::string("--url must start with ws://");
+        return supports_tls ? "--url must start with ws:// or wss://" : "--url must start with ws://";
     }
     const std::string scheme = detail::lower_ascii(url.substr(0, separator));
-    if (scheme == "wss") {
-        return std::string(
-            "native wss:// (TLS) is not supported: the C++ LA-CAL runtime implements ws:// only and refuses "
-            "wss:// rather than weakening TLS; use a ws:// endpoint (see examples/cpp-uci-client/README.md)");
+    if (scheme == "wss" && !supports_tls) {
+        return std::string("native wss:// (TLS) is not supported by this build; rebuild with build.sh --with-tls");
     }
-    if (scheme != "ws") {
-        return "unsupported URL scheme '" + detail::printable(scheme) + "://'; expected ws://";
+    if (scheme != "ws" && scheme != "wss") {
+        return "unsupported URL scheme '" + detail::printable(scheme) + "://'; expected " +
+               (supports_tls ? "ws:// or wss://" : "ws://");
     }
     const std::string_view rest = url.substr(separator + 3);
     if (rest.find('#') != std::string_view::npos) {
         return std::string("--url must not contain a fragment ('#')");
     }
-    const std::string_view authority = rest.substr(0, rest.find_first_of("/?"));
+    const auto target_start = rest.find_first_of("/?");
+    const std::string_view authority = rest.substr(0, target_start);
     if (authority.empty()) {
         return std::string("--url has no host");
     }
@@ -180,6 +185,20 @@ inline std::optional<std::string> check_url(std::string_view url) {
     if (has_port && !detail::parse_bounded(port, 1, 65535)) {
         return std::string("--url port must be an integer in 1..65535");
     }
+    if (scheme == "wss" && target_start != std::string_view::npos) {
+        constexpr std::string_view target_chars =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!$&'()*+,;=:@/?";
+        constexpr std::string_view hex = "0123456789abcdefABCDEF";
+        const auto target = rest.substr(target_start);
+        for (std::size_t i = 0; i < target.size(); ++i) {
+            if (target[i] == '%' && target.size() - i >= 3 && hex.find(target[i + 1]) != std::string_view::npos &&
+                hex.find(target[i + 2]) != std::string_view::npos) {
+                i += 2;
+            } else if (target_chars.find(target[i]) == std::string_view::npos) {
+                return std::string("--url has an invalid path or query");
+            }
+        }
+    }
     return std::nullopt;
 }
 
@@ -187,7 +206,7 @@ inline std::optional<std::string> check_url(std::string_view url) {
 /// exactly one separate value; all options may appear once. Unknown options and the
 /// `--opt=value` form are rejected. Nothing here touches the network.
 inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bool supports_rdma = false,
-                                   bool supports_survivability = false) {
+                                   bool supports_survivability = false, bool supports_tls = kSupportsTls) {
     ParseResult result;
     const auto fail = [&result](std::string message) {
         result.kind = ParseResult::Kind::error;
@@ -205,6 +224,7 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
     bool seen_service = false;
     bool seen_duration = false;
     bool seen_max = false;
+    bool seen_ca = false;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const std::string_view flag = args[i];
         if (flag == "--help") {
@@ -236,6 +256,11 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
             seen = &seen_duration;
         } else if (flag == "--max-messages") {
             seen = &seen_max;
+        } else if (flag == "--ca-file") {
+            if (!supports_tls) {
+                return fail("--ca-file requires a TLS-enabled build (build.sh --with-tls)");
+            }
+            seen = &seen_ca;
         } else {
             return fail("unknown argument '" + detail::printable(flag) + "'; use --help");
         }
@@ -251,6 +276,8 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
             result.options.url = std::string(value);
         } else if (flag == "--service-id") {
             result.options.service_id = std::string(value);
+        } else if (flag == "--ca-file") {
+            result.options.ca_file = std::string(value);
         } else if (flag == "--duration-seconds") {
             const auto parsed = detail::parse_bounded(value, 1, kMaxDurationSeconds);
             if (!parsed) {
@@ -274,8 +301,11 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
     if (!seen_service) {
         return fail("--service-id is required; use --help");
     }
-    if (auto problem = check_url(result.options.url)) {
+    if (auto problem = check_url(result.options.url, supports_tls)) {
         return fail(std::move(*problem));
+    }
+    if (seen_ca && detail::lower_ascii(std::string_view(result.options.url).substr(0, 6)) != "wss://") {
+        return fail("--ca-file requires a wss:// URL");
     }
     if (result.options.service_id.size() > kMaxServiceIdLength || !is_owp_identifier(result.options.service_id)) {
         return fail("--service-id must be an OWP identifier [A-Za-z0-9_.-], 1..128 characters");
@@ -287,17 +317,21 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
 /// --help text. `release`/`schema` are the values compiled into this binary.
 inline std::string help_text(std::string_view program, std::string_view release, std::string_view schema,
                              std::string_view message, std::string_view topic, bool supports_rdma = false,
-                             bool supports_survivability = false) {
+                             bool supports_survivability = false, bool supports_tls = kSupportsTls) {
     const std::string m(message);
     const std::string t(topic);
     std::string text;
-    text += std::string(program) + " --url ws://HOST[:PORT][/PATH] --service-id ID [OPTIONS]\n\n";
+    text += std::string(program) + (supports_tls ? " --url {ws,wss}://" : " --url ws://") +
+            "HOST[:PORT][/PATH] --service-id ID [OPTIONS]\n\n";
     text += "Standalone C++17 UCI Log receiver BUILT FOR UCI " + std::string(release) + " (OWP INIT schema " +
             std::string(schema) + ").\n";
     text += "Subscribes to the global message '" + m + "' on topic '" + t +
             "' through the C++ LA-CAL runtime\nand prints selected fields of each generated programs::oam::LogMT.\n";
     text += "The UCI release is fixed when the executable is built; it cannot be changed at run time.\n\n";
-    text += "  --url URL               Sleet endpoint; ws:// only (native wss:// TLS is not supported)\n";
+    text += supports_tls
+                ? "  --url URL               ws:// (plaintext) or wss:// (certificate-verified TLS)\n"
+                  "  --ca-file PATH          Additional PEM CA bundle for wss:// only; system trust is always used\n"
+                : "  --url URL               Sleet endpoint; ws:// only (native wss:// TLS is not supported)\n";
     text += "  --service-id ID         OWP service identity authorized for '" + m + "' on '" + t + "'\n";
     text += "  --duration-seconds N    Receive for at most N seconds, 1..3600 (default 30)\n";
     text += supports_rdma
@@ -312,7 +346,8 @@ inline std::string help_text(std::string_view program, std::string_view release,
     text += "  0    a bound was reached; UNSUB acknowledged; runtime closed\n";
     text += "  1    unexpected internal failure\n";
     text += "  2    invalid arguments (nothing was connected)\n";
-    text += "  3    connection, WebSocket upgrade, owp negotiation, INIT or INFO failed\n";
+    text += supports_tls ? "  3    connection, TLS verification/handshake, WebSocket upgrade, owp, INIT or INFO failed\n"
+                         : "  3    connection, WebSocket upgrade, owp negotiation, INIT or INFO failed\n";
     text += "  4    the broker rejected the subscription (-ERR)\n";
     text += "  5    session failure after connecting (SUB timeout, transport loss, queue overflow, callback)\n";
     text += "  6    UNSUB or close did not succeed after an otherwise clean run\n";

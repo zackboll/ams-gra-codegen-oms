@@ -97,6 +97,7 @@ int run(const cpp_uci_client::Options& options) {
     cpp_uci_client::ClientSettings settings;
     settings.url = options.url;
     settings.service_id = options.service_id;
+    settings.ca_file = options.ca_file;
     cpp_uci_client::Client client(settings);
 
     // The first failure is the reported outcome; shutdown is always attempted.

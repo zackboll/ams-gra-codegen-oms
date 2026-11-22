@@ -2,7 +2,7 @@
 # Build the standalone C++17 UCI receiver for ONE pinned UCI
 # release, from a clean checkout, into external build storage.
 #
-#   examples/cpp-uci-client/build.sh --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR [--with-rdma [--with-survivability]]
+#   examples/cpp-uci-client/build.sh --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR [--with-rdma [--with-survivability]] [--with-tls]
 #
 #   1. verifies the pinned MessageDefinitions root and its sibling
 #      SecurityMarkings by SHA-256 (the same pins as scripts/task102/admission.py);
@@ -18,13 +18,14 @@
 # Environment: CXX (default g++), AMS_GRA_CLI (prebuilt production CLI; built
 # with cargo otherwise), CPP_UCI_CLIENT_EXTRA_CXXFLAGS (e.g. sanitizers).
 # Requires Boost >= 1.81 headers (Boost.Beast; no Boost library is linked).
+# --with-tls additionally requires OpenSSL >= 1.1.1 and adds a -tls artifact suffix.
 # All build artifacts are written to external storage.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 
-usage() { echo "usage: $0 --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR [--with-rdma [--with-survivability]]" >&2; exit 2; }
-release="" schema="" out="" with_rdma=0 with_survivability=0
+usage() { echo "usage: $0 --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR [--with-rdma [--with-survivability]] [--with-tls]" >&2; exit 2; }
+release="" schema="" out="" with_rdma=0 with_survivability=0 with_tls=0
 while (($#)); do
   case "$1" in
     --release) (($# >= 2)) || usage; release="$2"; shift 2 ;;
@@ -32,6 +33,7 @@ while (($#)); do
     --out) (($# >= 2)) || usage; out="$2"; shift 2 ;;
     --with-rdma) ((with_rdma == 0)) || usage; with_rdma=1; shift ;;
     --with-survivability) ((with_survivability == 0)) || usage; with_survivability=1; shift ;;
+    --with-tls) ((with_tls == 0)) || usage; with_tls=1; shift ;;
     -h|--help) usage ;;
     *) echo "unknown argument: $1" >&2; usage ;;
   esac
@@ -106,11 +108,33 @@ boost="$("$probe/boost")" || { echo "Boost >= 1.81 is required" >&2; exit 1; }
 compiler="$("$cxx" --version | head -1)"
 echo "compiler: $compiler"
 echo "dependency: $boost"
+libs=()
+if ((with_tls)); then
+  flags+=(-DAMS_GRA_LACAL_ENABLE_TLS=1)
+  libs=(-lssl -lcrypto)
+  cat > "$probe/openssl.cpp" <<'EOF'
+#include <openssl/ssl.h>
+#include <cstdio>
+static_assert(OPENSSL_VERSION_NUMBER >= 0x10101000L, "OpenSSL 1.1.1 or newer is required");
+int main() {
+    std::printf("headers: %s; library: %s\n", OPENSSL_VERSION_TEXT, OpenSSL_version(OPENSSL_VERSION));
+    return TLS_client_method() == nullptr ? 1 : 0;
+}
+EOF
+  if ! "$cxx" -std=c++17 "$probe/openssl.cpp" "${libs[@]}" -o "$probe/openssl" ||
+     ! openssl_version="$("$probe/openssl")"; then
+    echo "--with-tls requires OpenSSL >= 1.1.1 development headers and -lssl -lcrypto (e.g. libssl-dev)" >&2
+    exit 1
+  fi
+  echo "dependency: $openssl_version"
+fi
 
 cli="${AMS_GRA_CLI:-}"
 if [[ -z "$cli" ]]; then
-  (cd "$repo" && cargo build --target-dir "$out/cargo" --locked --release -p ams-gra-codegen-oms --bin ams-gra-codegen-oms)
-  cli="$out/cargo/release/ams-gra-codegen-oms"
+  cargo_out="$out/cargo"
+  if ((with_tls)); then cargo_out+=-tls; fi
+  (cd "$repo" && cargo build --target-dir "$cargo_out" --locked --release -p ams-gra-codegen-oms --bin ams-gra-codegen-oms)
+  cli="$cargo_out/release/ams-gra-codegen-oms"
 fi
 
 # ---- 2. production readiness ---------------------------------------------------
@@ -131,6 +155,9 @@ if ((with_survivability)); then
     25) closure=64; emitted=63 ;;
     26) closure=65; emitted=64 ;;
   esac
+fi
+if ((with_tls)); then
+  artifact+=-tls
 fi
 contract="$repo/$contract_path"
 common=(--schema "$schema" --contract "$contract" --language cpp --world closed-schema)
@@ -173,7 +200,7 @@ status=0
 wait "$p1" || status=$?
 wait "$p2" || status=$?
 ((status == 0)) || { echo "compilation failed" >&2; exit "$status"; }
-"$cxx" "${flags[@]}" "$obj/main.o" "$obj/owp.o" "$obj/runtime.o" -o "$bin"
+"$cxx" "${flags[@]}" "$obj/main.o" "$obj/owp.o" "$obj/runtime.o" "${libs[@]}" -o "$bin"
 
 {
   echo "release=$release"
@@ -188,6 +215,10 @@ wait "$p2" || status=$?
   echo "compiler=$compiler"
   echo "boost=$boost"
   echo "flags=${flags[*]}"
+  if ((with_tls)); then
+    echo "openssl=$openssl_version"
+    echo "link_libraries=${libs[*]}"
+  fi
   echo "binary=$bin"
   echo "binary_sha256=$(sha "$bin")"
 } > "$out/build-$artifact.manifest"
