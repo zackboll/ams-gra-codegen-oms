@@ -487,6 +487,23 @@ SUB/UNSUB acknowledgments can pass with exit 6. The independent peer
 qualifies exit 0 by completing both shutdown handshakes. See
 [CPP-OMS-012](../../docs/task-cpp-oms-012-verified-wss-client.md).
 
+## Deploy a qualified executable
+
+Stage one already-qualified build artifact (no build or schema generation):
+
+```bash
+python3 examples/cpp-uci-client/deploy/stage.py --build "$CLIENT_SCRATCH/build" \
+  --release 2.6 --profile C --variant tls --out "$CLIENT_SCRATCH/bundle"
+python3 "$CLIENT_SCRATCH/bundle/check.py" --release 2.6 --profile C --variant tls \
+  "$CLIENT_SCRATCH/bundle"
+```
+
+The bundle can be moved off the checkout. The read-only host check validates
+integrity, ELF dependencies and the offline CLI, not TLS trust or the broker.
+Provision CA trust separately. See the [deployment runbook](../../docs/task-cpp-oms-013-deployment-readiness.md)
+for platform requirements, full-profile flags, operator smoke, readiness,
+exit statuses and the pinned Sleet exit-6 limitation.
+
 ## Qualification
 
 ```bash
