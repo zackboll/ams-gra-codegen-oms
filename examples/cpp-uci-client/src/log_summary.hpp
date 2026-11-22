@@ -18,6 +18,8 @@
 
 namespace cpp_uci_client {
 
+inline constexpr std::size_t timestamp_display_limit = 64;
+
 struct LogSummary {
     ::programs::oam::LogSeverityEnum severity{};
     ::programs::oam::ClassificationEnum classification{};
@@ -62,8 +64,9 @@ inline LogSummary summarize(const ::programs::oam::LogMT& log) {
     LogSummary summary;
     summary.severity = log.messagedata.severity;
     summary.classification = log.securityinformation.classification;
-    summary.header_timestamp = log.messageheader.timestamp.value();
-    summary.log_timestamp = log.messagedata.timestamp.value();
+    // Keep one extra byte so the existing output still signals truncation.
+    summary.header_timestamp = log.messageheader.timestamp.value().substr(0, timestamp_display_limit + 1);
+    summary.log_timestamp = log.messagedata.timestamp.value().substr(0, timestamp_display_limit + 1);
     summary.schema_version = log.messageheader.schemaversion.value();
     summary.system_uuid = log.messageheader.systemid.uuid.value();
     if (log.messageheader.serviceid) {
@@ -102,8 +105,8 @@ inline std::string format_summary(std::uint64_t sequence, const LogSummary& s, s
     line += " classification=";
     line += classification_name(s.classification);
     line += " schema=" + bounded_text(s.schema_version, 57);
-    line += " header-timestamp=" + bounded_text(s.header_timestamp, 64);
-    line += " log-timestamp=" + bounded_text(s.log_timestamp, 64);
+    line += " header-timestamp=" + bounded_text(s.header_timestamp, timestamp_display_limit);
+    line += " log-timestamp=" + bounded_text(s.log_timestamp, timestamp_display_limit);
     line += " system=" + bounded_text(s.system_uuid, 36);
     if (s.header_service_uuid) {
         line += " header-service=" + bounded_text(*s.header_service_uuid, 36);

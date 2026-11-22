@@ -70,13 +70,13 @@ app::ClientSettings settings(std::size_t capacity) {
 }
 
 /// Connected and subscribed (SUB acknowledged) client.
-void start(app::LogClient& client) {
+void start(app::Client& client) {
     CHECK(!client.connect().has_value());
     CHECK(!client.subscribe().has_value());
     CHECK_EQ(client.subscription_id(), std::string("sub-1"));
 }
 
-void clean_shutdown(app::LogClient& client, std::size_t expected_discarded) {
+void clean_shutdown(app::Client& client, std::size_t expected_discarded) {
     const app::ShutdownReport report = client.shutdown();
     CHECK(report.unsubscribe_ok);  // explicit UNSUB acknowledged by Sleet
     CHECK(report.close_ok);
@@ -90,12 +90,12 @@ void clean_shutdown(app::LogClient& client, std::size_t expected_discarded) {
 }  // namespace
 
 /// Collects up to `count` typed Logs within kWait; non-fatal events go to `notices`.
-std::vector<app::Delivered> receive(app::LogClient& client, std::size_t count, std::vector<std::string>* notices) {
+std::vector<app::Delivered> receive(app::Client& client, std::size_t count, std::vector<std::string>* notices) {
     std::vector<app::Delivered> items;
     const auto deadline = std::chrono::steady_clock::now() + kWait;
     while (items.size() < count && std::chrono::steady_clock::now() < deadline) {
         app::Next next = client.next(deadline);
-        if (next.kind == app::Next::Kind::log) {
+        if (next.kind == app::Next::Kind::message) {
             items.push_back(std::move(next.item));
         } else if (next.kind == app::Next::Kind::notice && notices != nullptr) {
             notices->push_back(next.line);
@@ -109,7 +109,7 @@ std::vector<app::Delivered> receive(app::LogClient& client, std::size_t count, s
 }
 
 /// The first non-idle outcome within kWait (next() itself waits at most ~25 ms).
-app::Next next_outcome(app::LogClient& client) {
+app::Next next_outcome(app::Client& client) {
     const auto deadline = std::chrono::steady_clock::now() + kWait;
     app::Next next;
     while (std::chrono::steady_clock::now() < deadline) {
@@ -123,7 +123,7 @@ app::Next next_outcome(app::LogClient& client) {
 
 TEST_CASE(typed_order_and_selected_fields) {
     raw::Client publisher = wire();  // opened first: part of the process's starting socket set
-    app::LogClient client(settings(64));
+    app::Client client(settings(64));
     start(client);
     for (int n = 1; n <= 6; ++n) {
         publish(publisher, documents::variant(kSchema, n));
@@ -156,7 +156,7 @@ TEST_CASE(decoder_versus_broker_rejection) {
     raw::Client observer = wire();
     CHECK_EQ(observer.command("SUB wire Log uci.log"), std::string("+OK"));
     raw::Client publisher = wire();
-    app::LogClient client(settings(64));
+    app::Client client(settings(64));
     start(client);
     // Broker-admitted, client-rejected: Sleet +OK and the MSG really crosses Sleet.
     const std::string bad = documents::decoder_rejected(kSchema);
@@ -225,7 +225,7 @@ TEST_CASE(bounded_queue_overflow_is_explicit) {
     // Capacity 3 and no consumer: the fourth typed delivery overflows; the
     // application fails the session instead of skipping a Log.
     raw::Client publisher = wire();
-    app::LogClient client(settings(3));
+    app::Client client(settings(3));
     start(client);
     for (int n = 1; n <= 5; ++n) {
         publish(publisher, documents::variant(kSchema, n));
@@ -246,7 +246,7 @@ TEST_CASE(bounded_queue_overflow_is_explicit) {
 
 TEST_CASE(shutdown_with_pending_messages_and_no_stale_callbacks) {
     raw::Client publisher = wire();
-    app::LogClient client(settings(64));
+    app::Client client(settings(64));
     start(client);
     for (int n = 1; n <= 4; ++n) {
         publish(publisher, documents::variant(kSchema, n));
@@ -269,7 +269,7 @@ TEST_CASE(shutdown_with_pending_messages_and_no_stale_callbacks) {
 TEST_CASE(callback_failure_is_reported_and_contained) {
     raw::Client publisher = wire();
     int calls = 0;
-    app::LogClient client(settings(8), [&calls](const ::programs::oam::LogMT& log) -> app::LogSummary {
+    app::Client client(settings(8), [&calls](const ::programs::oam::LogMT& log) -> app::LogSummary {
         if (++calls == 1) {
             throw std::runtime_error("application extractor failed");
         }
@@ -290,7 +290,7 @@ TEST_CASE(callback_failure_is_reported_and_contained) {
 TEST_CASE(unauthorized_subscription_is_a_broker_rejection) {
     app::ClientSettings s = settings(8);
     s.service_id = "cpp-uci-unauthorized";  // known to Sleet, not authorized for uci.log
-    app::LogClient client(s);
+    app::Client client(s);
     CHECK(!client.connect().has_value());
     const auto failure = client.subscribe();
     CHECK(failure.has_value() && failure->exit_status == app::exit_status::subscribe_rejected);

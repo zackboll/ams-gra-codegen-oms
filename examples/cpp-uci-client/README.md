@@ -1,4 +1,4 @@
-# Standalone C++17 UCI Log receiver (CPP-OMS-008)
+# Standalone C++17 UCI Log and RDMA setup receiver
 
 A real command-line application, not a test facade. It connects to Sleet
 through the **existing** C++ LA-CAL runtime
@@ -6,7 +6,9 @@ through the **existing** C++ LA-CAL runtime
 subprotocol `owp`). It subscribes to the authentic UCI global message **`Log`**
 on the application topic **`uci.log`** and receives production-generated,
 strongly typed `programs::oam::LogMT` values. It then prints a bounded,
-schema-checked summary of each one.
+schema-checked summary of each one. An optional build profile adds typed
+`RDMA_InitializeSetup` reception on the **same connection**. Both builds run
+in Log-only mode by default; only the combined build accepts `--with-rdma`.
 
 This application adds no runtime, transport, codec or generator. It uses only
 these:
@@ -16,6 +18,8 @@ these:
 | Payload type | generated `programs::oam::LogMT` (`oam.hpp`) |
 | Subscribe endpoint | generated `service_api::function_log::exchange_receive::subscribe` |
 | Payload codec | generated `service_codec::decode_LogMT` / `encode_LogMT`, bound with `AMS_GRA_LACAL_PAYLOAD_CODEC` |
+| RDMA endpoint | generated `service_api::function_rdma::exchange_receive::subscribe` (`RDMA_InitializeSetup` on `uci.rdma`) |
+| RDMA payload and codec | `programs::oam::RDMAInitializeSetupMT`, `service_codec::decode_RDMAInitializeSetupMT` / `encode_RDMAInitializeSetupMT`, bound with the same macro |
 | Connection, owp, INIT/INFO, SUB/UNSUB, dispatch | unchanged `ams_gra::lacal::Runtime` |
 
 No UCI schema, generated source, object file or binary is committed. Each build
@@ -32,6 +36,7 @@ src/release.hpp                build-time release binding and generated-type che
 src/cli.hpp                    argument validation (before any connection)
 src/bounded_queue.hpp          bounded, ordered hand-off (dispatcher -> main thread)
 src/log_summary.hpp            the displayed, schema-checked LogMT fields
+src/rdma_summary.hpp           the displayed, schema-checked RDMA fields
 src/session.hpp                reporting of runtime outcomes; exit-status mapping
 src/process_resources.hpp      /proc thread and socket observation after close
 build.sh                       pinned-schema check, readiness, generation, strict build
@@ -83,6 +88,8 @@ export AMS_GRA_UCI_2_6_ROOT="$(scripts/fetch-pinned-uci-2.6.sh "$CLIENT_SCRATCH/
 examples/cpp-uci-client/build.sh --release 2.5 --schema "$AMS_GRA_UCI_2_5_ROOT" --out "$CLIENT_SCRATCH/build"
 # UCI 2.6
 examples/cpp-uci-client/build.sh --release 2.6 --schema "$AMS_GRA_UCI_2_6_ROOT" --out "$CLIENT_SCRATCH/build"
+# Both message families, UCI 2.6 (use --release 2.5 and the matching root for 2.5)
+examples/cpp-uci-client/build.sh --with-rdma --release 2.6 --schema "$AMS_GRA_UCI_2_6_ROOT" --out "$CLIENT_SCRATCH/build"
 ```
 
 Each build:
@@ -105,13 +112,22 @@ Each build:
    contract, the generated-header hashes, the compiler, Boost and the binary
    hash.
 
+The combined profile uses the receive-only contracts in
+`tests/fixtures/cpp-codec/addresses/uci{25,26}-log-rdma-service.yaml` and adds
+`-log-rdma` to the generated/object directories, manifest and executable names
+(for example `bin/cpp-uci-client-uci26-log-rdma`). It does not overwrite
+Log-only artifacts.
+
 | Release | Selected messages | Type closure (model + API) | Codec declarations |
 | --- | --- | --- | --- |
 | 2.5 | 1 (`Log`) | 42/42 READY | 41/41 READY |
 | 2.6 | 1 (`Log`) | 44/44 READY | 43/43 READY |
+| 2.5 | 2 (`Log` + `RDMA_InitializeSetup`) | 55/55 READY | 54/54 READY |
+| 2.6 | 2 (`Log` + `RDMA_InitializeSetup`) | 57/57 READY | 56/56 READY |
 
 `CXX` selects the compiler. `AMS_GRA_CLI` names a prebuilt production CLI;
-without it, `build.sh` builds the CLI with `cargo build --locked --release`.
+without it, `build.sh` builds the CLI with `cargo build --locked --release`
+into `BUILD/cargo`.
 `CPP_UCI_CLIENT_EXTRA_CXXFLAGS` adds flags, for example sanitizers. The script
 refuses an `--out` inside the repository. It builds at `-O1`, the level the
 CPP-OMS-003 runtime qualification uses: with GCC 14, `-O2` triggers
@@ -132,7 +148,9 @@ constants with the generated types that are actually compiled in:
 * the pinned root hash of the selected release;
 * the endpoint identity: payload `LogMT`, global message `"Log"` (never
   `"LogMT"`), OAM namespace, topic `uci.log`, input direction, no group,
-  service `cpp-uci-client`.
+  and the correct generated service name for the build profile;
+* the combined profile's RDMA endpoint: payload `RDMAInitializeSetupMT`, global
+  message `RDMA_InitializeSetup`, OAM namespace, topic `uci.rdma`, input, no group.
 
 Compiling 2.5 types with the 2.6 selection (or vice versa), or with headers
 generated from a different contract, fails the build.
@@ -186,6 +204,21 @@ authorization, Sleet answers the SUB with
 `-ERR Illegal-State … not authorized to subscribe to topic uci.log`, and the
 application exits with status 4 without printing `READY`.
 
+For combined mode, change `allowed_topics` to `["uci.log", "uci.rdma"]`,
+keep the Log binding, and add this binding for the same service (also authorize
+each publisher for the topics it publishes):
+
+```toml
+[[topic_bindings]]
+topic = "uci.rdma"
+allowed_messages = ["RDMA_InitializeSetup"]
+```
+
+```bash
+"$CLIENT_SCRATCH/build/bin/cpp-uci-client-uci26-log-rdma" --with-rdma \
+  --url ws://127.0.0.1:9000 --service-id cpp-uci-client --max-messages 10
+```
+
 ## CLI
 
 ```text
@@ -194,11 +227,14 @@ cpp-uci-client-uci26 --url ws://HOST[:PORT][/PATH] --service-id ID [OPTIONS]
   --service-id ID         OWP service identity authorized for 'Log' on 'uci.log'
   --duration-seconds N    Receive for at most N seconds, 1..3600 (default 30)
   --max-messages N        Stop after N typed Log messages, 1..100000 (default 10)
+  --with-rdma             Combined build only: enable the additional RDMA subscription
   --help                  Print help (including the built-for release) without connecting
 ```
 
 The binary validates every argument before it opens a connection. Each option
-takes exactly one separate value and may appear once. `--opt=value`, unknown
+may appear once; `--with-rdma` takes no value, and value options take one
+separate value. `--max-messages` counts typed summaries across enabled
+subscriptions (decoder rejections do not count). `--opt=value`, unknown
 options and extra arguments are rejected. Topic, message, schema, group,
 reconnect and replay are **not** configurable.
 
@@ -258,6 +294,21 @@ other than the classification, raw MSG text and rejected payload content are
 never printed. A decoder diagnostic is reported by its schema-derived codec
 path. Its free text is withheld when it could quote the rejected document.
 
+Example combined-mode lines (Log lines retain the format above):
+
+```text
+READY sid=sub-1 message=Log topic=uci.log sid=sub-2 message=RDMA_InitializeSetup topic=uci.rdma (both SUBs acknowledged by the broker)
+RECEIVED RDMA_InitializeSetup #2 setup=12345678-1234-1234-8234-123456789abc provider=TCP classification=U schema=002.6.0 header-timestamp=2026-01-02T03:04:05Z endpoints=2 ipv4=192.0.2.10 ipv6=2001:db8::1
+UNSUBSCRIBED sid=sub-2 acknowledged by the broker (+OK)
+UNSUBSCRIBED sid=sub-1 acknowledged by the broker (+OK)
+```
+
+RDMA shows the setup UUID, provider enum, classification, schema version,
+header timestamp, total endpoint count and the first four addresses in their
+original spelling and endpoint order. It counts any omitted endpoints, and
+never shows endpoint names, descriptions, security caveats or rejected JSON.
+The client only receives UCI messages; it does not initiate RDMA traffic.
+
 ## Exit statuses
 
 | Status | Meaning |
@@ -266,7 +317,7 @@ path. Its free text is withheld when it could quote the rejected document.
 | 1 | unexpected internal failure |
 | 2 | invalid arguments, including native `wss://` (nothing was connected) |
 | 3 | connect failed: TCP refused, upgrade declined, wrong/missing `owp`, INIT `-ERR` (for example `Unsupported-Schema` or `Unsupported-Service`), INFO invalid, or connect timeout |
-| 4 | the broker rejected the SUB (`-ERR`, for example `Illegal-State` for an unauthorized topic) |
+| 4 | the broker rejected either SUB (`-ERR`, for example `Illegal-State` for an unauthorized topic) |
 | 5 | session failure after connecting: SUB/operation timeout, transport loss, application queue overflow, or a failure inside the typed callback |
 | 6 | the run was otherwise clean, but UNSUB or close did not succeed, or a runtime thread or socket remained |
 | 130 / 143 | stopped by SIGINT / SIGTERM, after the normal UNSUB and close |
@@ -285,14 +336,19 @@ exit status, and the normal shutdown still runs.
   `poll_event`, `close`) runs on the application's main thread. No
   application lock is held while a runtime operation runs. The runtime is
   never closed or destroyed from its handler.
-* **READY** is printed only after the broker's `+OK` for SUB.
-* **Order.** Typed Logs are displayed in callback order (`#1, #2, …`; the
-  runtime dispatches one subscription serially).
+* **READY** follows all enabled SUB acknowledgments. After a single INIT/INFO,
+  the client subscribes to Log first and RDMA second. If the second SUB is
+  rejected, the client does not print `READY` and explicitly unsubscribes Log.
+* **Order.** The shared FIFO has one display sequence (`#1, #2, …`). It preserves
+  callback order within each SID. There is no publication-order guarantee across
+  independent subscriptions.
 * **Bounded.** The receive period (`--duration-seconds`) and the message count
   (`--max-messages`) are both bounded. If the application queue fills, the
   session fails explicitly (`QUEUE-OVERFLOW`, exit 5) instead of silently
-  skipping a Log.
-* **Shutdown** (normal, failure or signal): an explicit UNSUB (acknowledged),
+  skipping a message. The single dispatcher writes to a preallocated SPSC
+  ring without acquiring an application lock or waiting for space.
+* **Shutdown** (normal, failure or signal): explicit UNSUB for each established
+  SID in reverse order (RDMA then Log),
   then the queue is closed. Pending summaries are discarded and counted in
   `pending-discarded`. Then `Runtime::close()` performs the WebSocket close
   and joins both runtime threads. After UNSUB the runtime guarantees the
@@ -300,10 +356,14 @@ exit status, and the normal shutdown still runs.
   `callbacks-after-unsubscribe` to confirm it. `CLOSED … runtime-threads=0
   sockets=N sockets-at-start=N resources-released=yes` reports `/proc`
   evidence: no live `ams-lacal*` thread and no socket beyond those open at
-  start.
-* **Signals.** The SIGINT/SIGTERM handlers only store the signal number in a
-  `volatile sig_atomic_t`, which is async-signal-safe. The main loop observes
-  it within about 25 ms and runs the normal shutdown.
+  start. A dead transport removes registrations locally; it is never reported
+  as an acknowledged UNSUB. Combined mode reports per-family callback counts and
+  decoder/handler events observed in the runtime event queue.
+* **Signals.** SIGINT/SIGTERM handlers only store the signal number in a
+  lock-free atomic. During reception the main loop observes it within about
+  25 ms. Setup operations are synchronous: a signal is acted on after the
+  outstanding operation returns or times out. A successful pending SUB is
+  tracked and unsubscribed; an operation failure keeps its own exit status.
 
 ## `ws://` versus `wss://`
 
@@ -342,4 +402,6 @@ independent observer and publisher, built on
 `negative_peer.cpp` covers transport failures that Sleet cannot be made to
 exhibit, using `tests/cpp-lacal/mock_peer.hpp`. See
 [docs/task-cpp-oms-008-standalone-log-client.md](../../docs/task-cpp-oms-008-standalone-log-client.md)
-for the design and evidence.
+for the original design and evidence, and
+[CPP-OMS-009 qualification](../../docs/task-cpp-oms-009-multimessage-client.md)
+for the combined-profile reproduction and evidence.

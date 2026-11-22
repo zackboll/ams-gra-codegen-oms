@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# CPP-OMS-008: build the standalone C++17 UCI Log receiver for ONE pinned UCI
+# Build the standalone C++17 UCI receiver for ONE pinned UCI
 # release, from a clean checkout, into external build storage.
 #
-#   examples/cpp-uci-client/build.sh --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR
+#   examples/cpp-uci-client/build.sh --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR [--with-rdma]
 #
 #   1. verifies the pinned MessageDefinitions root and its sibling
 #      SecurityMarkings by SHA-256 (the same pins as scripts/task102/admission.py);
 #   2. production `service-check --language cpp --world closed-schema --with-codec`
-#      on examples/cpp-uci-client/contracts/uci{25,26}-service.yaml must report
-#      the model, service API and codec READY;
+#      on the release/profile contract must report model, service API and codec READY;
 #   3. production `service-generate ... --with-codec` writes oam.hpp,
 #      service_api.hpp and service_codec.hpp to BUILD_DIR/generated/uci{25,26};
 #   4. strict C++17 compile of src/main.cpp with the existing runtime sources
@@ -19,18 +18,19 @@
 # Environment: CXX (default g++), AMS_GRA_CLI (prebuilt production CLI; built
 # with cargo otherwise), CPP_UCI_CLIENT_EXTRA_CXXFLAGS (e.g. sanitizers).
 # Requires Boost >= 1.81 headers (Boost.Beast; no Boost library is linked).
-# Nothing is written inside the repository except Cargo's own target/.
+# All build artifacts are written to external storage.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 
-usage() { echo "usage: $0 --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR" >&2; exit 2; }
-release="" schema="" out=""
+usage() { echo "usage: $0 --release 2.5|2.6 --schema MESSAGE_DEFINITIONS_XSD --out BUILD_DIR [--with-rdma]" >&2; exit 2; }
+release="" schema="" out="" with_rdma=0
 while (($#)); do
   case "$1" in
     --release) (($# >= 2)) || usage; release="$2"; shift 2 ;;
     --schema) (($# >= 2)) || usage; schema="$2"; shift 2 ;;
     --out) (($# >= 2)) || usage; out="$2"; shift 2 ;;
+    --with-rdma) ((with_rdma == 0)) || usage; with_rdma=1; shift ;;
     -h|--help) usage ;;
     *) echo "unknown argument: $1" >&2; usage ;;
   esac
@@ -84,8 +84,8 @@ extra=()
 # runtime. With GCC 14, -O2 makes -Wnull-dereference (kept, as -Werror) fire
 # inside Boost.Asio scheduler code inlined into the unchanged runtime.cpp.
 flags=("${strict[@]}" -O1 -pthread "${extra[@]}")
-probe="$out/probe"
-mkdir -p "$probe"
+probe="$(mktemp -d "$out/boost-probe.XXXXXX")"
+trap 'rm -rf -- "$probe"' EXIT
 cat > "$probe/boost.cpp" <<'EOF'
 #include <boost/version.hpp>
 #include <boost/beast/version.hpp>
@@ -104,15 +104,25 @@ echo "dependency: $boost"
 
 cli="${AMS_GRA_CLI:-}"
 if [[ -z "$cli" ]]; then
-  (cd "$repo" && cargo build --locked --release -p ams-gra-codegen-oms --bin ams-gra-codegen-oms)
-  cli="$repo/target/release/ams-gra-codegen-oms"
+  (cd "$repo" && cargo build --target-dir "$out/cargo" --locked --release -p ams-gra-codegen-oms --bin ams-gra-codegen-oms)
+  cli="$out/cargo/release/ams-gra-codegen-oms"
 fi
 
 # ---- 2. production readiness ---------------------------------------------------
-contract="$repo/examples/cpp-uci-client/contracts/uci$v-service.yaml"
+contract_path="examples/cpp-uci-client/contracts/uci$v-service.yaml"
+service=cpp-uci-client messages=1 artifact="uci$v"
+if ((with_rdma)); then
+  contract_path="tests/fixtures/cpp-codec/addresses/uci$v-log-rdma-service.yaml"
+  service=cpp-uci-client-log-rdma messages=2 artifact="uci$v-log-rdma"
+  case "$v" in
+    25) closure=55; emitted=54 ;;
+    26) closure=57; emitted=56 ;;
+  esac
+fi
+contract="$repo/$contract_path"
 common=(--schema "$schema" --contract "$contract" --language cpp --world closed-schema)
 report="$("$cli" service-check "${common[@]}" --with-codec)"
-for expected in "service: cpp-uci-client" "selected oms messages: 1" "renderable selected oms messages: 1" \
+for expected in "service: $service" "selected oms messages: $messages" "renderable selected oms messages: $messages" \
                 "selected type closure: $closure" "renderable selected types: $closure" "status: READY" \
                 "codec renderable emitted declarations: $emitted/$emitted" "codec status: READY"; do
   grep -qxF "$expected" <<<"$report" || { echo "$report" >&2; echo "service-check: missing '$expected'" >&2; exit 1; }
@@ -120,9 +130,9 @@ done
 echo "UCI $release readiness: closure $closure/$closure model+service API READY, codec $emitted/$emitted READY"
 
 # ---- 3. generation into external storage ---------------------------------------------
-gen="$out/generated/uci$v"
+gen="$out/generated/$artifact"
 rm -rf "$gen"
-"$cli" service-generate "${common[@]}" --with-codec --output "$gen" >"$out/generate-uci$v.log"
+"$cli" service-generate "${common[@]}" --with-codec --output "$gen" >"$out/generate-$artifact.log"
 for header in oam.hpp service_api.hpp service_codec.hpp; do
   [[ -s "$gen/$header" ]] || { echo "service-generate did not produce $header" >&2; exit 1; }
 done
@@ -135,8 +145,8 @@ if grep -q 'namespace exchange_publish' "$gen/service_api.hpp"; then
 fi
 
 # ---- 4. strict C++17 compile -------------------------------------------------------------
-obj="$out/obj/uci$v"
-bin="$out/bin/cpp-uci-client-uci$v"
+obj="$out/obj/$artifact"
+bin="$out/bin/cpp-uci-client-$artifact"
 mkdir -p "$obj" "$out/bin"
 runtime_include="$repo/cpp/oms-lacal-runtime/include"
 "$cxx" "${flags[@]}" -I "$runtime_include" -c "$repo/cpp/oms-lacal-runtime/src/owp.cpp" -o "$obj/owp.o" &
@@ -145,6 +155,7 @@ p1=$!
 p2=$!
 status=0
 "$cxx" "${flags[@]}" "-DCPP_UCI_CLIENT_UCI_RELEASE=$v" "-DCPP_UCI_CLIENT_SCHEMA_SHA256=\"$root_sha\"" \
+  "-DCPP_UCI_CLIENT_WITH_RDMA=$with_rdma" \
   -I "$runtime_include" -I "$here/src" -I "$gen" -c "$here/src/main.cpp" -o "$obj/main.o" || status=$?
 wait "$p1" || status=$?
 wait "$p2" || status=$?
@@ -156,7 +167,7 @@ wait "$p2" || status=$?
   echo "schema_version=$schema_version"
   echo "schema_root_sha256=$root_sha"
   echo "security_markings_sha256=$marks_sha"
-  echo "contract=examples/cpp-uci-client/contracts/uci$v-service.yaml"
+  echo "contract=$contract_path"
   echo "contract_sha256=$(sha "$contract")"
   for header in oam.hpp service_api.hpp service_codec.hpp; do
     echo "generated_${header%.hpp}_sha256=$(sha "$gen/$header")"
@@ -166,6 +177,6 @@ wait "$p2" || status=$?
   echo "flags=${flags[*]}"
   echo "binary=$bin"
   echo "binary_sha256=$(sha "$bin")"
-} > "$out/build-uci$v.manifest"
-sed 's/^/  /' "$out/build-uci$v.manifest"
+} > "$out/build-$artifact.manifest"
+sed 's/^/  /' "$out/build-$artifact.manifest"
 echo "BUILT cpp-uci-client for UCI $release ($schema_version): $bin"

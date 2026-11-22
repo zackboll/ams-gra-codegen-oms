@@ -28,6 +28,9 @@
 #ifndef CPP_UCI_CLIENT_SCHEMA_SHA256
 #error "build with examples/cpp-uci-client/build.sh (defines CPP_UCI_CLIENT_SCHEMA_SHA256)"
 #endif
+#ifndef CPP_UCI_CLIENT_WITH_RDMA
+#define CPP_UCI_CLIENT_WITH_RDMA 0
+#endif
 
 namespace cpp_uci_client::release {
 
@@ -58,7 +61,19 @@ inline constexpr std::string_view built_from_root_sha256 = CPP_UCI_CLIENT_SCHEMA
 inline constexpr std::string_view oam_namespace = "https://www.vdl.afrl.af.mil/programs/oam";
 inline constexpr std::string_view global_message = "Log";  // OWP global element; never "LogMT"
 inline constexpr std::string_view application_topic = "uci.log";
+inline constexpr bool supports_rdma = CPP_UCI_CLIENT_WITH_RDMA != 0;
+inline constexpr std::string_view rdma_message = "RDMA_InitializeSetup";
+inline constexpr std::string_view rdma_topic = "uci.rdma";
+#if CPP_UCI_CLIENT_WITH_RDMA
+inline constexpr std::string_view application_service = "cpp-uci-client-log-rdma";
+namespace rdma_endpoint = ::service_api::function_rdma::exchange_receive;
+static_assert(std::is_same_v<rdma_endpoint::Payload, m::RDMAInitializeSetupMT>);
+static_assert(rdma_endpoint::message_name == rdma_message && rdma_endpoint::topic == rdma_topic);
+static_assert(rdma_endpoint::message_namespace == oam_namespace && rdma_endpoint::direction == "input");
+static_assert(!rdma_endpoint::subscription_group.has_value());
+#else
 inline constexpr std::string_view application_service = "cpp-uci-client";
+#endif
 
 static_assert(built_from_root_sha256 == pinned_root_sha256,
               "the generated types were not produced from the pinned MessageDefinitions root of the selected release");
@@ -77,6 +92,6 @@ static_assert(endpoint::topic == application_topic, "the application topic must 
 static_assert(endpoint::direction == std::string_view("input"), "the endpoint must be an input exchange");
 static_assert(!endpoint::subscription_group.has_value(), "the application contract declares no subscription group");
 static_assert(::service_api::service_name == application_service,
-              "generated from a contract other than examples/cpp-uci-client/contracts/uci{25,26}-service.yaml");
+              "generated service does not match the selected build profile");
 
 }  // namespace cpp_uci_client::release

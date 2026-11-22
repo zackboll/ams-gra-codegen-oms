@@ -16,10 +16,13 @@
 //       Prints the exact envelope text each publish step of PLAN sends.
 //   wire_peer check-golden SCHEMA FIXTURE
 //       documents::golden(SCHEMA) must equal FIXTURE with whitespace removed.
+//   wire_peer round-trip URL SERVICE SCHEMA PLAN_TSV
+//       Check verbose statuses and exact deliveries on both subscriptions.
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -157,6 +160,50 @@ int publish(const std::string& url, const std::string& service, const std::strin
     return 0;
 }
 
+// TSV: label, topic, expected status prefix, compact envelope. Separate raw
+// connections observe and publish; compare admitted MSGs without printing JSON.
+void round_trip(const std::string& url, const std::string& service, const std::string& schema,
+                const std::string& path) {
+    const Where where = split(url);
+    raw::Client observer(where.host, where.port, service, schema, std::chrono::seconds(5));
+    raw::Client publisher(where.host, where.port, service, schema, std::chrono::seconds(5));
+    if (observer.command("SUB wrong-name RDMAInitializeSetupMT uci.rdma").rfind("-ERR Illegal-Argument", 0) != 0) {
+        throw std::runtime_error("C++ type name was not rejected as an OWP SUB message name");
+    }
+    std::cout << "SUB wrong-name -> -ERR Illegal-Argument" << std::endl;
+    if (observer.command("SUB wire-log Log uci.log") != "+OK" ||
+        observer.command("SUB wire-rdma RDMA_InitializeSetup uci.rdma") != "+OK") {
+        throw std::runtime_error("observer SUB not acknowledged");
+    }
+    std::ifstream plan(path);
+    if (!plan) {
+        throw std::runtime_error("cannot open publication plan");
+    }
+    std::string row;
+    while (std::getline(plan, row)) {
+        std::istringstream fields(row);
+        std::string label, topic, expected, envelope_text;
+        if (!std::getline(fields, label, '\t') || !std::getline(fields, topic, '\t') ||
+            !std::getline(fields, expected, '\t') || !std::getline(fields, envelope_text)) {
+            throw std::runtime_error("invalid publication plan row");
+        }
+        const std::string result = publisher.command("PUB " + topic + " " + envelope_text);
+        if (result.rfind(expected, 0) != 0) {
+            throw std::runtime_error("unexpected PUB status for " + label);
+        }
+        std::cout << "PUB " << label << " -> " << expected << std::endl;
+        if (expected == "+OK") {
+            const std::string sid = topic == kTopic ? "wire-log" : "wire-rdma";
+            if (observer.receive().value_or("") != "MSG " + sid + " " + envelope_text) {
+                throw std::runtime_error("observer MSG differs for " + label);
+            }
+            std::cout << "OBSERVED " << label << " sid=" << sid << " byte-exact" << std::endl;
+        } else if (observer.receive(std::chrono::milliseconds(100))) {
+            throw std::runtime_error("unexpected MSG after broker rejection for " + label);
+        }
+    }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -167,6 +214,10 @@ int main(int argc, char** argv) {
         }
         if (args.size() == 5 && args[0] == "publish") {
             return publish(args[1], args[2], args[3], args[4]);
+        }
+        if (args.size() == 5 && args[0] == "round-trip") {
+            round_trip(args[1], args[2], args[3], args[4]);
+            return 0;
         }
         if (args.size() == 3 && args[0] == "render") {
             return render(args[1], args[2]);

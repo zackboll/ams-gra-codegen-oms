@@ -103,12 +103,20 @@ inline EventOutcome describe_event(const lacal::Event& event) {
             // Client-side rejection: the broker delivered the MSG, the generated
             // decoder (or the runtime's envelope check) refused it. The
             // subscription stays active; reception continues.
-            outcome.line = "DECODE-ERROR Log rejected by the client: ";
+            const bool rdma = event.message_name == "RDMA_InitializeSetup";
+            outcome.line = rdma ? "DECODE-ERROR RDMA_InitializeSetup rejected by the client: "
+                                : "DECODE-ERROR Log rejected by the client: ";
             outcome.line += lacal::to_string(event.error.kind);
-            outcome.line += " path=" + (event.error.codec_path.empty() ? std::string("<envelope>")
-                                                                       : safe_text(event.error.codec_path, 160));
+            // RDMA diagnostics can originate in the JSON parser as well as
+            // the schema codec. Withhold free text; report only a known path.
+            const std::string& path = event.error.codec_path;
+            const bool rdma_path = path.rfind("RDMA_InitializeSetupMT", 0) == 0 &&
+                path.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.[]") ==
+                    std::string::npos;
+            outcome.line += " path=" + (path.empty() || (rdma && !rdma_path) ? std::string("<envelope>")
+                                                                            : safe_text(path, 160));
             const std::string& reason = event.error.message;
-            if (reason.find_first_of("\"'") == std::string::npos) {
+            if (!rdma && reason.find_first_of("\"'") == std::string::npos) {
                 outcome.line += " reason=\"" + safe_text(reason, 160) + "\"";
             } else {
                 outcome.line += " reason=<withheld: may quote the rejected document>";
@@ -118,7 +126,9 @@ inline EventOutcome describe_event(const lacal::Event& event) {
         }
         case lacal::EventKind::handler_exception:
             outcome.fatal = true;
-            outcome.line = "CALLBACK-FAILURE the typed Log callback failed: " + describe_error(event.error);
+            outcome.line = event.message_name == "RDMA_InitializeSetup"
+                ? "CALLBACK-FAILURE the typed RDMA_InitializeSetup callback failed (details withheld)"
+                : "CALLBACK-FAILURE the typed Log callback failed: " + describe_error(event.error);
             return outcome;
         case lacal::EventKind::connection_closed:
             outcome.fatal = true;

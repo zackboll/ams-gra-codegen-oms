@@ -39,6 +39,7 @@ struct Options {
     std::string service_id;
     unsigned duration_seconds = kDefaultDurationSeconds;
     std::uint32_t max_messages = kDefaultMaxMessages;
+    bool with_rdma = false;
 };
 
 struct ParseResult {
@@ -181,10 +182,10 @@ inline std::optional<std::string> check_url(std::string_view url) {
     return std::nullopt;
 }
 
-/// Parses argv[1..]. `--help` must be the only argument. Each option takes
-/// exactly one separate value and may appear once; unknown options and the
+/// Parses argv[1..]. `--help` must be the only argument. Value options take
+/// exactly one separate value; all options may appear once. Unknown options and the
 /// `--opt=value` form are rejected. Nothing here touches the network.
-inline ParseResult parse_arguments(const std::vector<std::string_view>& args) {
+inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bool supports_rdma = false) {
     ParseResult result;
     const auto fail = [&result](std::string message) {
         result.kind = ParseResult::Kind::error;
@@ -206,6 +207,16 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args) {
         const std::string_view flag = args[i];
         if (flag == "--help") {
             return fail("--help must be the only argument");
+        }
+        if (flag == "--with-rdma") {
+            if (!supports_rdma) {
+                return fail("--with-rdma requires a Log + RDMA build (build.sh --with-rdma)");
+            }
+            if (result.options.with_rdma) {
+                return fail("--with-rdma may be given only once");
+            }
+            result.options.with_rdma = true;
+            continue;
         }
         bool* seen = nullptr;
         if (flag == "--url") {
@@ -263,7 +274,7 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args) {
 
 /// --help text. `release`/`schema` are the values compiled into this binary.
 inline std::string help_text(std::string_view program, std::string_view release, std::string_view schema,
-                             std::string_view message, std::string_view topic) {
+                             std::string_view message, std::string_view topic, bool supports_rdma = false) {
     const std::string m(message);
     const std::string t(topic);
     std::string text;
@@ -276,7 +287,10 @@ inline std::string help_text(std::string_view program, std::string_view release,
     text += "  --url URL               Sleet endpoint; ws:// only (native wss:// TLS is not supported)\n";
     text += "  --service-id ID         OWP service identity authorized for '" + m + "' on '" + t + "'\n";
     text += "  --duration-seconds N    Receive for at most N seconds, 1..3600 (default 30)\n";
-    text += "  --max-messages N        Stop after N typed Log messages, 1..100000 (default 10)\n";
+    text += supports_rdma
+                ? "  --max-messages N        Stop after N typed messages across enabled subscriptions, 1..100000 (default 10)\n"
+                  "  --with-rdma             Also subscribe to 'RDMA_InitializeSetup' on 'uci.rdma' (requires authorization)\n"
+                : "  --max-messages N        Stop after N typed Log messages, 1..100000 (default 10)\n";
     text += "  --help                  Print this help without connecting\n\n";
     text += "Exit status:\n";
     text += "  0    a bound was reached; UNSUB acknowledged; runtime closed\n";
