@@ -1,5 +1,5 @@
 // Standalone C++17 UCI receiver (application entry point). One Runtime and
-// WebSocket carry Log and, optionally, RDMA_InitializeSetup via generated APIs.
+// WebSocket carry Log and the optional RDMA and Survivability subscriptions.
 //
 // main() owns every runtime operation. SIGINT/SIGTERM handlers only store
 // the signal number in a lock-free atomic; the loop observes it within
@@ -38,15 +38,18 @@ int stop_signal() { return g_stop_signal.load(std::memory_order_relaxed); }
 
 void line(const std::string& text) { std::cout << text << std::endl; }
 
-void report_shutdown(const cpp_uci_client::ShutdownReport& report, bool with_rdma) {
+void report_shutdown(const cpp_uci_client::ShutdownReport& report, const cpp_uci_client::Options& options) {
     for (const std::string& unsubscribed : report.unsubscribe_lines) {
         line(unsubscribed);
     }
     for (const std::string& notice : report.notices) {
         line(notice);
     }
-    if (with_rdma) {
+    if (options.with_rdma) {
         for (auto family : cpp_uci_client::families) {
+            if (family == cpp_uci_client::Family::survivability && !options.with_survivability) {
+                continue;
+            }
             const auto& stats = report.per_family[cpp_uci_client::index(family)];
             line("FAMILY message=" + std::string(cpp_uci_client::message_name(family)) +
                  " callbacks=" + std::to_string(stats.callbacks) +
@@ -87,7 +90,9 @@ int run(const cpp_uci_client::Options& options) {
          std::string(rel::application_topic) + " max-messages=" + std::to_string(options.max_messages) +
          " duration-seconds=" + std::to_string(options.duration_seconds) +
          (options.with_rdma ? " also-message=" + std::string(rel::rdma_message) + " also-topic=" +
-                                  std::string(rel::rdma_topic) : ""));
+                                  std::string(rel::rdma_topic) : "") +
+         (options.with_survivability ? " also-message=" + std::string(rel::survivability_message) + " also-topic=" +
+                                           std::string(rel::survivability_topic) : ""));
 
     cpp_uci_client::ClientSettings settings;
     settings.url = options.url;
@@ -100,7 +105,7 @@ int run(const cpp_uci_client::Options& options) {
         if (options.with_rdma && primary == status::ok && report.queue.rejected_full != 0) {
             line("QUEUE-OVERFLOW during shutdown; rejected=" + std::to_string(report.queue.rejected_full));
         }
-        report_shutdown(report, options.with_rdma);
+        report_shutdown(report, options);
         if (primary != status::ok) {
             return primary;
         }
@@ -137,6 +142,15 @@ int run(const cpp_uci_client::Options& options) {
         if (auto failure = client.subscribe(Family::rdma)) {
             return fail(failure->line, failure->exit_status);
         }
+        if (options.with_survivability) {
+            if (stop_signal() != 0) {
+                line("STOP signal=" + std::to_string(stop_signal()) + " before Survivability subscribe");
+                return finish(status::ok);
+            }
+            if (auto failure = client.subscribe(Family::survivability)) {
+                return fail(failure->line, failure->exit_status);
+            }
+        }
         if (!client.connected()) {
             return fail("CONNECTION-LOST after final SUB acknowledgment", status::session);
         }
@@ -146,7 +160,10 @@ int run(const cpp_uci_client::Options& options) {
         }
         line("READY sid=" + client.subscription_id() + " message=Log topic=uci.log sid=" +
              client.subscription_id(Family::rdma) + " message=" + std::string(rel::rdma_message) +
-             " topic=" + std::string(rel::rdma_topic) + " (both SUBs acknowledged by the broker)");
+             " topic=" + std::string(rel::rdma_topic) +
+             (options.with_survivability ? " sid=" + client.subscription_id(Family::survivability) +
+                  " message=" + std::string(rel::survivability_message) + " topic=" + std::string(rel::survivability_topic) +
+                  " (all three SUBs acknowledged by the broker)" : " (both SUBs acknowledged by the broker)"));
     } else {
         line("READY sid=" + client.subscription_id() + " message=" + std::string(rel::global_message) + " topic=" +
              std::string(rel::application_topic) + " (SUB acknowledged by the broker)");
@@ -197,11 +214,13 @@ int main(int argc, char** argv) {
         for (int i = 1; i < argc; ++i) {
             args.emplace_back(argv[i]);
         }
-        const cpp_uci_client::ParseResult parsed = cpp_uci_client::parse_arguments(args, rel::supports_rdma);
+        const cpp_uci_client::ParseResult parsed = cpp_uci_client::parse_arguments(args, rel::supports_rdma,
+                                                                                   rel::supports_survivability);
         switch (parsed.kind) {
             case cpp_uci_client::ParseResult::Kind::help:
                 std::cout << cpp_uci_client::help_text("cpp-uci-client", rel::uci_release, rel::schema_version,
-                                                       rel::global_message, rel::application_topic, rel::supports_rdma);
+                                                       rel::global_message, rel::application_topic, rel::supports_rdma,
+                                                       rel::supports_survivability);
                 return status::ok;
             case cpp_uci_client::ParseResult::Kind::error:
                 std::cerr << "ERROR " << parsed.error << '\n';

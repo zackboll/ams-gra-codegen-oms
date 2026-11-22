@@ -40,6 +40,7 @@ struct Options {
     unsigned duration_seconds = kDefaultDurationSeconds;
     std::uint32_t max_messages = kDefaultMaxMessages;
     bool with_rdma = false;
+    bool with_survivability = false;
 };
 
 struct ParseResult {
@@ -185,7 +186,8 @@ inline std::optional<std::string> check_url(std::string_view url) {
 /// Parses argv[1..]. `--help` must be the only argument. Value options take
 /// exactly one separate value; all options may appear once. Unknown options and the
 /// `--opt=value` form are rejected. Nothing here touches the network.
-inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bool supports_rdma = false) {
+inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bool supports_rdma = false,
+                                   bool supports_survivability = false) {
     ParseResult result;
     const auto fail = [&result](std::string message) {
         result.kind = ParseResult::Kind::error;
@@ -216,6 +218,13 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
                 return fail("--with-rdma may be given only once");
             }
             result.options.with_rdma = true;
+            continue;
+        }
+        if (flag == "--with-survivability" && supports_survivability) {
+            if (result.options.with_survivability) {
+                return fail("--with-survivability may be given only once");
+            }
+            result.options.with_survivability = true;
             continue;
         }
         bool* seen = nullptr;
@@ -256,6 +265,9 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
             result.options.max_messages = *parsed;
         }
     }
+    if (result.options.with_survivability && !result.options.with_rdma) {
+        return fail("--with-survivability requires --with-rdma");
+    }
     if (!seen_url) {
         return fail("--url is required; use --help");
     }
@@ -274,7 +286,8 @@ inline ParseResult parse_arguments(const std::vector<std::string_view>& args, bo
 
 /// --help text. `release`/`schema` are the values compiled into this binary.
 inline std::string help_text(std::string_view program, std::string_view release, std::string_view schema,
-                             std::string_view message, std::string_view topic, bool supports_rdma = false) {
+                             std::string_view message, std::string_view topic, bool supports_rdma = false,
+                             bool supports_survivability = false) {
     const std::string m(message);
     const std::string t(topic);
     std::string text;
@@ -291,6 +304,9 @@ inline std::string help_text(std::string_view program, std::string_view release,
                 ? "  --max-messages N        Stop after N typed messages across enabled subscriptions, 1..100000 (default 10)\n"
                   "  --with-rdma             Also subscribe to 'RDMA_InitializeSetup' on 'uci.rdma' (requires authorization)\n"
                 : "  --max-messages N        Stop after N typed Log messages, 1..100000 (default 10)\n";
+    if (supports_survivability) {
+        text += "  --with-survivability    Also subscribe to 'SurvivabilityRiskLevel' on 'uci.survivability' (requires --with-rdma and authorization)\n";
+    }
     text += "  --help                  Print this help without connecting\n\n";
     text += "Exit status:\n";
     text += "  0    a bound was reached; UNSUB acknowledged; runtime closed\n";

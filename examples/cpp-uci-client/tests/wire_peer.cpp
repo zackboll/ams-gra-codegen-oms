@@ -16,7 +16,7 @@
 //       Prints the exact envelope text each publish step of PLAN sends.
 //   wire_peer check-golden SCHEMA FIXTURE
 //       documents::golden(SCHEMA) must equal FIXTURE with whitespace removed.
-//   wire_peer round-trip URL SERVICE SCHEMA PLAN_TSV
+//   wire_peer round-trip|round-trip-three URL SERVICE SCHEMA PLAN_TSV
 //       Check verbose statuses and exact deliveries on both subscriptions.
 #include <chrono>
 #include <cstdlib>
@@ -163,7 +163,7 @@ int publish(const std::string& url, const std::string& service, const std::strin
 // TSV: label, topic, expected status prefix, compact envelope. Separate raw
 // connections observe and publish; compare admitted MSGs without printing JSON.
 void round_trip(const std::string& url, const std::string& service, const std::string& schema,
-                const std::string& path) {
+                const std::string& path, bool survivability) {
     const Where where = split(url);
     raw::Client observer(where.host, where.port, service, schema, std::chrono::seconds(5));
     raw::Client publisher(where.host, where.port, service, schema, std::chrono::seconds(5));
@@ -174,6 +174,13 @@ void round_trip(const std::string& url, const std::string& service, const std::s
     if (observer.command("SUB wire-log Log uci.log") != "+OK" ||
         observer.command("SUB wire-rdma RDMA_InitializeSetup uci.rdma") != "+OK") {
         throw std::runtime_error("observer SUB not acknowledged");
+    }
+    if (survivability) {
+        if (observer.command("SUB wrong-risk SurvivabilityRiskLevelMT uci.survivability").rfind("-ERR Illegal-Argument", 0) != 0 ||
+            observer.command("SUB wire-risk SurvivabilityRiskLevel uci.survivability") != "+OK") {
+            throw std::runtime_error("unexpected Survivability SUB result");
+        }
+        std::cout << "SUB wrong-risk -> -ERR Illegal-Argument\nSUB wire-risk -> +OK" << std::endl;
     }
     std::ifstream plan(path);
     if (!plan) {
@@ -193,13 +200,15 @@ void round_trip(const std::string& url, const std::string& service, const std::s
         }
         std::cout << "PUB " << label << " -> " << expected << std::endl;
         if (expected == "+OK") {
-            const std::string sid = topic == kTopic ? "wire-log" : "wire-rdma";
+            const std::string sid = topic == kTopic ? "wire-log" : topic == "uci.rdma" ? "wire-rdma" : "wire-risk";
             if (observer.receive().value_or("") != "MSG " + sid + " " + envelope_text) {
                 throw std::runtime_error("observer MSG differs for " + label);
             }
             std::cout << "OBSERVED " << label << " sid=" << sid << " byte-exact" << std::endl;
         } else if (observer.receive(std::chrono::milliseconds(100))) {
             throw std::runtime_error("unexpected MSG after broker rejection for " + label);
+        } else if (survivability) {
+            std::cout << "NO MSG " << label << std::endl;
         }
     }
 }
@@ -215,8 +224,8 @@ int main(int argc, char** argv) {
         if (args.size() == 5 && args[0] == "publish") {
             return publish(args[1], args[2], args[3], args[4]);
         }
-        if (args.size() == 5 && args[0] == "round-trip") {
-            round_trip(args[1], args[2], args[3], args[4]);
+        if (args.size() == 5 && (args[0] == "round-trip" || args[0] == "round-trip-three")) {
+            round_trip(args[1], args[2], args[3], args[4], args[0] == "round-trip-three");
             return 0;
         }
         if (args.size() == 3 && args[0] == "render") {
@@ -233,7 +242,7 @@ int main(int argc, char** argv) {
             std::cout << "GOLDEN " << args[1] << " matches " << args[2] << std::endl;
             return 0;
         }
-        std::cerr << "usage: wire_peer observe|publish|check-golden ...\n";
+        std::cerr << "usage: wire_peer observe|publish|check-golden|round-trip|round-trip-three ...\n";
         return 2;
     } catch (const std::exception& error) {
         std::cerr << "wire_peer: " << error.what() << '\n';

@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "ams_gra/lacal/runtime.hpp"
 #include "cli.hpp"
@@ -94,6 +95,47 @@ struct EventOutcome {
     bool fatal = false;  // ends the session (exit 5)
     std::string line;    // one report line; never contains the raw payload
 };
+
+// Emit only a known schema path (possibly an ancestor of the error), never
+// characters from an unrecognized diagnostic. Choice arms and array indices
+// need not be echoed. The runtime does not retain payload bytes on exceptions.
+inline EventOutcome describe_survivability_event(const lacal::Event& event, bool matched_sid = true) {
+    const bool fatal = event.kind == lacal::EventKind::handler_exception;
+    std::string line = fatal ? "CALLBACK-FAILURE" : "DECODE-ERROR";
+    line += matched_sid ? " SurvivabilityRiskLevel" : " <unattributed>";
+    line += fatal ? " category=handler_exception" : " category=" + std::string(lacal::to_string(event.error.kind));
+    std::string_view path = "<envelope>";
+    if (matched_sid && !fatal) {
+        constexpr std::string_view known[] = {
+            "SurvivabilityRiskLevelMT.MessageHeader.Timestamp",
+            "SurvivabilityRiskLevelMT.MessageHeader",
+            "SurvivabilityRiskLevelMT.SecurityInformation.OwnerProducer",
+            "SurvivabilityRiskLevelMT.SecurityInformation",
+            "SurvivabilityRiskLevelMT.MessageData.SurvivabilityRiskLevelID",
+            "SurvivabilityRiskLevelMT.MessageData.AppliesToSystemID",
+            "SurvivabilityRiskLevelMT.MessageData.RiskSetting",
+            "SurvivabilityRiskLevelMT.MessageData",
+            "SurvivabilityRiskLevelMT.ObjectState",
+            "SurvivabilityRiskLevelMT",
+        };
+        const std::string_view actual = event.error.codec_path;
+        for (const auto candidate : known) {
+            if (actual == candidate || (actual.size() > candidate.size() && actual.rfind(candidate, 0) == 0 &&
+                (actual[candidate.size()] == '.' || actual[candidate.size()] == '['))) {
+                path = candidate;
+                break;
+            }
+        }
+    }
+    if (fatal) {
+        line += " payload-bytes=unavailable";
+    } else {
+        line += " path=";
+        line += path;
+        line += " payload-bytes=" + std::to_string(event.payload_bytes);
+    }
+    return {fatal, std::move(line)};
+}
 
 /// Classifies one asynchronous runtime event.
 inline EventOutcome describe_event(const lacal::Event& event) {

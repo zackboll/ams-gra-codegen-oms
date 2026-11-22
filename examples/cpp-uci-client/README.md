@@ -1,4 +1,4 @@
-# Standalone C++17 UCI Log and RDMA setup receiver
+# Standalone C++17 UCI receiver
 
 A real command-line application, not a test facade. It connects to Sleet
 through the **existing** C++ LA-CAL runtime
@@ -7,8 +7,9 @@ subprotocol `owp`). It subscribes to the authentic UCI global message **`Log`**
 on the application topic **`uci.log`** and receives production-generated,
 strongly typed `programs::oam::LogMT` values. It then prints a bounded,
 schema-checked summary of each one. An optional build profile adds typed
-`RDMA_InitializeSetup` reception on the **same connection**. Both builds run
-in Log-only mode by default; only the combined build accepts `--with-rdma`.
+`RDMA_InitializeSetup` reception on the **same connection**. A third build
+profile adds optional `SurvivabilityRiskLevel` reception. All builds run in
+Log-only mode by default.
 
 This application adds no runtime, transport, codec or generator. It uses only
 these:
@@ -20,6 +21,8 @@ these:
 | Payload codec | generated `service_codec::decode_LogMT` / `encode_LogMT`, bound with `AMS_GRA_LACAL_PAYLOAD_CODEC` |
 | RDMA endpoint | generated `service_api::function_rdma::exchange_receive::subscribe` (`RDMA_InitializeSetup` on `uci.rdma`) |
 | RDMA payload and codec | `programs::oam::RDMAInitializeSetupMT`, `service_codec::decode_RDMAInitializeSetupMT` / `encode_RDMAInitializeSetupMT`, bound with the same macro |
+| Survivability endpoint | `service_api::function_survivability::exchange_receive::subscribe` (`SurvivabilityRiskLevel` on `uci.survivability`) |
+| Survivability payload and codec | `programs::oam::SurvivabilityRiskLevelMT`, `service_codec::decode_SurvivabilityRiskLevelMT` / `encode_SurvivabilityRiskLevelMT`, bound with the same macro |
 | Connection, owp, INIT/INFO, SUB/UNSUB, dispatch | unchanged `ams_gra::lacal::Runtime` |
 
 No UCI schema, generated source, object file or binary is committed. Each build
@@ -37,6 +40,7 @@ src/cli.hpp                    argument validation (before any connection)
 src/bounded_queue.hpp          bounded, ordered hand-off (dispatcher -> main thread)
 src/log_summary.hpp            the displayed, schema-checked LogMT fields
 src/rdma_summary.hpp           the displayed, schema-checked RDMA fields
+src/survivability_summary.hpp  the displayed, schema-checked Survivability fields
 src/session.hpp                reporting of runtime outcomes; exit-status mapping
 src/process_resources.hpp      /proc thread and socket observation after close
 build.sh                       pinned-schema check, readiness, generation, strict build
@@ -90,6 +94,8 @@ examples/cpp-uci-client/build.sh --release 2.5 --schema "$AMS_GRA_UCI_2_5_ROOT" 
 examples/cpp-uci-client/build.sh --release 2.6 --schema "$AMS_GRA_UCI_2_6_ROOT" --out "$CLIENT_SCRATCH/build"
 # Both message families, UCI 2.6 (use --release 2.5 and the matching root for 2.5)
 examples/cpp-uci-client/build.sh --with-rdma --release 2.6 --schema "$AMS_GRA_UCI_2_6_ROOT" --out "$CLIENT_SCRATCH/build"
+# All three families, UCI 2.6 (use --release 2.5 and its root for 2.5)
+examples/cpp-uci-client/build.sh --with-rdma --with-survivability --release 2.6 --schema "$AMS_GRA_UCI_2_6_ROOT" --out "$CLIENT_SCRATCH/build"
 ```
 
 Each build:
@@ -118,12 +124,23 @@ The combined profile uses the receive-only contracts in
 (for example `bin/cpp-uci-client-uci26-log-rdma`). It does not overwrite
 Log-only artifacts.
 
+| Build profile | Build switches | Artifact suffix and generation directory | Runtime modes |
+| --- | --- | --- | --- |
+| A | None | `uci25` / `uci26` | Log |
+| B | `--with-rdma` | `uci25-log-rdma` / `uci26-log-rdma` | Log; Log + RDMA |
+| C | `--with-rdma --with-survivability` | `uci25-log-rdma-survivability` / `uci26-log-rdma-survivability` | Log; Log + RDMA; all three |
+
+Profile C takes its receive-only contracts from `contracts/`, and keeps its
+binary, manifest, generated headers and objects separate from A and B.
+
 | Release | Selected messages | Type closure (model + API) | Codec declarations |
 | --- | --- | --- | --- |
 | 2.5 | 1 (`Log`) | 42/42 READY | 41/41 READY |
 | 2.6 | 1 (`Log`) | 44/44 READY | 43/43 READY |
 | 2.5 | 2 (`Log` + `RDMA_InitializeSetup`) | 55/55 READY | 54/54 READY |
 | 2.6 | 2 (`Log` + `RDMA_InitializeSetup`) | 57/57 READY | 56/56 READY |
+| 2.5 | 3 (Log + RDMA + Survivability) | 64/64 READY | 63/63 READY |
+| 2.6 | 3 (Log + RDMA + Survivability) | 65/65 READY | 64/64 READY |
 
 `CXX` selects the compiler. `AMS_GRA_CLI` names a prebuilt production CLI;
 without it, `build.sh` builds the CLI with `cargo build --locked --release`
@@ -151,6 +168,9 @@ constants with the generated types that are actually compiled in:
   and the correct generated service name for the build profile;
 * the combined profile's RDMA endpoint: payload `RDMAInitializeSetupMT`, global
   message `RDMA_InitializeSetup`, OAM namespace, topic `uci.rdma`, input, no group.
+* the three-message profile's third endpoint: payload `SurvivabilityRiskLevelMT`,
+  global message `SurvivabilityRiskLevel`, OAM namespace, topic
+  `uci.survivability`, input, no group.
 
 Compiling 2.5 types with the 2.6 selection (or vice versa), or with headers
 generated from a different contract, fails the build.
@@ -219,6 +239,21 @@ allowed_messages = ["RDMA_InitializeSetup"]
   --url ws://127.0.0.1:9000 --service-id cpp-uci-client --max-messages 10
 ```
 
+For all three, set `allowed_topics = ["uci.log", "uci.rdma", "uci.survivability"]`
+and add this binding without removing the Log or RDMA bindings:
+
+```toml
+[[topic_bindings]]
+topic = "uci.survivability"
+allowed_messages = ["SurvivabilityRiskLevel"]
+```
+
+```bash
+"$CLIENT_SCRATCH/build/bin/cpp-uci-client-uci26-log-rdma-survivability" \
+  --with-rdma --with-survivability --url ws://127.0.0.1:9000 \
+  --service-id cpp-uci-client --max-messages 10
+```
+
 ## CLI
 
 ```text
@@ -228,15 +263,17 @@ cpp-uci-client-uci26 --url ws://HOST[:PORT][/PATH] --service-id ID [OPTIONS]
   --duration-seconds N    Receive for at most N seconds, 1..3600 (default 30)
   --max-messages N        Stop after N typed Log messages, 1..100000 (default 10)
   --with-rdma             Combined build only: enable the additional RDMA subscription
+  --with-survivability    Profile C only, requires --with-rdma: enable SurvivabilityRiskLevel
   --help                  Print help (including the built-for release) without connecting
 ```
 
 The binary validates every argument before it opens a connection. Each option
-may appear once; `--with-rdma` takes no value, and value options take one
+may appear once; the two subscription flags take no value, and value options take one
 separate value. `--max-messages` counts typed summaries across enabled
 subscriptions (decoder rejections do not count). `--opt=value`, unknown
 options and extra arguments are rejected. Topic, message, schema, group,
-reconnect and replay are **not** configurable.
+reconnect and replay are **not** configurable. Unsupported switches and
+`--with-survivability` without `--with-rdma` exit with status 2 before connecting.
 
 Fixed runtime settings (`src/client.hpp`, all inside the runtime's supported
 `Config`):
@@ -309,6 +346,17 @@ original spelling and endpoint order. It counts any omitted endpoints, and
 never shows endpoint names, descriptions, security caveats or rejected JSON.
 The client only receives UCI messages; it does not initiate RDMA traffic.
 
+Survivability prints the risk-level UUID, checked header mode, classification,
+schema version, header timestamp and total risk-setting count. It displays the
+first three settings and first four `AllowedRisk` values per displayed setting
+in list order, with counts for omitted values. The pinned schema permits 1–4
+settings and 1–5 levels per setting. `RiskSettingType` is a record; the generated
+enums are `RiskPrioritizationEnum` and `VulnerabilityTypeEnum`. Descriptive
+labels, security caveats, `AppliesToSystemID`, exposure durations and raw
+payloads never appear. Decoder events show only the matched global name, error
+category, a known schema path (or ancestor) and payload byte count. Handler
+exceptions have no payload length in the runtime event; free text is withheld.
+
 ## Exit statuses
 
 | Status | Meaning |
@@ -317,7 +365,7 @@ The client only receives UCI messages; it does not initiate RDMA traffic.
 | 1 | unexpected internal failure |
 | 2 | invalid arguments, including native `wss://` (nothing was connected) |
 | 3 | connect failed: TCP refused, upgrade declined, wrong/missing `owp`, INIT `-ERR` (for example `Unsupported-Schema` or `Unsupported-Service`), INFO invalid, or connect timeout |
-| 4 | the broker rejected either SUB (`-ERR`, for example `Illegal-State` for an unauthorized topic) |
+| 4 | the broker rejected an enabled SUB (`-ERR`, for example `Illegal-State` for an unauthorized topic) |
 | 5 | session failure after connecting: SUB/operation timeout, transport loss, application queue overflow, or a failure inside the typed callback |
 | 6 | the run was otherwise clean, but UNSUB or close did not succeed, or a runtime thread or socket remained |
 | 130 / 143 | stopped by SIGINT / SIGTERM, after the normal UNSUB and close |
@@ -337,8 +385,11 @@ exit status, and the normal shutdown still runs.
   application lock is held while a runtime operation runs. The runtime is
   never closed or destroyed from its handler.
 * **READY** follows all enabled SUB acknowledgments. After a single INIT/INFO,
-  the client subscribes to Log first and RDMA second. If the second SUB is
-  rejected, the client does not print `READY` and explicitly unsubscribes Log.
+  the client subscribes to Log first, RDMA second if enabled, and Survivability
+  third if enabled. A failed SUB prevents `READY`; the client explicitly releases
+  all previously acknowledged SIDs in reverse order. It checks connection
+  health after the final combined-mode acknowledgment. A subsequent transport
+  failure can still occur after that check.
 * **Order.** The shared FIFO has one display sequence (`#1, #2, …`). It preserves
   callback order within each SID. There is no publication-order guarantee across
   independent subscriptions.
@@ -348,7 +399,7 @@ exit status, and the normal shutdown still runs.
   skipping a message. The single dispatcher writes to a preallocated SPSC
   ring without acquiring an application lock or waiting for space.
 * **Shutdown** (normal, failure or signal): explicit UNSUB for each established
-  SID in reverse order (RDMA then Log),
+  SID in reverse order (Survivability, RDMA, Log when all are enabled),
   then the queue is closed. Pending summaries are discarded and counted in
   `pending-discarded`. Then `Runtime::close()` performs the WebSocket close
   and joins both runtime threads. After UNSUB the runtime guarantees the
@@ -358,7 +409,9 @@ exit status, and the normal shutdown still runs.
   evidence: no live `ams-lacal*` thread and no socket beyond those open at
   start. A dead transport removes registrations locally; it is never reported
   as an acknowledged UNSUB. Combined mode reports per-family callback counts and
-  decoder/handler events observed in the runtime event queue.
+  decoder/handler events observed in the runtime event queue, attributed by both
+  SID and global message name. If events are dropped, per-family diagnostic
+  counts may be incomplete; use the aggregate runtime counts as well.
 * **Signals.** SIGINT/SIGTERM handlers only store the signal number in a
   lock-free atomic. During reception the main loop observes it within about
   25 ms. Setup operations are synchronous: a signal is acted on after the
@@ -404,4 +457,6 @@ exhibit, using `tests/cpp-lacal/mock_peer.hpp`. See
 [docs/task-cpp-oms-008-standalone-log-client.md](../../docs/task-cpp-oms-008-standalone-log-client.md)
 for the original design and evidence, and
 [CPP-OMS-009 qualification](../../docs/task-cpp-oms-009-multimessage-client.md)
-for the combined-profile reproduction and evidence.
+for the two-message reproduction and evidence, and
+[CPP-OMS-010 qualification](../../docs/task-cpp-oms-010-survivability-client.md)
+for the three-message profile.
