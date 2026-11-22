@@ -49,14 +49,28 @@ AMS_GRA_LACAL_PAYLOAD_CODEC(::programs::oam::LogMT, ::service_codec::encode_LogM
 AMS_GRA_LACAL_PAYLOAD_CODEC(::programs::oam::RDMAInitializeSetupMT, ::service_codec::encode_RDMAInitializeSetupMT,
                             ::service_codec::decode_RDMAInitializeSetupMT)
 #endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+#include "survivability_summary.hpp"
+AMS_GRA_LACAL_PAYLOAD_CODEC(::programs::oam::SurvivabilityRiskLevelMT, ::service_codec::encode_SurvivabilityRiskLevelMT,
+                            ::service_codec::decode_SurvivabilityRiskLevelMT)
+#endif
 
 namespace cpp_uci_client {
 
-enum class Family : std::size_t { log, rdma };
+enum class Family : std::size_t { log, rdma, survivability };
 constexpr std::size_t index(Family family) noexcept { return static_cast<std::size_t>(family); }
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+inline constexpr std::array<Family, 3> families{Family::log, Family::rdma, Family::survivability};
+#else
 inline constexpr std::array<Family, 2> families{Family::log, Family::rdma};
+#endif
 inline constexpr std::string_view message_name(Family family) noexcept {
-    return family == Family::log ? release::global_message : release::rdma_message;
+    switch (family) {
+        case Family::log: return release::global_message;
+        case Family::rdma: return release::rdma_message;
+        case Family::survivability: return release::survivability_message;
+    }
+    return {};
 }
 
 /// Fixed, bounded runtime settings (only url/service_id come from the CLI).
@@ -77,6 +91,11 @@ struct ClientSettings {
 using Extractor = std::function<LogSummary(const ::programs::oam::LogMT&)>;
 #if CPP_UCI_CLIENT_WITH_RDMA
 using RdmaExtractor = std::function<RdmaSummary(const ::programs::oam::RDMAInitializeSetupMT&)>;
+#endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+using SurvivabilityExtractor = std::function<SurvivabilitySummary(const ::programs::oam::SurvivabilityRiskLevelMT&)>;
+using Summary = std::variant<LogSummary, RdmaSummary, SurvivabilitySummary>;
+#elif CPP_UCI_CLIENT_WITH_RDMA
 using Summary = std::variant<LogSummary, RdmaSummary>;
 #else
 using Summary = LogSummary;
@@ -105,9 +124,15 @@ public:
 #if CPP_UCI_CLIENT_WITH_RDMA
              , RdmaExtractor extract_rdma
 #endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+             , SurvivabilityExtractor extract_survivability
+#endif
              ) : queue_(capacity), extract_(std::move(extract))
 #if CPP_UCI_CLIENT_WITH_RDMA
                  , extract_rdma_(std::move(extract_rdma))
+#endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+                 , extract_survivability_(std::move(extract_survivability))
 #endif
     {}
 
@@ -122,16 +147,34 @@ public:
         (void)queue_.push(extract_rdma_(setup));
     }
 #endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+    void on_survivability(const ::programs::oam::SurvivabilityRiskLevelMT& risk) {
+        on_entry(Family::survivability);
+        (void)queue_.push(extract_survivability_(risk));
+    }
+#endif
 
     BoundedQueue<Summary>& queue() noexcept { return queue_; }
     void mark_unsubscribed(Family family) noexcept { counters_[index(family)].unsubscribed.store(true); }
-    std::uint64_t callbacks(Family family) const noexcept { return counters_[index(family)].callbacks.load(); }
-    std::uint64_t callbacks() const noexcept { return callbacks(Family::log) + callbacks(Family::rdma); }
+    std::uint64_t callbacks(Family family) const noexcept {
+        return index(family) < counters_.size() ? counters_[index(family)].callbacks.load() : 0;
+    }
+    std::uint64_t callbacks() const noexcept {
+        std::uint64_t count = 0;
+        for (Family family : families) {
+            count += callbacks(family);
+        }
+        return count;
+    }
     std::uint64_t callbacks_after_unsubscribe(Family family) const noexcept {
-        return counters_[index(family)].callbacks_after_unsubscribe.load();
+        return index(family) < counters_.size() ? counters_[index(family)].callbacks_after_unsubscribe.load() : 0;
     }
     std::uint64_t callbacks_after_unsubscribe() const noexcept {
-        return callbacks_after_unsubscribe(Family::log) + callbacks_after_unsubscribe(Family::rdma);
+        std::uint64_t count = 0;
+        for (Family family : families) {
+            count += callbacks_after_unsubscribe(family);
+        }
+        return count;
     }
 
 private:
@@ -152,6 +195,9 @@ private:
     Extractor extract_;
 #if CPP_UCI_CLIENT_WITH_RDMA
     RdmaExtractor extract_rdma_;
+#endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+    SurvivabilityExtractor extract_survivability_;
 #endif
     std::array<CallbackCounters, families.size()> counters_{};
 };
@@ -212,11 +258,17 @@ public:
 #if CPP_UCI_CLIENT_WITH_RDMA
                     , RdmaExtractor extract_rdma = summarize_rdma
 #endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+                    , SurvivabilityExtractor extract_survivability = summarize_survivability
+#endif
                     )
         : settings_(std::move(settings)),
           receiver_(std::make_shared<Receiver>(settings_.queue_capacity, std::move(extract)
 #if CPP_UCI_CLIENT_WITH_RDMA
                                                , std::move(extract_rdma)
+#endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+                                               , std::move(extract_survivability)
 #endif
                                                )),
           sockets_at_start_(count_open_sockets()) {}
@@ -258,6 +310,9 @@ public:
         if (!runtime_) {
             return Failure{exit_status::internal, "SUBSCRIBE-FAILED not connected"};
         }
+        if (family == Family::survivability && !release::supports_survivability) {
+            return Failure{exit_status::usage, "SUBSCRIBE-FAILED SurvivabilityRiskLevel is not built in"};
+        }
         auto& slot = subscriptions_[index(family)];
         if (!slot.handle.id().empty()) {
             return Failure{exit_status::internal, "SUBSCRIBE-FAILED subscription already established"};
@@ -266,6 +321,14 @@ public:
             return retain(family, release::endpoint::subscribe(
                 *runtime_, [receiver = receiver_](const release::m::LogMT& log) { receiver->on_log(log); }));
         }
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+        if (family == Family::survivability) {
+            return retain(family, release::survivability_endpoint::subscribe(
+                *runtime_, [receiver = receiver_](const release::m::SurvivabilityRiskLevelMT& risk) {
+                    receiver->on_survivability(risk);
+                }));
+        }
+#endif
 #if CPP_UCI_CLIENT_WITH_RDMA
         return retain(family, release::rdma_endpoint::subscribe(
             *runtime_, [receiver = receiver_](const release::m::RDMAInitializeSetupMT& rdma) { receiver->on_rdma(rdma); }));
@@ -289,7 +352,8 @@ private:
 
 public:
     const std::string& subscription_id(Family family = Family::log) const noexcept {
-        return subscriptions_[index(family)].handle.id();
+        static const std::string absent;
+        return index(family) < subscriptions_.size() ? subscriptions_[index(family)].handle.id() : absent;
     }
     Receiver& receiver() noexcept { return *receiver_; }
 
@@ -329,6 +393,10 @@ public:
     /// A successful explicit UNSUB quiesces this SID only. On failed transport
     /// the runtime removes it locally without claiming an acknowledgment.
     bool unsubscribe(Family family, std::string& line) {
+        if (index(family) >= subscriptions_.size()) {
+            line.clear();
+            return true;
+        }
         auto& slot = subscriptions_[index(family)];
         if (slot.handle.active()) {
             const lacal::Status status = slot.handle.unsubscribe();
@@ -401,15 +469,24 @@ public:
 private:
     EventOutcome record_event(const lacal::Event& event) {
         for (Family family : families) {
-            if (event.sid == subscription_id(family) && event.message_name == message_name(family)) {
+            if (!event.sid.empty() && event.sid == subscription_id(family) && event.message_name == message_name(family)) {
                 auto& stats = per_family_[index(family)];
                 if (event.kind == lacal::EventKind::decode_error) {
                     ++stats.decode_errors;
                 } else if (event.kind == lacal::EventKind::handler_exception) {
                     ++stats.handler_exceptions;
                 }
+                if (family == Family::survivability &&
+                    (event.kind == lacal::EventKind::decode_error || event.kind == lacal::EventKind::handler_exception)) {
+                    return describe_survivability_event(event);
+                }
                 break;
             }
+        }
+        if (event.message_name == release::survivability_message &&
+            (event.kind == lacal::EventKind::decode_error || event.kind == lacal::EventKind::handler_exception)) {
+            // Never fall back to another family's free-text diagnostic.
+            return describe_survivability_event(event, false);
         }
         return describe_event(event);
     }

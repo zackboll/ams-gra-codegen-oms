@@ -31,6 +31,9 @@
 #ifndef CPP_UCI_CLIENT_WITH_RDMA
 #define CPP_UCI_CLIENT_WITH_RDMA 0
 #endif
+#ifndef CPP_UCI_CLIENT_WITH_SURVIVABILITY
+#define CPP_UCI_CLIENT_WITH_SURVIVABILITY 0
+#endif
 
 namespace cpp_uci_client::release {
 
@@ -64,13 +67,27 @@ inline constexpr std::string_view application_topic = "uci.log";
 inline constexpr bool supports_rdma = CPP_UCI_CLIENT_WITH_RDMA != 0;
 inline constexpr std::string_view rdma_message = "RDMA_InitializeSetup";
 inline constexpr std::string_view rdma_topic = "uci.rdma";
+inline constexpr bool supports_survivability = CPP_UCI_CLIENT_WITH_SURVIVABILITY != 0;
+inline constexpr std::string_view survivability_message = "SurvivabilityRiskLevel";
+inline constexpr std::string_view survivability_topic = "uci.survivability";
+static_assert(!supports_survivability || supports_rdma);
 #if CPP_UCI_CLIENT_WITH_RDMA
-inline constexpr std::string_view application_service = "cpp-uci-client-log-rdma";
 namespace rdma_endpoint = ::service_api::function_rdma::exchange_receive;
 static_assert(std::is_same_v<rdma_endpoint::Payload, m::RDMAInitializeSetupMT>);
 static_assert(rdma_endpoint::message_name == rdma_message && rdma_endpoint::topic == rdma_topic);
 static_assert(rdma_endpoint::message_namespace == oam_namespace && rdma_endpoint::direction == "input");
 static_assert(!rdma_endpoint::subscription_group.has_value());
+#endif
+#if CPP_UCI_CLIENT_WITH_SURVIVABILITY
+inline constexpr std::string_view application_service = "cpp-uci-client-log-rdma-survivability";
+namespace survivability_endpoint = ::service_api::function_survivability::exchange_receive;
+static_assert(std::is_same_v<survivability_endpoint::Payload, m::SurvivabilityRiskLevelMT>);
+static_assert(survivability_endpoint::message_name == survivability_message &&
+              survivability_endpoint::topic == survivability_topic);
+static_assert(survivability_endpoint::message_namespace == oam_namespace && survivability_endpoint::direction == "input");
+static_assert(!survivability_endpoint::subscription_group.has_value());
+#elif CPP_UCI_CLIENT_WITH_RDMA
+inline constexpr std::string_view application_service = "cpp-uci-client-log-rdma";
 #else
 inline constexpr std::string_view application_service = "cpp-uci-client";
 #endif

@@ -18,6 +18,7 @@
 //   setup-signal    Mark arrival of the second SUB, then delay its acknowledgment
 //   drop-final      Acknowledge the second SUB then fail the connection immediately
 //   drop-active     Acknowledge both SUBs; drop after reception starts
+//   three-drop-1/2/3, three-between, three-pending, three-final, three-active
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
@@ -79,6 +80,31 @@ int main(int argc, char** argv) {
                     return {Action::text("+OK"), Action::binary("not a text frame")};
                 }
                 return {Action::text("+OK"), Action::wait(std::chrono::milliseconds(500)), Action::drop()};
+            }
+            return mock::acknowledge_everything(frame);
+        };
+    } else if (mode == "three-drop-1" || mode == "three-drop-2" || mode == "three-drop-3" ||
+               mode == "three-between" || mode == "three-pending" || mode == "three-final" || mode == "three-active") {
+        combined = true;
+        responder = [mode](const std::string& frame) -> std::vector<Action> {
+            for (const char position : {'1', '2', '3'}) {
+                if (mode == std::string("three-drop-") + position &&
+                    frame.rfind(std::string("SUB sub-") + position + " ", 0) == 0) {
+                    return {Action::drop()};
+                }
+            }
+            const std::string target = mode == "three-between" ? "SUB sub-2 " : "SUB sub-3 ";
+            if (frame.rfind(target, 0) == 0) {
+                if (mode == "three-between" || mode == "three-pending") {
+                    std::cout << "SUB PENDING" << std::endl;
+                    return {Action::wait(std::chrono::milliseconds(800)), Action::text("+OK")};
+                }
+                if (mode == "three-final") {
+                    return {Action::text("+OK"), Action::drop()};
+                }
+                if (mode == "three-active") {
+                    return {Action::text("+OK"), Action::wait(std::chrono::milliseconds(500)), Action::drop()};
+                }
             }
             return mock::acknowledge_everything(frame);
         };
