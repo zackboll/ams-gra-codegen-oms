@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+  <xs:simpleType name="DottedType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/><xs:maxLength value="15"/>
+      <xs:pattern value="(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ColonType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="2"/><xs:maxLength value="45"/>
+      <xs:pattern value="((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="AddressChoice">
+    <xs:choice>
+      <xs:element name="IPv4" type="t:DottedType"/>
+      <xs:element name="IPv6" type="t:ColonType"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="AddressPayload">
+    <xs:sequence>
+      <xs:element name="RequiredIPv4" type="t:DottedType"/>
+      <xs:element name="RequiredIPv6" type="t:ColonType"/>
+      <xs:element name="OptionalIPv4" type="t:DottedType" minOccurs="0"/>
+      <xs:element name="OptionalIPv6" type="t:ColonType" minOccurs="0"/>
+      <xs:element name="RepeatedIPv4" type="t:DottedType" minOccurs="0" maxOccurs="2"/>
+      <xs:element name="RepeatedIPv6" type="t:ColonType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Pick" type="t:AddressChoice"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="AddressNotice" type="t:AddressPayload" t:version="001.000.000.000"/>
+</xs:schema>

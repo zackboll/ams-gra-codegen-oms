@@ -571,8 +571,9 @@ fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> 
 /// * named Strings of the UUID, UCI schema-version, visible-ASCII,
 ///   whitespace-visible and NATO special-words profiles (each a checked
 ///   carrier with `create(std::string_view)`), (CPP-OMS-005) the Task 058
-///   bounded-ASCII profiles and (CPP-OMS-006) the Task 059 structured-ASCII
-///   profiles — see [`cpp_codec_admits_string_profile`];
+///   bounded-ASCII profiles, (CPP-OMS-006) the Task 059 structured-ASCII
+///   profiles, and (CPP-OMS-009A) the Task 060 alternating-ASCII and Task 062
+///   IPv6 profiles — see [`cpp_codec_admits_string_profile`];
 /// * named `DateTimeZulu` and `Duration` declarations and the direct
 ///   unconstrained `xs:dateTime` / `xs:duration` members;
 /// * unconstrained `xs:hexBinary`, direct or named, from IR provenance;
@@ -612,7 +613,7 @@ fn cpp_emission_codec_support(
                     format!(
                         "named String profile {} has no C++ codec mapping (supported: UUID, \
                          schema-version, visible ASCII, whitespace-visible, NATO special words, \
-                         bounded ASCII, structured ASCII)",
+                         bounded ASCII, structured ASCII, alternating ASCII, IPv6 address)",
                         cpp_string_profile_label(&other)
                     ),
                 )),
@@ -710,8 +711,8 @@ fn cpp_emission_codec_support(
 }
 
 /// The named String profiles the generated C++ codec maps (CPP-OMS-002,
-/// CPP-OMS-005 and CPP-OMS-006), decided once, here, for both the readiness
-/// analyzer and the C++ renderer's own defensive check.
+/// CPP-OMS-005, CPP-OMS-006 and CPP-OMS-009A), decided once for both the
+/// readiness analyzer and the C++ renderer's own defensive check.
 ///
 /// Every admitted profile is a checked model carrier whose
 /// `create(std::string_view)` is the sole validation authority and whose
@@ -727,11 +728,13 @@ fn cpp_emission_codec_support(
 ///   [`crate::structured_ascii_profiles`] (CPP-OMS-006). A
 ///   `StringProfile::StructuredAscii` value that is not one of those rows
 ///   (one built by hand rather than by the shared classifier) is refused, so
-///   the codec cannot be widened past what the classifier recognizes.
+///   the codec cannot be widened past what the classifier recognizes;
+/// * Task 060 alternating ASCII: only references to the canonical classifier
+///   rows, not profiles constructed independently of that table;
+/// * Task 062 IPv6 address: the shared classifier's exact constraint match.
 ///
-/// Alternating ASCII, IPv6 and Unicode 3.1 profiles have model carriers too
-/// but stay outside the codec subset; they are matched explicitly so a new
-/// profile cannot become codec-ready by default.
+/// Unicode 3.1 profiles have model carriers too but stay outside the codec
+/// subset. No new profile can become codec-ready by default.
 #[must_use]
 pub fn cpp_codec_admits_string_profile(profile: &StringProfile) -> bool {
     match profile {
@@ -740,13 +743,15 @@ pub fn cpp_codec_admits_string_profile(profile: &StringProfile) -> bool {
         | StringProfile::VisibleAscii { .. }
         | StringProfile::WhitespaceVisible { .. }
         | StringProfile::NatoSpecialWords
-        | StringProfile::BoundedAscii { .. } => true,
+        | StringProfile::BoundedAscii { .. }
+        | StringProfile::Ipv6Address => true,
         StringProfile::StructuredAscii(structured) => crate::structured_ascii_profiles()
             .iter()
             .any(|(_, row)| row == structured),
-        StringProfile::AlternatingAscii(_)
-        | StringProfile::Ipv6Address
-        | StringProfile::Unicode(_) => false,
+        StringProfile::AlternatingAscii(alternating) => crate::alternating_ascii_rows()
+            .iter()
+            .any(|row| std::ptr::eq(&row.profile, *alternating)),
+        StringProfile::Unicode(_) => false,
     }
 }
 
@@ -1882,8 +1887,7 @@ mod tests {
     /// shared classifier recognizes as Task 058 bounded ASCII (every pinned
     /// row, including the zero-length `EmptyType` shape), in every occurrence
     /// shape and as a Choice alternative. Unpinned neighbours never reach the
-    /// codec (the shared classifier refuses them), and the other model-backed
-    /// String profiles stay outside the codec subset.
+    /// codec (the shared classifier refuses them).
     #[test]
     fn cpp_oms_005_bounded_ascii_admission_boundary() {
         use ams_gra_oms_ir::{PatternExpression, PatternGroup, WhiteSpacePolicy};
@@ -2035,15 +2039,6 @@ mod tests {
                 "{constraints:?}"
             );
         }
-
-        // Another model-backed profile (IPv6) stays NOT READY here.
-        let failure = cpp(&named(
-            crate::ipv6_address_constraints(),
-            Cardinality::REQUIRED_ONE,
-            false,
-        ))
-        .unwrap_err();
-        assert!(failure.to_string().contains("IPv6 address"), "{failure}");
     }
 
     /// CPP-OMS-006: the C++ codec admits exactly the String profiles the
@@ -2051,8 +2046,7 @@ mod tests {
     /// pinned expression/facet rows), in every occurrence shape and as a
     /// Choice alternative. Unpinned neighbours never classify as structured
     /// ASCII and stay NOT READY. A hand-built `StructuredAscii` profile that
-    /// is not one of the pinned rows is refused by the predicate itself, and
-    /// alternating ASCII, IPv6 and Unicode 3.1 stay outside the codec subset.
+    /// is not one of the pinned rows is refused by the predicate itself.
     #[test]
     fn cpp_oms_006_structured_ascii_admission_boundary() {
         use crate::{
@@ -2224,23 +2218,106 @@ mod tests {
             &StringProfile::StructuredAscii(wrong_facets)
         ));
 
-        // Other model-backed profiles stay NOT READY, each with its label.
-        let alternating = constrained(&["[A-Z]{2}|[ ]{2}"], StructuredAsciiFacets::Exact(2));
-        assert!(matches!(
-            string_profile(PrimitiveKind::String, &alternating),
-            Ok(Some(StringProfile::AlternatingAscii(_)))
-        ));
-        for (constraints, label) in [
-            (alternating, "alternating ASCII"),
-            (crate::ipv6_address_constraints(), "IPv6 address"),
-            (
-                crate::UnicodeStringProfile::Date.constraints(),
-                "Unicode 3.1",
-            ),
-        ] {
-            let failure = cpp(&named(constraints, Cardinality::REQUIRED_ONE, false)).unwrap_err();
-            assert!(failure.to_string().contains(label), "{failure}");
+        let failure = cpp(&named(
+            crate::UnicodeStringProfile::Date.constraints(),
+            Cardinality::REQUIRED_ONE,
+            false,
+        ))
+        .unwrap_err();
+        assert!(failure.to_string().contains("Unicode 3.1"), "{failure}");
+    }
+
+    #[test]
+    fn cpp_oms_009a_checked_address_and_alternating_ascii_admission_boundary() {
+        use crate::StructuredAsciiFacets;
+        use ams_gra_oms_ir::{PatternExpression, PatternGroup, WhiteSpacePolicy};
+
+        // No UCI declaration name is involved, even in the codec analysis.
+        let named_support = |constraints| {
+            let schema = record(OAM_NAMESPACE, vec![]);
+            let mut declaration = schema.types[0].clone();
+            declaration.kind = TypeKind::Primitive(PrimitiveKind::String);
+            declaration.constraints = constraints;
+            cpp_emission_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&declaration),
+                GenerationWorld::ClosedSchemaSet,
+            )
+        };
+        let rows = crate::alternating_ascii_rows();
+        assert_eq!(rows.len(), 16);
+        let mut exact_profiles = Vec::new();
+        for row in rows {
+            let mut constraints = ConstraintSet::default();
+            match row.profile.facets {
+                StructuredAsciiFacets::Exact(n) => constraints.length = Some(n),
+                StructuredAsciiFacets::Range(min, max) => {
+                    constraints.min_length = Some(min);
+                    constraints.max_length = Some(max);
+                }
+                StructuredAsciiFacets::Max(_) => panic!("unexpected Task 060 facets"),
+            }
+            constraints.lexical.pattern_groups = vec![PatternGroup {
+                alternatives: row
+                    .patterns
+                    .iter()
+                    .map(|p| PatternExpression::xml_schema(*p))
+                    .collect(),
+            }];
+            let Ok(Some(StringProfile::AlternatingAscii(classified))) =
+                string_profile(PrimitiveKind::String, &constraints)
+            else {
+                panic!("unrecognized row: {:?}", row.patterns);
+            };
+            assert!(std::ptr::eq(classified, &row.profile));
+            assert!(cpp_codec_admits_string_profile(
+                &StringProfile::AlternatingAscii(classified)
+            ));
+            let forged = Box::leak(Box::new(row.profile.clone()));
+            assert!(!cpp_codec_admits_string_profile(
+                &StringProfile::AlternatingAscii(forged)
+            ));
+            exact_profiles.push(constraints);
         }
+        let ipv6 = crate::ipv6_address_constraints();
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &ipv6),
+            Ok(Some(StringProfile::Ipv6Address))
+        );
+        exact_profiles.push(ipv6);
+
+        for constraints in exact_profiles {
+            assert_eq!(named_support(constraints.clone()), Ok(()));
+            let mut altered_pattern = constraints.clone();
+            altered_pattern.lexical.pattern_groups[0].alternatives[0]
+                .expression
+                .push_str("|ZZZ");
+            let mut altered_length = constraints.clone();
+            if let Some(n) = &mut altered_length.length {
+                *n += 100;
+            } else {
+                *altered_length.max_length.as_mut().unwrap() += 100;
+            }
+            let mut whitespace = constraints;
+            whitespace.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
+            for near_miss in [altered_pattern, altered_length, whitespace] {
+                assert!(string_profile(PrimitiveKind::String, &near_miss).is_err());
+                assert!(named_support(near_miss).is_err());
+            }
+        }
+        let unknown = Box::leak(Box::new(crate::AlternatingAsciiProfile {
+            groups: vec![],
+            facets: StructuredAsciiFacets::Exact(2),
+        }));
+        assert!(!cpp_codec_admits_string_profile(
+            &StringProfile::AlternatingAscii(unknown)
+        ));
+        let unconstrained = named_support(ConstraintSet::default()).unwrap_err();
+        assert!(
+            unconstrained
+                .to_string()
+                .contains("unconstrained named String")
+        );
     }
 
     #[test]
