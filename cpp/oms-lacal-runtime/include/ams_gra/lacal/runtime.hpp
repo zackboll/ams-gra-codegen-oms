@@ -46,7 +46,7 @@ namespace ams_gra::lacal {
 enum class ErrorKind {
     none,
     invalid_argument,            // rejected locally before any frame (config, identifier, QName)
-    unsupported_scheme,          // not ws:// (wss:// is NOT implemented and is refused)
+    unsupported_scheme,          // not ws:// or a wss:// URL in a TLS-enabled build
     codec,                       // generated encoder rejected the value; nothing was sent
     connect_failed,              // DNS / TCP / WebSocket transport failure while connecting
     handshake_rejected,          // HTTP upgrade declined, or subprotocol is not exactly "owp"
@@ -58,6 +58,8 @@ enum class ErrorKind {
     subscription_ids_exhausted,  // the 64-bit SID counter would wrap
     delivery_overflow,           // undelivered MSG backlog exceeded its bound
     called_from_runtime_thread,  // operation not allowed from a runtime-owned thread
+    tls_verification_failed,     // peer certificate trust, validity, purpose or URL identity
+    tls_handshake_failed,        // TLS negotiation/transport failure before WebSocket upgrade
 };
 
 const char* to_string(ErrorKind kind) noexcept;
@@ -120,13 +122,13 @@ private:
 // ---- configuration ---------------------------------------------------------
 
 struct Config {
-    std::string url;             // ws://host[:port][/path]; wss:// is refused
+    std::string url;             // ws://host[:port][/path] or wss:// in a TLS-enabled build
     std::string service_id;      // OWP identifier
     std::string schema_version;  // e.g. "002.5.0"; required, never defaulted
     std::vector<std::string> owp_versions{std::string(owp::owp_version_1_0)};
-    std::chrono::milliseconds connect_timeout{10000};    // TCP + upgrade + INIT/+OK/INFO
+    std::chrono::milliseconds connect_timeout{10000};    // DNS + TCP + TLS (if used) + upgrade + INIT/+OK/INFO
     std::chrono::milliseconds operation_timeout{10000};  // each acknowledged command
-    std::chrono::milliseconds close_timeout{2000};       // WebSocket close handshake
+    std::chrono::milliseconds close_timeout{2000};       // write drain, WebSocket close and TLS shutdown
     std::size_t max_message_bytes = 16U * 1024U * 1024U; // largest accepted incoming frame
     std::size_t max_pending_deliveries = 4096;           // undelivered MSG backlog bound (count)
     /// Aggregate payload bytes of MSGs received but not yet fully dispatched
@@ -139,6 +141,9 @@ struct Config {
     /// keeps its kind/error but loses its raw payload (payload_omitted); one
     /// that still does not fit is dropped and counted (events_dropped).
     std::size_t max_pending_event_bytes = 1024U * 1024U;
+    /// Optional additional trusted PEM CA certificates, only for wss://.
+    /// The default OpenSSL trust paths and URL host verification always apply.
+    std::optional<std::string> tls_ca_file = std::nullopt;
 };
 
 // ---- asynchronous events -----------------------------------------------------
@@ -273,7 +278,7 @@ private:
 
 class Runtime {
 public:
-    /// Connects, upgrades with subprotocol `owp`, sends INIT (verbose) and
+    /// Connects, verifies TLS for wss://, upgrades with subprotocol `owp`, sends INIT (verbose) and
     /// requires +OK then a valid INFO, all within connect_timeout.
     static Result<Runtime> connect(Config config);
 
@@ -327,8 +332,10 @@ public:
     /// Next asynchronous event, waiting at most `timeout`.
     std::optional<Event> poll_event(std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
 
-    /// Ends the connection (WebSocket close, bounded by close_timeout), stops
-    /// dispatch after the running handler returns, and joins both threads.
+    /// Ends the connection (WebSocket close and TLS shutdown within close_timeout),
+    /// stops dispatch after the running handler returns, and joins both threads.
+    /// If closing a live wss:// session fails or times out, reports the error
+    /// after local cleanup. Earlier connection loss is reported by poll_event().
     /// Idempotent. Refused (called_from_runtime_thread) inside a handler.
     Status close();
 

@@ -2,7 +2,7 @@
 // contract and docs/task-cpp-oms-003-lacal-runtime.md for the design.
 //
 // Ownership and locking rules (checked by tests/cpp-lacal):
-//  * The I/O thread owns `io_->ws`, the resolver, timers, the read buffer and the
+//  * The I/O thread owns the transport, resolver, timers, read buffer and the
 //    write queue. No other thread touches them; other threads `post` work.
 //  * Outgoing frames (see "write ownership" below): at most one async_write
 //    is outstanding, and its completion handler owns the frame's bytes, so
@@ -34,6 +34,11 @@ static_assert(BOOST_VERSION >= 108100, "CPP-OMS-003 requires Boost.Beast from Bo
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/websocket.hpp>
+
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+#include "verified_tls.hpp"
+#include <variant>
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -75,6 +80,8 @@ const char* to_string(ErrorKind kind) noexcept {
         case ErrorKind::subscription_ids_exhausted: return "subscription_ids_exhausted";
         case ErrorKind::delivery_overflow: return "delivery_overflow";
         case ErrorKind::called_from_runtime_thread: return "called_from_runtime_thread";
+        case ErrorKind::tls_verification_failed: return "tls_verification_failed";
+        case ErrorKind::tls_handshake_failed: return "tls_handshake_failed";
     }
     return "unknown";
 }
@@ -115,10 +122,12 @@ void name_thread(std::thread& thread, const char* name) {
 }
 
 struct Endpoint {
+    bool tls = false;
     std::string host;         // for DNS / connect (brackets removed)
     std::string port;
     std::string host_header;  // Host header value
     std::string target;       // request target, "/" by default
+    std::optional<net::ip::address> literal;
 };
 
 std::string lower(std::string_view text) {
@@ -129,21 +138,49 @@ std::string lower(std::string_view text) {
     return out;
 }
 
-/// ws://host[:port][/path][?query]. Anything else is refused explicitly.
+bool valid_dns_identity(std::string_view host) {
+    if (host.empty() || host.size() > 253 || host.back() == '.') {
+        return false;
+    }
+    // In particular, do not pass a leading dot (OpenSSL's suffix-match
+    // syntax) or an empty label to SSL_set1_host. Use ASCII DNS A-labels.
+    while (!host.empty()) {
+        const auto dot = host.find('.');
+        const auto label = host.substr(0, dot);
+        if (label.empty() || label.size() > 63 || label.front() == '-' || label.back() == '-' ||
+            !std::all_of(label.begin(), label.end(), [](char c) {
+                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-';
+            })) {
+            return false;
+        }
+        if (dot == std::string_view::npos) {
+            break;
+        }
+        host.remove_prefix(dot + 1);
+    }
+    return true;
+}
+
+/// ws[s]://host[:port][/path][?query]. Identity uses the host before resolution.
 Result<Endpoint> parse_url(std::string_view url) {
     const std::size_t colon = url.find("://");
     if (colon == std::string_view::npos) {
-        return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "URL has no scheme: '" + std::string(url) + "'"));
+        return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "URL has no scheme"));
     }
     const std::string scheme = lower(url.substr(0, colon));
-    if (scheme == "wss") {
+    const bool tls = scheme == "wss";
+#if !defined(AMS_GRA_LACAL_ENABLE_TLS) || !AMS_GRA_LACAL_ENABLE_TLS
+    if (tls) {
         return Result<Endpoint>::failure(make_error(
-            ErrorKind::unsupported_scheme,
-            "wss:// (TLS) is not implemented by this runtime; only loopback-qualified ws:// is supported"));
+            ErrorKind::unsupported_scheme, "wss:// requires a TLS-enabled LA-CAL runtime build"));
     }
-    if (scheme != "ws") {
+#endif
+    if (scheme != "ws" && !tls) {
         return Result<Endpoint>::failure(
-            make_error(ErrorKind::unsupported_scheme, "unsupported URL scheme '" + scheme + "://'; expected ws://"));
+            make_error(ErrorKind::unsupported_scheme, "unsupported URL scheme '" + scheme + "://'; expected ws:// or wss://"));
+    }
+    if (std::any_of(url.begin(), url.end(), [](unsigned char c) { return c <= 0x20 || c == 0x7f; })) {
+        return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "URL contains whitespace or a control character"));
     }
     std::string_view rest = url.substr(colon + 3);
     if (rest.find('#') != std::string_view::npos) {
@@ -160,9 +197,12 @@ Result<Endpoint> parse_url(std::string_view url) {
             make_error(ErrorKind::invalid_argument, "URL authority must be host[:port] without user information"));
     }
     Endpoint endpoint;
+    endpoint.tls = tls;
     endpoint.host_header = std::string(authority);
     std::string_view port;
-    if (authority.front() == '[') {
+    bool explicit_port = false;
+    const bool bracketed = authority.front() == '[';
+    if (bracketed) {
         const std::size_t close = authority.find(']');
         if (close == std::string_view::npos) {
             return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "unterminated IPv6 literal in URL"));
@@ -173,20 +213,33 @@ Result<Endpoint> parse_url(std::string_view url) {
             if (after.front() != ':') {
                 return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "invalid URL authority"));
             }
+            explicit_port = true;
             port = after.substr(1);
         }
     } else {
         const std::size_t port_colon = authority.rfind(':');
         endpoint.host = std::string(authority.substr(0, port_colon));
         if (port_colon != std::string_view::npos) {
+            explicit_port = true;
             port = authority.substr(port_colon + 1);
         }
     }
     if (endpoint.host.empty()) {
         return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "URL host is empty"));
     }
-    if (port.empty()) {
-        endpoint.port = "80";
+    beast::error_code address_error;
+    const auto address = net::ip::make_address(endpoint.host, address_error);
+    if (bracketed ? (address_error || !address.is_v6() || (tls && endpoint.host.find('%') != std::string::npos))
+                  : endpoint.host.find_first_of(":[]") != std::string::npos) {
+        return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "invalid IPv6 URL authority"));
+    }
+    if (!address_error) {
+        endpoint.literal = address;
+    } else if (tls && !valid_dns_identity(endpoint.host)) {
+        return Result<Endpoint>::failure(make_error(ErrorKind::invalid_argument, "invalid TLS DNS hostname"));
+    }
+    if (!explicit_port) {
+        endpoint.port = tls ? "443" : "80";
     } else {
         unsigned long value = 0;
         for (const char c : port) {
@@ -203,6 +256,48 @@ Result<Endpoint> parse_url(std::string_view url) {
     endpoint.target = std::move(target);
     return Result<Endpoint>::success(std::move(endpoint));
 }
+
+using PlainWebSocket = websocket::stream<beast::tcp_stream>;
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+namespace ssl = net::ssl;
+using TlsWebSocket = websocket::stream<ssl::stream<beast::tcp_stream>>;
+#endif
+
+// I/O-thread-owned. Bundled so close() can destroy every Asio object --
+// and so join Asio's internal resolver thread -- deterministically.
+struct Io {
+    net::io_context ioc;
+    net::executor_work_guard<net::io_context::executor_type> work{net::make_work_guard(ioc)};
+    tcp::resolver resolver{ioc};
+    websocket::response_type handshake_response;
+    beast::flat_buffer read_buffer;
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+    // Configure the context before SSL_new; destroy it after the stream.
+    std::optional<ssl::context> tls_context;
+    std::variant<PlainWebSocket, std::unique_ptr<TlsWebSocket>> ws{std::in_place_type<PlainWebSocket>, ioc};
+    auto& tls_stream() { return std::get<std::unique_ptr<TlsWebSocket>>(ws)->next_layer(); }
+#else
+    PlainWebSocket ws{ioc};
+#endif
+    net::steady_timer connect_timer{ioc};
+    net::steady_timer close_timer{ioc};
+
+    template<class F>
+    decltype(auto) with_ws(F&& fn) {
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+        if (auto* plain = std::get_if<PlainWebSocket>(&ws)) {
+            return fn(*plain);
+        }
+        return fn(*std::get<std::unique_ptr<TlsWebSocket>>(ws));
+#else
+        return fn(ws);
+#endif
+    }
+
+    beast::tcp_stream& tcp_stream() {
+        return with_ws([](auto& stream) -> beast::tcp_stream& { return beast::get_lowest_layer(stream); });
+    }
+};
 
 struct SubEntry {
     std::string sid;
@@ -249,12 +344,13 @@ public:
     // ---- lifecycle (application threads) ------------------------------------
 
     Status start() {
+        const auto connect_deadline = std::chrono::steady_clock::now() + config_.connect_timeout;
         io_thread_ = std::thread([this] { io_main(); });
         name_thread(io_thread_, "ams-lacal-io");
         io_id_.store(io_thread_.get_id());
-        net::post(io_->ioc, [this] { begin_connect(); });
+        net::post(io_->ioc, [this, connect_deadline] { begin_connect(connect_deadline); });
         std::unique_lock<std::mutex> lock(mutex_);
-        const auto deadline = std::chrono::steady_clock::now() + config_.connect_timeout + std::chrono::seconds(2);
+        const auto deadline = connect_deadline + std::chrono::seconds(2);
         const bool finished = cv_.wait_until(lock, deadline, [this] { return connect_finished_; });
         if (!finished) {
             // The I/O-side timer should already have fired; never wait longer.
@@ -263,10 +359,7 @@ public:
             state_ = State::failed;
         }
         if (connect_error_.kind != ErrorKind::none) {
-            Error error = connect_error_;
-            lock.unlock();
-            stop_io();
-            return Status::failure(std::move(error));
+            return Status::failure(connect_error_);  // caller closes and joins once
         }
         lock.unlock();
         dispatch_thread_ = std::thread([this] { dispatch_main(); });
@@ -284,15 +377,17 @@ public:
         if (joined_) {
             return Status::success();
         }
+        bool live = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (state_ == State::active) {
+                live = true;
                 Error reason = make_error(ErrorKind::connection_closed, "runtime closed by the application");
                 end_locked(reason);
             }
             state_ = State::closed;
         }
-        net::post(io_->ioc, [this] { begin_close(); });
+        net::post(io_->ioc, [this, live] { begin_close(live); });
         stop_io();
         std::map<std::string, std::shared_ptr<SubEntry>> released;
         {
@@ -313,7 +408,7 @@ public:
         sub_cv_.notify_all();
         released.clear();  // user handlers are destroyed here, with no lock held
         io.reset();        // destroys the Asio objects; joins Asio's resolver thread
-        return Status::success();
+        return close_error_.kind == ErrorKind::none ? Status::success() : Status::failure(close_error_);
     }
 
     // ---- operations (application or dispatcher threads) ----------------------
@@ -658,73 +753,159 @@ private:
         }
     }
 
-    void begin_connect() {
-        io_->connect_timer.expires_after(config_.connect_timeout);
+    void begin_connect(std::chrono::steady_clock::time_point deadline) {
+        io_->connect_timer.expires_at(deadline);
         io_->connect_timer.async_wait([this](beast::error_code ec) {
             if (!ec && phase_ != Phase::active && phase_ != Phase::ended) {
-                connect_timed_out_ = true;
-                io_->resolver.cancel();
-                close_transport();  // completes any pending connect/handshake/INIT write with an error
+                connect_failed(ErrorKind::timeout, "connect did not complete within connect_timeout");
             }
         });
-        beast::error_code literal_ec;
-        const net::ip::address literal = net::ip::make_address(endpoint_.host, literal_ec);
-        if (!literal_ec) {
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+        if (endpoint_.tls) {
+            try {
+                io_->tls_context.emplace(ssl::context::tls_client);
+                configure_tls(*io_->tls_context);
+                if (config_.tls_ca_file && !add_ca_bundle(io_->tls_context->native_handle(), *config_.tls_ca_file)) {
+                    return connect_failed(ErrorKind::invalid_argument, "invalid additional TLS PEM CA bundle");
+                }
+                auto ws = std::make_unique<TlsWebSocket>(io_->ioc, *io_->tls_context);
+                if (!configure_identity(ws->next_layer().native_handle(), endpoint_.host, endpoint_.literal.has_value())) {
+                    ERR_clear_error();
+                    return connect_failed(ErrorKind::invalid_argument, "cannot configure TLS URL identity");
+                }
+                io_->ws.emplace<std::unique_ptr<TlsWebSocket>>(std::move(ws));
+            } catch (const std::exception&) {
+                return connect_failed(ErrorKind::invalid_argument, "cannot configure verified TLS context or trust paths");
+            }
+        }
+#endif
+        if (connect_expired()) {
+            return;
+        }
+        if (endpoint_.literal) {
             // IP literal: no DNS, so Asio starts no resolver thread.
-            const tcp::endpoint target(literal, static_cast<unsigned short>(std::stoul(endpoint_.port)));
-            beast::get_lowest_layer(io_->ws).async_connect(
+            const tcp::endpoint target(*endpoint_.literal, static_cast<unsigned short>(std::stoul(endpoint_.port)));
+            io_->tcp_stream().async_connect(
                 target, [this](beast::error_code connect_ec) { on_tcp_connect(connect_ec); });
             return;
         }
         io_->resolver.async_resolve(endpoint_.host, endpoint_.port,
                                 [this](beast::error_code ec, tcp::resolver::results_type results) {
+                                    if (connect_expired()) {
+                                        return;
+                                    }
                                     if (ec) {
                                         return connect_failed(ErrorKind::connect_failed, "resolve failed: " + ec.message());
                                     }
-                                    beast::get_lowest_layer(io_->ws).async_connect(
+                                    io_->tcp_stream().async_connect(
                                         results, [this](beast::error_code connect_ec, const tcp::endpoint&) {
                                             on_tcp_connect(connect_ec);
                                         });
                                 });
     }
 
+    bool connect_expired() {
+        if (phase_ == Phase::ended) {
+            return true;
+        }
+        if (std::chrono::steady_clock::now() >= io_->connect_timer.expiry()) {
+            connect_failed(ErrorKind::timeout, "connect did not complete within connect_timeout");
+            return true;
+        }
+        return false;
+    }
+
     void on_tcp_connect(beast::error_code ec) {
+        if (connect_expired()) {
+            return;
+        }
         if (ec) {
             return connect_failed(ErrorKind::connect_failed, "TCP connect failed: " + ec.message());
         }
         beast::error_code ignored;
         // OWP operations are small request/acknowledgment frames: no Nagle delay.
-        beast::get_lowest_layer(io_->ws).socket().set_option(tcp::no_delay(true), ignored);
-        io_->ws.set_option(websocket::stream_base::decorator([](websocket::request_type& request) {
-            request.set(http::field::sec_websocket_protocol, "owp");
-            request.set(http::field::user_agent, "ams-gra-oms-lacal-cpp/0.1");
-        }));
-        io_->ws.async_handshake(handshake_response_, endpoint_.host_header, endpoint_.target,
-                            [this](beast::error_code handshake_ec) { on_handshake(handshake_ec); });
+        io_->tcp_stream().socket().set_option(tcp::no_delay(true), ignored);
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+        if (endpoint_.tls) {
+            auto& stream = io_->tls_stream();
+            stream.async_handshake(ssl::stream_base::client, [this](beast::error_code tls_ec) {
+                if (connect_expired()) {
+                    return;
+                }
+                auto* native = io_->tls_stream().native_handle();
+                const auto verification = SSL_get_verify_result(native);
+                if (verification != X509_V_OK) {
+                    return connect_failed(ErrorKind::tls_verification_failed,
+                                          std::string("TLS certificate verification failed: ") +
+                                              X509_verify_cert_error_string(verification));
+                }
+                if (tls_ec) {
+                    return connect_failed(ErrorKind::tls_handshake_failed, "TLS handshake failed: " + tls_ec.message());
+                }
+                begin_upgrade();
+            });
+            return;
+        }
+#endif
+        begin_upgrade();
+    }
+
+    void begin_upgrade() {
+        io_->with_ws([this](auto& ws) {
+            ws.set_option(websocket::stream_base::decorator([](websocket::request_type& request) {
+                request.set(http::field::sec_websocket_protocol, "owp");
+                request.set(http::field::user_agent, "ams-gra-oms-lacal-cpp/0.1");
+            }));
+            ws.async_handshake(io_->handshake_response, endpoint_.host_header, endpoint_.target,
+                               [this](beast::error_code ec) { on_handshake(ec); });
+        });
     }
 
     void on_handshake(beast::error_code ec) {
+        if (connect_expired()) {
+            return;
+        }
+        const auto& response = io_->handshake_response;
         if (ec == websocket::error::upgrade_declined) {
             return connect_failed(ErrorKind::handshake_rejected,
                                   "WebSocket upgrade declined with HTTP " +
-                                      std::to_string(handshake_response_.result_int()));
+                                      std::to_string(response.result_int()));
         }
         if (ec) {
-            return connect_failed(ErrorKind::connect_failed, "WebSocket handshake failed: " + ec.message());
+            const bool rejected = ec == websocket::condition::handshake_failed ||
+                                  (ec.category() == make_error_code(http::error::bad_status).category() &&
+                                   ec != http::error::end_of_stream && ec != http::error::partial_message);
+            return connect_failed(endpoint_.tls && rejected ? ErrorKind::handshake_rejected : ErrorKind::connect_failed,
+                                  "WebSocket handshake failed: " + ec.message());
         }
-        const auto protocol = handshake_response_[http::field::sec_websocket_protocol];
-        if (protocol != "owp") {
+        if (response.count(http::field::sec_websocket_protocol) != 1 ||
+            response[http::field::sec_websocket_protocol] != "owp") {
             return connect_failed(ErrorKind::handshake_rejected,
-                                  "server did not select subprotocol 'owp' (got '" + std::string(protocol) + "')");
+                                  "server did not select subprotocol 'owp' exactly once");
         }
-        beast::get_lowest_layer(io_->ws).expires_never();
+        io_->tcp_stream().expires_never();
         websocket::stream_base::timeout timeouts{};
         timeouts.handshake_timeout = config_.close_timeout;  // also bounds the close handshake
         timeouts.idle_timeout = websocket::stream_base::none();
         timeouts.keep_alive_pings = false;
-        io_->ws.set_option(timeouts);
-        io_->ws.read_message_max(config_.max_message_bytes);
-        io_->ws.text(true);
+        io_->with_ws([&](auto& ws) {
+            ws.set_option(timeouts);
+            ws.read_message_max(config_.max_message_bytes);
+            ws.text(true);
+            if (endpoint_.tls) {
+                // Beast also tears down SSL when a read handles a peer Close.
+                // Bound that path even when the application hasn't called close().
+                ws.control_callback([this](websocket::frame_type type, beast::string_view) {
+                    if (type == websocket::frame_type::close && !close_handshake_started_) {
+                        peer_close_received_ = true;
+                        close_deferred_ = false;
+                        if (!shutdown_started_) {
+                            arm_close_timer();
+                        }
+                    }
+                });
+            }
+        });
         phase_ = Phase::awaiting_ok;
         send(owp::build_init(config_.owp_versions, config_.schema_version, config_.service_id, true));
         read_next();
@@ -736,13 +917,22 @@ private:
         if (phase_ == Phase::ended) {
             return;
         }
-        if (connect_timed_out_) {
-            error.kind = ErrorKind::timeout;
-            error.message = "connect did not complete within connect_timeout (" + error.message + ")";
-        }
         io_->connect_timer.cancel();
-        begin_shutdown(websocket::close_code::normal);
+        if (endpoint_.tls || error.kind == ErrorKind::timeout) {
+            // A failed connection never runs a second (close) budget. In
+            // particular, a cancelled TLS handshake still owns SSL buffers.
+            phase_ = Phase::ended;
+            shutdown_started_ = true;
+            io_->resolver.cancel();
+            discard_unsent();
+            close_transport();
+        } else {
+            begin_shutdown(websocket::close_code::normal);
+        }
         std::lock_guard<std::mutex> lock(mutex_);
+        if (connect_finished_) {
+            return;  // caller's fallback deadline has already expired
+        }
         connect_finished_ = true;
         connect_error_ = error;
         state_ = State::failed;
@@ -761,7 +951,7 @@ private:
     // while it is set.
 
     void send(std::string frame) {
-        if (phase_ == Phase::ended || shutdown_started_) {
+        if (phase_ == Phase::ended || shutdown_started_ || peer_close_received_) {
             // The connection ended before this frame was started; its command
             // has already been failed by end_locked/connect failure.
             std::lock_guard<std::mutex> lock(mutex_);
@@ -779,9 +969,11 @@ private:
         write_queue_.pop_front();
         writing_ = true;
         in_flight_bytes_ = frame->size();
-        io_->ws.async_write(net::buffer(*frame), [this, frame](beast::error_code ec, std::size_t) {
-            on_write(ec);
-        });  // `frame` is released when this handler is destroyed
+        io_->with_ws([&](auto& ws) {
+            ws.async_write(net::buffer(*frame), [this, frame](beast::error_code ec, std::size_t) {
+                on_write(ec);
+            });  // `frame` is released when this handler is destroyed
+        });
     }
 
     void on_write(beast::error_code ec) {
@@ -793,6 +985,7 @@ private:
                 ++stats_.writes_aborted;
             }
             if (shutdown_started_) {
+                record_close_error(ec, "write failed during shutdown");
                 return close_transport();  // expected: the bounded close cut the write short
             }
             return transport_lost("write failed: " + ec.message());
@@ -804,7 +997,7 @@ private:
             }
             return;
         }
-        if (!write_queue_.empty()) {
+        if (!peer_close_received_ && !write_queue_.empty()) {
             write_next();
         }
     }
@@ -821,13 +1014,38 @@ private:
     }
 
     void read_next() {
-        io_->ws.async_read(read_buffer_, [this](beast::error_code ec, std::size_t) { on_read(ec); });
+        io_->with_ws([this](auto& ws) {
+            ws.async_read(io_->read_buffer, [this](beast::error_code ec, std::size_t) { on_read(ec); });
+        });
     }
 
     void on_read(beast::error_code ec) {
+        if (endpoint_.tls && close_handshake_started_) {
+            return; // Beast serializes the pending read with async_close, which owns teardown.
+        }
+        if (phase_ == Phase::ended) {
+            if (peer_close_received_) {
+                if (ec == websocket::error::closed && !received_close_notify()) {
+                    record_close_error(net::error::eof, "peer did not send TLS close_notify");
+                } else if (ec && ec != websocket::error::closed) {
+                    record_close_error(ec, "peer TLS shutdown failed");
+                }
+                close_transport();
+            }
+            return;
+        }
+        if (phase_ != Phase::active && connect_expired()) {
+            return;
+        }
         if (ec) {
+            if (peer_close_timed_out_) {
+                return transport_lost("peer WebSocket/TLS shutdown timed out");
+            }
             if (ec == websocket::error::closed) {
-                const auto& reason = io_->ws.reason();
+                if (endpoint_.tls && !received_close_notify()) {
+                    return transport_lost("peer did not send TLS close_notify");
+                }
+                const auto reason = io_->with_ws([](auto& ws) { return ws.reason(); });
                 return transport_lost("peer closed the WebSocket (code " + std::to_string(reason.code) +
                                       (reason.reason.empty() ? std::string() : ", \"" + std::string(reason.reason.c_str()) + "\"") + ")");
             }
@@ -836,12 +1054,13 @@ private:
             }
             return transport_lost("read failed: " + ec.message());
         }
-        if (!io_->ws.got_text()) {
-            read_buffer_.consume(read_buffer_.size());
+        auto& read_buffer = io_->read_buffer;
+        if (!io_->with_ws([](auto& ws) { return ws.got_text(); })) {
+            read_buffer.consume(read_buffer.size());
             return protocol_failure("binary WebSocket message (OWP uses text messages only)");
         }
-        std::string frame = beast::buffers_to_string(read_buffer_.data());
-        read_buffer_.consume(read_buffer_.size());
+        std::string frame = beast::buffers_to_string(read_buffer.data());
+        read_buffer.consume(read_buffer.size());
         if (handle_frame(frame) && phase_ != Phase::ended) {
             read_next();
         }
@@ -880,11 +1099,14 @@ private:
                     connect_failed(ErrorKind::protocol_violation, *problem);
                     return false;
                 }
-                info_ = frame.payload;
-                phase_ = Phase::active;
-                io_->connect_timer.cancel();
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
+                    if (connect_finished_) {
+                        return false;
+                    }
+                    info_ = frame.payload;
+                    phase_ = Phase::active;
+                    io_->connect_timer.cancel();
                     state_ = State::active;
                     connect_finished_ = true;
                     cv_.notify_all();
@@ -1019,12 +1241,10 @@ private:
         if (transport_closed_) {
             return;
         }
-        io_->close_timer.expires_after(config_.close_timeout);
-        io_->close_timer.async_wait([this](beast::error_code ec) {
-            if (!ec) {
-                close_transport();
-            }
-        });
+        if (peer_close_received_) {
+            return;  // the pending read already owns the peer-initiated teardown
+        }
+        arm_close_timer();
         if (writing_) {
             close_deferred_ = true;
             deferred_close_code_ = code;
@@ -1033,12 +1253,50 @@ private:
         start_close_handshake(code);
     }
 
+    void arm_close_timer() {
+        io_->close_timer.expires_after(config_.close_timeout);
+        io_->close_timer.async_wait([this](beast::error_code ec) {
+            if (!ec) {
+                peer_close_timed_out_ = peer_close_received_;
+                record_close_error(beast::error::timeout, "WebSocket/TLS shutdown");
+                close_transport();
+            }
+        });
+    }
+
     void start_close_handshake(websocket::close_code code) {
-        if (transport_closed_ || !io_->ws.is_open()) {
+        if (transport_closed_ || !io_->with_ws([](auto& ws) { return ws.is_open(); })) {
+            record_close_error(net::error::not_connected, "transport ended before WebSocket/TLS shutdown");
             return close_transport();
         }
         close_handshake_started_ = true;
-        io_->ws.async_close(code, [this](beast::error_code) { close_transport(); });
+        io_->with_ws([this, code](auto& ws) {
+            ws.async_close(code, [this](beast::error_code ec) {
+                if (ec) {
+                    record_close_error(ec, "WebSocket/TLS shutdown failed");
+                } else if (endpoint_.tls && !received_close_notify()) {
+                    record_close_error(net::error::eof, "peer did not send TLS close_notify");
+                }
+                close_transport();
+            });
+        });
+    }
+
+    bool received_close_notify() {
+#if defined(AMS_GRA_LACAL_ENABLE_TLS) && AMS_GRA_LACAL_ENABLE_TLS
+        // Beast normalizes EOF during teardown; verify it really received
+        // authenticated TLS close_notify before reporting success.
+        return (SSL_get_shutdown(io_->tls_stream().native_handle()) & SSL_RECEIVED_SHUTDOWN) != 0;
+#else
+        return false;
+#endif
+    }
+
+    void record_close_error(beast::error_code ec, const char* stage) {
+        if (report_close_error_ && close_error_.kind == ErrorKind::none) {
+            close_error_ = make_error(ec == beast::error::timeout ? ErrorKind::timeout : ErrorKind::connection_closed,
+                                      std::string(stage) + ": " + ec.message());
+        }
     }
 
     /// Closes the TCP socket (idempotent); cancels the shutdown bound.
@@ -1048,10 +1306,14 @@ private:
         }
         transport_closed_ = true;
         io_->close_timer.cancel();
-        beast::get_lowest_layer(io_->ws).close();
+        io_->tcp_stream().close();
     }
 
-    void begin_close() {
+    void begin_close(bool live) {
+        report_close_error_ = endpoint_.tls && live;
+        if (report_close_error_ && transport_closed_) {
+            record_close_error(net::error::connection_reset, "transport ended before WebSocket/TLS shutdown");
+        }
         io_->connect_timer.cancel();
         io_->resolver.cancel();
         begin_shutdown(websocket::close_code::normal);
@@ -1140,19 +1402,7 @@ private:
     const Config config_;
     const Endpoint endpoint_;
 
-    // I/O-thread-owned. Bundled so close() can destroy every Asio object --
-    // and so join Asio's internal resolver thread -- deterministically.
-    struct Io {
-        net::io_context ioc;
-        net::executor_work_guard<net::io_context::executor_type> work{net::make_work_guard(ioc)};
-        tcp::resolver resolver{ioc};
-        websocket::stream<beast::tcp_stream> ws{ioc};
-        net::steady_timer connect_timer{ioc};
-        net::steady_timer close_timer{ioc};
-    };
     std::unique_ptr<Io> io_;  // reset only by close(), after the I/O thread joined
-    websocket::response_type handshake_response_;
-    beast::flat_buffer read_buffer_;
     std::deque<std::string> write_queue_;  // unsent frames only (discardable)
     bool writing_ = false;                 // one async_write outstanding; it owns its frame
     std::size_t in_flight_bytes_ = 0;
@@ -1161,7 +1411,10 @@ private:
     websocket::close_code deferred_close_code_ = websocket::close_code::normal;
     bool close_handshake_started_ = false;
     bool transport_closed_ = false;        // TCP socket closed by us
-    bool connect_timed_out_ = false;
+    bool peer_close_received_ = false;
+    bool peer_close_timed_out_ = false;
+    bool report_close_error_ = false;
+    Error close_error_;                    // read by close() only after joining I/O
     Phase phase_ = Phase::connecting;
     std::string info_;
 
@@ -1242,6 +1495,9 @@ Result<Runtime> Runtime::connect(Config config) {
     auto endpoint = detail::parse_url(config.url);
     if (!endpoint.ok()) {
         return Result<Runtime>::failure(endpoint.error());
+    }
+    if (config.tls_ca_file && !endpoint->tls) {
+        return Result<Runtime>::failure(make_error(ErrorKind::invalid_argument, "tls_ca_file requires wss://"));
     }
     auto core = std::make_shared<detail::Core>(std::move(config), std::move(endpoint).value());
     Status started = core->start();
