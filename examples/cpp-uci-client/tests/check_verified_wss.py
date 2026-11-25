@@ -29,6 +29,12 @@ SERVICE = "cpp-uci-client"
 TRUST_ENV = {k: v for k, v in os.environ.items() if k not in ("SSL_CERT_DIR", "SSL_CERT_FILE")}
 
 
+def application(args, v, suffix):
+    if args.bundles:
+        return executable(args.bundles / f"uci{v}{suffix}", v, suffix)
+    return executable(args.build if suffix.endswith("-tls") else args.plain, v, suffix)
+
+
 def init(schema, service=SERVICE):
     return dict(service_id=service, schema=schema, verbose=True, versions=["1.0"])
 
@@ -64,7 +70,7 @@ def reject(text, kind):
 
 
 def cli_controls(args, cell, v, pki):
-    tls = executable(args.build, v, PROFILE[2] + "-tls")
+    tls = application(args, v, PROFILE[2] + "-tls")
     with listener() as server:
         host = f"localhost:{server.getsockname()[1]}"
         ws, wss = "ws://" + host, "wss://" + host
@@ -76,8 +82,8 @@ def cli_controls(args, cell, v, pki):
             ("empty-ca", tls, wss, "", (), None),
             ("no-bypass", tls, wss, None, ("--insecure",), None),
             ("bad-mode", tls, wss, None, ALL[1:], None),
-            ("bad-rdma", executable(args.build, v, "-tls"), wss, ca, ALL[:1], None),
-            ("bad-survivability", executable(args.build, v, PROFILE[1] + "-tls"), wss, ca, ALL, None),
+            ("bad-rdma", application(args, v, "-tls"), wss, ca, ALL[:1], None),
+            ("bad-survivability", application(args, v, PROFILE[1] + "-tls"), wss, ca, ALL, None),
         ]
         cases += [(name, tls, url, None, (), kind) for name, url, kind in (
             ("userinfo", "wss://user@" + host, None), ("fragment", wss + "/#frag", None),
@@ -88,21 +94,21 @@ def cli_controls(args, cell, v, pki):
         )]
         cases += [(f"invalid-ca-{name}", tls, wss, pki / name, (), "invalid_argument")
                   for name in ("missing.pem", "invalid-pem.pem", "malformed.pem", "good.pem", "empty.pem")]
-        if args.plain:
+        if args.plain or args.bundles:
             for i, suffix in enumerate(PROFILE):
-                binary = executable(args.plain, v, suffix)
+                binary = application(args, v, suffix)
                 cases.extend([(f"no-wss-{i}", binary, wss, None, (), None),
                               (f"no-ca-{i}", binary, ws, ca, (), None)])
         for name, binary, url, bundle, flags, kind in cases:
             path = cell / f"cli-{name}.out"
-            with launch(command(binary, url, bundle, options=flags), path, env=TRUST_ENV) as child:
+            with launch(command(binary, url, bundle, options=flags), path, env=TRUST_ENV, cwd=cell) as child:
                 reject(checked_exit(child, path, 2), kind)
             assert not select.select([server], [], [], 0)[0], f"unexpected connection: {name}"
 
 
 def peer_case(binary, cell, pki, schema, name, *, scenario=None, n=3, docs=(), cert="good",
               host="localhost", ca="ca.pem", trust=TRUST_ENV, kind=None, deny=0, sig=None,
-              expected=0, version=None):
+              expected=0, version=None, client_command=command):
     """An independent TLS/WS peer that checks frames and never encodes UCI payloads."""
     scenario = scenario or name
     path = cell / f"peer-{name}.out"
@@ -194,7 +200,8 @@ def peer_case(binary, cell, pki, schema, name, *, scenario=None, n=3, docs=(), c
 
         url = f"wss://{host}:{port}/owp?control=%2B"
         options = (*FLAGS[n - 1], "--max-messages", str(len(docs) or 10), "--duration-seconds", "10")
-        with launch(command(binary, url, None if ca is None else pki / ca, options=options), path, env=trust) as child:
+        with launch(client_command(binary, url, None if ca is None else pki / ca, options=options),
+                    path, env=trust, cwd=cell) as child:
             future = worker.submit(serve, child)
             text = checked_exit(child, path, expected)
             future.result(timeout=10)
@@ -223,6 +230,23 @@ def peer_case(binary, cell, pki, schema, name, *, scenario=None, n=3, docs=(), c
             assert "READY" not in text and "SUBSCRIBE-REJECTED" in text
     (cell / f"peer-{name}.json").write_text(json.dumps(dict(exit=expected, sni=sni, commands=commands, **evidence)) + "\n")
     return text
+
+
+def operator_smoke(args, cell, v, pki, plan):
+    def smoke_command(binary, url, ca, *, options):
+        bounds = options[len(ALL):]
+        return [sys.executable, ROOT / "examples/cpp-uci-client/deploy/smoke.py",
+                "--release", f"2.{v[1]}", "--profile", "C", "--variant", "tls", binary.parents[1],
+                "--test-url", url, "--service-id", SERVICE, "--ca-file", ca, *bounds]
+
+    schema = f"002.{v[1]}.0"
+    binary = application(args, v, PROFILE[2] + "-tls")
+    docs = [row for row in documents(plan, 3) if not row[0].startswith("decode-bad-")]
+    for scenario, expected, host in (("clean", 0, "127.0.0.1"), ("no-ws-close", 6, "localhost")):
+        text = peer_case(binary, cell, pki, schema, f"operator-smoke-{scenario}", scenario=scenario,
+                         docs=docs, host=host, expected=expected, client_command=smoke_command)
+        check_summaries(text, schema, 3, decoded_bad=False)
+        assert ("SMOKE OK:" if expected == 0 else "SMOKE FAILED: client status 6") in text
 
 
 def documents(plan, n, *, broker_checks=False):
@@ -272,9 +296,9 @@ def check_summaries(text, schema, n, *, decoded_bad):
 def offline(args, cell, v, pki, plan):
     schema = f"002.{v[1]}.0"
     cli_controls(args, cell, v, pki)
-    full = executable(args.build, v, PROFILE[2] + "-tls")
+    full = application(args, v, PROFILE[2] + "-tls")
     for n, profile in enumerate(PROFILE, 1):
-        cases = [executable(args.build, v, profile + "-tls")]
+        cases = [application(args, v, profile + "-tls")]
         if n < 3:
             cases.append(full)
         for i, binary in enumerate(cases):
@@ -395,7 +419,7 @@ def broker_cases(args, cell, v, root, pki, plan, core):
             publication = cell / f"{label}.tsv"
             publication.write_text("".join("\t".join(row) + "\n" for row in rows))
             options = (*FLAGS[n - 1], "--max-messages", str(n * 2))
-            with launch(command(binary, url, ca, options=options), app_log, env=TRUST_ENV) as child:
+            with launch(command(binary, url, ca, options=options), app_log, env=TRUST_ENV, cwd=cell) as child:
                 wait_line(app_log, r"^READY ", child)
                 with launch([args.wire, "round-trip-three", ws, "cpp-uci-wire", schema, publication], wire_log) as wire:
                     observed = checked_exit(wire, wire_log, 0)
@@ -407,13 +431,13 @@ def broker_cases(args, cell, v, root, pki, plan, core):
             check_summaries(text, schema, n, decoded_bad=n == 3)
             return sorted(summaries(text))  # stable within-family order checked separately
 
-        full = executable(args.build, v, PROFILE[2] + "-tls")
+        full = application(args, v, PROFILE[2] + "-tls")
         for n, suffix in enumerate(PROFILE, 1):
-            binary = executable(args.build, v, suffix + "-tls")
+            binary = application(args, v, suffix + "-tls")
             rows = documents(plan, n, broker_checks=n == 3)
             plain = round_trip(binary, ws, None, f"tls-bin-ws-{n}", n, rows, 0)
-            if args.plain:
-                assert plain == round_trip(executable(args.plain, v, suffix), ws, None, f"plain-ws-{n}", n, rows, 0)
+            if args.plain or args.bundles:
+                assert plain == round_trip(application(args, v, suffix), ws, None, f"plain-ws-{n}", n, rows, 0)
             if n < 3:
                 assert plain == round_trip(full, ws, None, f"profile-c-ws-{n}", n, rows, 0)
             with relay(pki, broker_port) as (port, info, streams):
@@ -424,8 +448,8 @@ def broker_cases(args, cell, v, root, pki, plan, core):
         other = "26" if v == "25" else "25"
         with relay(pki, broker_port) as (port, info, streams):
             path = cell / "wrong-release.out"
-            binary = executable(args.build, other, PROFILE[2] + "-tls")
-            with launch(command(binary, f"wss://localhost:{port}/owp", pki / "ca.pem", options=ALL), path, env=TRUST_ENV) as child:
+            binary = application(args, other, PROFILE[2] + "-tls")
+            with launch(command(binary, f"wss://localhost:{port}/owp", pki / "ca.pem", options=ALL), path, env=TRUST_ENV, cwd=cell) as child:
                 text = checked_exit(child, path, 3)
             reject(text, "broker_rejected")
             assert "owp=Unsupported-Schema" in text
@@ -441,16 +465,20 @@ def broker_cases(args, cell, v, root, pki, plan, core):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("build", "out", "plain", "sleet", "wire", "schema25", "schema26"):
-        parser.add_argument("--" + name, type=lambda p: Path(p).resolve(), required=name in ("build", "out"))
+    for name in ("build", "out", "plain", "sleet", "wire", "schema25", "schema26", "bundles"):
+        parser.add_argument("--" + name, type=lambda p: Path(p).resolve(), required=name == "out")
     args = parser.parse_args()
     if not __debug__:
         parser.error("qualification assertions must be enabled")
     if args.out.is_relative_to(ROOT):
         parser.error("use external scratch storage")
+    if (not args.build and not args.bundles) or (args.bundles and args.plain):
+        parser.error("select --build [--plain], or --bundles (plus --build for broker receiver-core tests)")
+    if args.bundles and args.bundles.is_relative_to(ROOT):
+        parser.error("stage bundles outside the checkout")
     if any((args.sleet, args.wire, args.schema25, args.schema26)):
-        if not all((args.sleet, args.wire, args.schema25, args.schema26)):
-            parser.error("real broker qualification requires --sleet --wire --schema25 --schema26 together")
+        if not all((args.build, args.sleet, args.wire, args.schema25, args.schema26)):
+            parser.error("real broker qualification requires --build --sleet --wire --schema25 --schema26 together")
         assert sp.check_output(["git", "-C", args.sleet, "rev-parse", "HEAD", "HEAD^{tree}"], text=True).split() == [SLEET, TREE]
         assert not sp.check_output(["git", "-C", args.sleet, "status", "--porcelain"])
     else:
@@ -458,11 +486,20 @@ def main():
     args.out.mkdir(parents=True, mode=0o700)
     pki = args.out / "pki"
     certificates(pki, full=True)
+    if args.bundles:
+        # Isolate both default trust paths; positive cases use explicit --ca-file.
+        # The default/additive controls replace only the file.
+        empty = pki / "empty-trust-dir"
+        empty.mkdir()
+        TRUST_ENV.clear()
+        TRUST_ENV.update(LC_ALL="C", SSL_CERT_FILE=str(pki / "empty.pem"), SSL_CERT_DIR=str(empty))
     for v, root in (("25", args.schema25), ("26", args.schema26)):
         cell = args.out / v
         cell.mkdir()
         plan, core, _, _ = plans(cell, v)
         offline(args, cell, v, pki, plan)
+        if args.bundles:
+            operator_smoke(args, cell, v, pki, plan)
         print(f"CPP_OMS_012 UCI 2.{v[1]}: verified peer, TLS negatives, rollback and shutdown PASS", flush=True)
         if args.sleet:
             broker_cases(args, cell, v, root, pki, plan, core)
